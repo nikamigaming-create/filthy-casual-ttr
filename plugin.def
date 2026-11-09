@@ -1,0 +1,9 @@
+LIBRARY SeatedControls
+EXPORTS
+ NVSEPlugin_Query
+ NVSEPlugin_Load
+ SC_Input
+ SC_UI
+ SC_Height
+SC_Head
+ SC_UIState

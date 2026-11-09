@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">Filthy Casual TTR</title>
+  <desc id="desc">Original green and amber terminal artwork with concentric selector rings and a seated-height scale.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#8de4a0" stroke-opacity=".06"/></pattern>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#14281e"/><stop offset="1" stop-color="#07130e"/></linearGradient>
+  </defs>
+  <rect width="1200" height="340" rx="16" fill="url(#bg)"/>
+  <rect width="1200" height="340" rx="16" fill="url(#grid)"/>
+  <rect x="14" y="14" width="1172" height="312" rx="8" fill="none" stroke="#84d999" stroke-opacity=".4"/>
+  <path d="M40 63V40H63M1137 40h23v23M40 277v23h23M1137 300h23v-23" fill="none" stroke="#edbe70" stroke-width="3"/>
+  <g font-family="Consolas, 'Liberation Mono', monospace">
+    <text x="66" y="74" fill="#edbe70" font-size="16" letter-spacing="4">COUCH SURVIVAL / 01.2.2</text>
+    <text x="62" y="148" fill="#b0f1bc" font-size="56" font-weight="700" letter-spacing="2">FILTHY CASUAL</text>
+    <text x="64" y="197" fill="#b0f1bc" font-size="36" letter-spacing="2">TTR / SEATED CONTROLS</text>
+    <path d="M66 222H674" stroke="#84d999" stroke-opacity=".4"/>
+    <text x="66" y="255" fill="#c9d8cc" font-size="18">Reach your inventory.</text>
+    <text x="66" y="281" fill="#c9d8cc" font-size="18">Settle into the wasteland.</text>
+  </g>
+  <g transform="translate(925 169)" fill="none" stroke="#8de4a0">
+    <circle r="98" stroke-opacity=".28"/>
+    <circle r="68" stroke-dasharray="3 9" stroke-opacity=".6"/>
+    <path d="M-124 0h27M97 0h27M0-124v27M0 97v27" stroke-opacity=".55"/>
+    <g stroke-width="2"><rect x="-15" y="-110" width="30" height="25" rx="5" fill="#152d20"/><rect x="73" y="-58" width="30" height="25" rx="5" fill="#152d20"/><rect x="73" y="34" width="30" height="25" rx="5" fill="#152d20"/><rect x="-15" y="84" width="30" height="25" rx="5" fill="#152d20"/><rect x="-103" y="34" width="30" height="25" rx="5" fill="#152d20"/><rect x="-103" y="-58" width="30" height="25" rx="5" fill="#152d20"/></g>
+    <circle r="27" stroke="#edbe70" stroke-width="2"/><path d="M-12 0h24M0-12v24" stroke="#edbe70" stroke-width="2"/>
+  </g>
+  <g stroke="#edbe70" fill="none" stroke-opacity=".65"><path d="M1104 88v164M1095 88h18M1095 252h18M1099 116h10M1099 143h10M1099 170h10M1099 197h10M1099 224h10"/></g>
+</svg>

@@ -1,0 +1,3 @@
+LIBRARY SeatedInput
+EXPORTS
+ xrNegotiateLoaderApiLayerInterface=_xrNegotiateLoaderApiLayerInterface@12

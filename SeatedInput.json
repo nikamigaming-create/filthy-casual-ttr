@@ -1,0 +1,11 @@
+{
+ "file_format_version":"1.0.0",
+ "api_layer":{
+  "name":"XR_APILAYER_LOCAL_seated_controls",
+  "library_path":".\\SeatedInput.dll",
+  "api_version":"1.0",
+  "implementation_version":"1",
+  "description":"Local seated inventory input companion for TTWVR",
+  "functions":{"xrNegotiateLoaderApiLayerInterface":"xrNegotiateLoaderApiLayerInterface"}
+ }
+}

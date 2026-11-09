@@ -1,0 +1,47 @@
+#pragma once
+#include <cstdint>
+namespace hold_controls {
+enum Action {None=-1,Weapons=0,Consumables=1,Reload=2,Settings=3};
+struct State {
+ struct Hold {bool armed=false,running=false,fired=false;uint64_t since=0;};
+ struct Tap {bool armed=false,down=false,first=false,second=false,fired=false;uint64_t since=0,released=0;};
+ Hold menu;Tap taps[2];uint64_t delayMs=1000,doubleTapMs=450;bool menuOwned=false;
+ int update(unsigned mask,uint64_t now,bool active,bool allowed){
+  mask&=31;menuOwned=menuOwned&&active&&(mask&4);
+  if(!active||!allowed){menu={};for(auto& t:taps)t={};return None;}
+  int result=None;
+  // Menu has priority. Both resting thumbs are deliberately ambiguous: cancel
+  // and require a fresh lift/contact, rather than opening two wheels in turn.
+  bool restBlocked=(mask&4)||((mask&3)==3);
+  for(int i=0;i<2;i++){
+   auto& t=taps[i];bool down=(mask&(1u<<i))!=0;
+   bool oppositeStick=i==0?(mask&16)!=0:(mask&8)!=0;
+   if(restBlocked||!oppositeStick){t={};continue;}
+   if(t.first&&now-t.released>doubleTapMs)t.first=false;
+   if(!down){
+    if(t.down){
+     auto duration=now-t.since;bool tap=duration>=40&&duration<=300;
+     if(t.second&&tap&&!t.fired)result=i==0?Consumables:Weapons;
+     t.first=tap&&!t.second&&!t.fired;t.released=now;
+    }
+    t.down=false;t.second=false;t.fired=false;t.armed=true;continue;
+   }
+   if(t.armed){
+    t.second=t.first&&now-t.released>=40&&now-t.released<=doubleTapMs;
+    t.first=false;t.armed=false;t.down=true;t.fired=false;t.since=now;
+   }
+   // Fire on the debounced second contact, without another hold or release.
+   if(t.down&&t.second&&!t.fired&&now-t.since>=40){t.fired=true;result=i==0?Consumables:Weapons;}
+  }
+  bool down=(mask&4)!=0;auto& h=menu;
+  if(!down){
+   if(h.running&&!h.fired)result=now-h.since>=delayMs?Settings:Reload;
+   h={};h.armed=true;
+  }else{
+   if(h.armed){h.armed=false;h.running=true;h.since=now;menuOwned=true;}
+   if(h.running&&!h.fired&&now-h.since>=delayMs){h.fired=true;result=Settings;}
+  }
+  return result;
+ }
+};
+}
