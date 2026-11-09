@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "upstream": "Pool Tables Of The Mojave v4",
+  "inputs": {
+    "Open.txt": "ec7cf46cc29b775ea7b24731c0450d77e6b489779283db9aa9f2c378a800ab4e",
+    "PlanCandidate.txt": "248fa144a6626539344bcfc66fa3a0b5ad3072e465358ddef42d3cf8bf4fbede",
+    "Tick.txt": "01c093860e9a83c3fec6176282abb9d3c774c5ee2fb00886c6ee6a7ced8eb72e",
+    "MatchFrame.txt": "7d96a2d811643b02486d2e835c38e2445ef979949c367f42675b3298bab58b47"
+  },
+  "expected": {
+    "Start.txt": "dd6a1a4c84b2d9d2670cece4d182887d9e9566d0b354556a8ff78badf62b06ed",
+    "Tick.txt": "27b1228829e185aaf4f911fcc0c96784dd574d2cae9cba2d43f9a6b4c6959181",
+    "PlanCandidate.txt": "b02498bd25d30837c4aad2054bd1d351a06d10a22f636fb1b92832aa58cee526"
+  },
+  "physicsRange": [
+    79,
+    10
+  ],
+  "physicsReplacements": [
+    [
+      "aBalls",
+      "balls"
+    ],
+    [
+      "aCue",
+      "cue"
+    ],
+    [
+      "fDt",
+      "dt"
+    ],
+    [
+      "iStep",
+      "steps"
+    ],
+    [
+      "(aLP[\"balls\"])",
+      "aLP[\"balls\"]"
+    ],
+    [
+      "(balls[0])",
+      "balls[0]"
+    ]
+  ],
+  "shotRange": [
+    61,
+    7
+  ],
+  "candidateAnchor": "    let fPlanCut := fPlanNX * fPlanDX + fPlanNY * fPlanDY"
+}

@@ -12,6 +12,7 @@ inline unsigned char* module=nullptr;
 inline Query query=nullptr;
 inline bool installed=false;
 inline std::atomic<unsigned long> applied[2]{};
+inline std::atomic<float> freePoseWeight[2]{{1.f},{1.f}};
 inline scene::Vec thumbLiftAxis[2][2];
 inline float thumbLiftAngle[2][2]{};
 inline scene::Vec thumbTuckAxis[2];
@@ -23,13 +24,31 @@ inline scene::Vec rotateAxis(scene::Vec v,scene::Vec axis,float angle){
 inline void rotateJoint(scene::Transform& t,scene::Vec axis,float angle){
  for(int col=0;col<3;col++){auto v=rotateAxis({t.r[0][col],t.r[1][col],t.r[2][col]},axis,angle);t.r[0][col]=v.x;t.r[1][col]=v.y;t.r[2][col]=v.z;}
 }
-inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,void* object){
+inline void blendRotation(scene::Transform& target,const scene::Transform& native,float weight){
+ if(weight>=.9999f)return;
+ if(weight<=.0001f){target=native;return;}
+ auto unit=[](scene::Vec v){float n=scene::distance(v,{});return n>.00001f?v*(1.f/n):scene::Vec{};};
+ scene::Vec cols[2];
+ for(int c=0;c<2;c++)cols[c]={native.r[0][c]*(1-weight)+target.r[0][c]*weight,native.r[1][c]*(1-weight)+target.r[1][c]*weight,native.r[2][c]*(1-weight)+target.r[2][c]*weight};
+ auto x=unit(cols[0]);float d=x.x*cols[1].x+x.y*cols[1].y+x.z*cols[1].z;
+ auto y=unit(cols[1]-x*d),z=scene::cross(x,y);
+ if(scene::distance(x,{})<.99f||scene::distance(y,{})<.99f){target=native;return;}
+ scene::Vec axes[]{x,y,z};for(int c=0;c<3;c++){target.r[0][c]=axes[c].x;target.r[1][c]=axes[c].y;target.r[2][c]=axes[c].z;}
+ target.p=native.p;target.scale=native.scale;
+}
+inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,void* object,float approachWeight){
  reinterpret_cast<Pose>(module+0x1C4870)(root,hand,amount);
  if(!root||hand<0||hand>1||!query||(posedObject&255))return;
+ float freeWeight=std::isfinite(approachWeight)?std::clamp(approachWeight,0.f,1.f):0.f;
+ freePoseWeight[hand]=freeWeight;
  // The object argument is shared by BOTH hands. Ask TTR which hand actually
  // owns a weapon/support pose, and retain its per-hand item/transition checks.
  if(object&&reinterpret_cast<bool(__cdecl*)(int,bool)>(module+0x1DB4C0)(hand,true))return;
  if(reinterpret_cast<bool(__cdecl*)(int)>(module+0x18A630)(hand)||*reinterpret_cast<int*>(module+0xDCE99C)==hand)return;
+ if(freeWeight<=.0001f)return;
+ void* joints[15]{};scene::Transform nativePose[15]{};
+ auto nativeTable=module+(hand?0x8F0730:0x8F0BE0);
+ for(int n=0;n<15;n++){joints[n]=scene::find(root,*reinterpret_cast<const char**>(nativeTable+n*80));if(joints[n])nativePose[n]=scene::local(joints[n]);}
  float thumb=0,index=0,lift=0,freeGrip=-1;if(!query(hand,thumb,index,lift,freeGrip))return;
  if(!std::isfinite(thumb)||!std::isfinite(index)||!std::isfinite(lift))return;
  thumb=std::clamp(thumb,0.f,1.f);index=std::clamp(index,0.f,1.f);
@@ -65,19 +84,23 @@ inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,v
    for(int col=0;col<3;col++){auto v=rotateAxis({t.r[0][col],t.r[1][col],t.r[2][col]},thumbLiftAxis[hand][joint],angle);t.r[0][col]=v.x;t.r[1][col]=v.y;t.r[2][col]=v.z;}
   }
  }
+ // Reuse TTR's exact distance fade. Its contact/wrapping and smoothing passes
+ // still run afterward. Do not replace native hand/root positions or held poses.
+ for(int n=0;n<15;n++)if(joints[n])blendRotation(scene::local(joints[n]),nativePose[n],freeWeight);
  ++applied[hand];
 }
 // Exact outer routine's saved EBX is its original argument frame. Preserve the
 // original caller's stack and all nonvolatile registers using a cdecl bridge.
 __declspec(naked) inline void bridge(){
  __asm {
+  push dword ptr [ebp-148h]
   push dword ptr [ebx+14h]
   push dword ptr [ebx+10h]
-  push dword ptr [esp+20]
-  push dword ptr [esp+20]
-  push dword ptr [esp+20]
+  push dword ptr [esp+24]
+  push dword ptr [esp+24]
+  push dword ptr [esp+24]
   call pose
-  add esp,20
+  add esp,24
   ret
  }
 }
@@ -88,6 +111,9 @@ inline const char* install(Query fn){
  const unsigned char apply[]={0x83,0xEC,0x58,0x8B,0x4C,0x24,0x5C,0x55,0x8B,0x6C,0x24,0x68,0x89,0x4C,0x24,0x10,0x57,0x8B};
  const unsigned char original[]={0x55,0x8B,0xEC,0x83,0xE4,0xF8,0x81,0xEC,0x1C,0x01,0x00,0x00,0x53,0x8B,0x5D,0x08};
  if(memcmp(b+0x1E01AF,context,sizeof(context))||memcmp(b+0x1DF020,apply,sizeof(apply))||memcmp(b+0x1C4870,original,sizeof(original)))return "refused: pose instruction guard";
+ const unsigned char distanceInit[]={0xF3,0x0F,0x11,0x85,0xB8,0xFE,0xFF,0xFF};
+ const unsigned char distanceEnd[]={0xF3,0x0F,0x11,0x95,0xB8,0xFE,0xFF,0xFF};
+ if(memcmp(b+0x1E0043,distanceInit,sizeof(distanceInit))||memcmp(b+0x1E0183,distanceEnd,sizeof(distanceEnd)))return "refused: native approach blend guard";
  const unsigned char policy[]={0x80,0x7C,0x24,0x08,0x00,0x74,0x24,0x8B,0x4C,0x24,0x04,0x51,0xE8,0x7F,0xDD,0xFF,0xFF,0x83,0xC4,0x04,0x84,0xC0,0x75,0x10};
  const unsigned char held[]={0x8B,0x44,0x24,0x04,0x74,0x08,0x39,0x05};
  if(memcmp(b+0x1DB4C0,policy,sizeof(policy))||b[0x18A630]!=0x80||b[0x18A631]!=0x3D||*reinterpret_cast<unsigned char**>(b+0x18A632)!=b+0x1114215||memcmp(b+0x18A637,held,sizeof(held)))return "refused: per-hand native policy guard";

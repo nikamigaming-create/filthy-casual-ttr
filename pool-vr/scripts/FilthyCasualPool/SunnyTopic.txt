@@ -1,0 +1,4 @@
+ref topic
+begin function {topic}
+    PlayerRef.AuxVarSetFlt "*_FC_PoolRequest" 2
+end

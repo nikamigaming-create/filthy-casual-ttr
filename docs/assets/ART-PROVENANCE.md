@@ -1,15 +1,11 @@
-# Illustrated overview
+# Filthy Casual TTR title illustration
 
-Original AI-assisted 1950s-inspired instructional art created for Nikami on
-2026-11-08. The seated character and decorative world are illustrations, not
-captured gameplay. No official Fallout mascot or extracted game asset is used.
+`filthy-casual-recliner.png` was generated with the built-in image-generation
+tool on 2026-11-08 for this project's guide. It is original decorative artwork,
+not a game capture or a depiction of a physical headset test. The guide layers
+its title and comic lettering separately in the video editor. No stock mascot
+or game asset was included in the image prompt.
 
-Controller-layout reference: Meta's official Touch Plus product photographs:
-https://www.meta.com/quest/accessories/quest-touch-plus-controller/
+Prompt:
 
-Menu / system input distinction and capacitive sensors:
-https://developers.meta.com/vr/documentation/native/pc/native-touch-plus-controllers/
-
-The reference photographs are not redistributed in this repository. The mod
-control mappings are documented in the addon README; they differ from native
-system controls. The public guide explicitly identifies the left Menu override.
+> Use case: illustration-story. Asset type: wide 16:9 title illustration for a funny 1950s atomic-age retrofuturist VR game mod guide called FILTHY CASUAL TTR. Original polished hand-inked midcentury comic book / optimistic civil-defense advertisement illustration, weathered cream paper, muted mint and dark forest green, mustard orange, limited halftone printing texture. On the RIGHT half a happy adult scruffy wasteland survivor in patched olive work clothes and slippers comfortably seated in an old cozy rounded recliner, wearing a modern white VR headset and holding two VR controllers with naturally upright wrists, knees relaxed, feet planted. A snack tin on a small side table. Behind him a simple bunker wall and atomic starburst. On the LEFT half large clean dark green negative space for title typography to be added later. Small energetic empty cream comic speech balloons and starburst accents around the chair but no text anywhere. The character should be original, NOT Vault Boy, no existing logos, no game screenshot, no weapon held instead of controllers, no extra limbs. Full chair and body in frame. An affectionate tongue-in-cheek 'hero of the couch' mood. Designed as premium title-card artwork with a clear silhouette and uncluttered hierarchy.

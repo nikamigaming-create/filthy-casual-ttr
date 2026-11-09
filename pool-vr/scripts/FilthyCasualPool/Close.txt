@@ -1,0 +1,22 @@
+array_var aLP
+array_var refs
+ref rObject
+int i
+begin function {aLP}
+    DispatchEvent "FC:PoolClose" aLP
+    PlayerRef.AuxVarSetFlt "*_FC_PoolActive" 0
+    Call (CompileScript "FilthyCasualPool/ReleaseSunny.txt")
+    let refs := aLP["ballRefs"]
+    let i := 0
+    while i < 16
+        let rObject := refs[i]
+        if eval rObject
+            rObject.Disable
+        endif
+        let i += 1
+    loop
+    let rObject := aLP["cueRef"]
+    if eval rObject
+        rObject.Disable
+    endif
+end

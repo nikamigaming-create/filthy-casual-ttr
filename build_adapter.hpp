@@ -89,6 +89,34 @@ inline int grabbedHand() {auto b=heldModule();if(!b)return -1;if(b[0x11142E4]&&*
 inline int stimHand() {auto b=heldModule();return b?*reinterpret_cast<int*>(b+0xDCE99C):-1;}
 inline void releaseGrab() {if(auto b=heldModule())reinterpret_cast<void(__cdecl*)(const char*)>(b+0x193130)("selector replacement");}
 inline void clearStim(void* player) {if(auto b=heldModule())reinterpret_cast<void(__cdecl*)(void*,const char*)>(b+0x315E40)(player,"selector replacement");}
+inline bool stowSelectedGrab(void* player,void* wanted){
+ auto b=heldModule();if(!b||!player||!wanted)return false;
+ void* first=b[0x1114215]?*reinterpret_cast<void**>(b+0x11146D0):nullptr;
+ void* second=b[0x11142E4]?*reinterpret_cast<void**>(b+0x11142EC):nullptr;
+ bool primary=first==wanted,secondary=second==wanted;
+ if(!primary&&!secondary)return false;
+ // Native IsSameGrabbedObject (194E00) recognizes a legitimate two-hand hold.
+ // 197479..1974A3 releases both aliases before activating that reference once.
+ bool shared=primary&&secondary;
+ // The optional slot context may be null in both aliases; native equality permits it.
+ if(shared&&*reinterpret_cast<void**>(b+0x11146D4)!=*reinterpret_cast<void**>(b+0x11142F0))return false;
+ // Exact native release-all routine 1930E0 uses this swap/release/swap sequence
+ // to address slot two. Use it for the selected slot only, preserving the other.
+ const unsigned char swapCode[]={0x81,0xEC,0xCC,0,0,0,0x56,0x57};
+ if(memcmp(b+0x195D10,swapCode,sizeof(swapCode)))return false;
+ int otherHand=*reinterpret_cast<int*>(b+0xDC53E8);
+ int hand=*reinterpret_cast<int*>(b+(secondary?0x11142E8:0xDC53E8));
+ auto swap=reinterpret_cast<void(__cdecl*)()>(b+0x195D10);
+ auto release=reinterpret_cast<void(__cdecl*)(const char*)>(b+0x193130);
+ if(shared){release("sticky shared item stow");swap();release("sticky shared item stow");swap();}
+ else {if(secondary)swap();release("sticky item stow");if(secondary)swap();}
+ auto cancelPull=reinterpret_cast<void(__cdecl*)(int,const char*)>(b+0x18BCB0);
+ cancelPull(hand,"sticky item stow");
+ if(shared&&otherHand!=hand)cancelPull(otherHand,"sticky shared item stow");
+ if((b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==wanted)||(b[0x11142E4]&&*reinterpret_cast<void**>(b+0x11142EC)==wanted))return false;
+ reinterpret_cast<void(__thiscall*)(void*,void*,int,int,int)>(0x00573170)(wanted,player,0,0,1);
+ return true;
+}
 inline void stowGrab(void* player) {
  auto b=heldModule();if(!b||!player)return;
  void* first=b[0x1114215]?*reinterpret_cast<void**>(b+0x11146D0):nullptr;

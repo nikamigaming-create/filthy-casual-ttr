@@ -1,0 +1,224 @@
+int opponent
+array_var aLP
+array_var aRefs
+ref rTable
+ref rBall
+ref fnTick
+ref fnRunning
+ref rMarker
+ref rPackage
+int i
+begin function {opponent}
+    if eval PlayerRef.AuxVarGetFlt "*_FC_PoolActive"
+        return
+    endif
+    let rTable := StringToRef "00107D7B"
+    if eval (rTable.GetParentCell) != (player.GetParentCell) || player.IsInCombat || player.GetDead || MenuMode
+        return
+    endif
+    if eval player.IsWeaponOut
+        MessageEx "Pool: put your weapon away before playing."
+        return
+    endif
+    if eval opponent && (SunnyRef.GetDead || SunnyRef.GetDisabled || SunnyRef.IsInCombat || (SunnyRef.GetParentCell) != (player.GetParentCell))
+        MessageEx "Sunny is unavailable for pool."
+        return
+    endif
+    let aLP := ar_Construct StringMap
+@@UPSTREAM_DEFAULTS@@
+    let aLP["rack"] := CompileScript "Minigames/Pool/Rack.txt"
+    if eval (aLP["rack"]) == 0
+        Print "FC Pool: Rack failed to compile"
+        return
+    endif
+    let aLP["physics"] := CompileScript "Minigames/Pool/Physics.txt"
+    if eval (aLP["physics"]) == 0
+        Print "FC Pool: Physics failed to compile"
+        return
+    endif
+    let aLP["drawBalls"] := CompileScript "Minigames/Pool/DrawBalls.txt"
+    if eval (aLP["drawBalls"]) == 0
+        Print "FC Pool: DrawBalls failed to compile"
+        return
+    endif
+    let aLP["audio"] := CompileScript "Minigames/Pool/Audio.txt"
+    if eval (aLP["audio"]) == 0
+        Print "FC Pool: Audio failed to compile"
+        return
+    endif
+    let aLP["shotStart"] := CompileScript "Minigames/Pool/ShotStart.txt"
+    if eval (aLP["shotStart"]) == 0
+        Print "FC Pool: ShotStart failed to compile"
+        return
+    endif
+    let aLP["resolveShot"] := CompileScript "Minigames/Pool/ResolveShot.txt"
+    if eval (aLP["resolveShot"]) == 0
+        Print "FC Pool: ResolveShot failed to compile"
+        return
+    endif
+    let aLP["pathClear"] := CompileScript "Minigames/Pool/PathClear.txt"
+    if eval (aLP["pathClear"]) == 0
+        Print "FC Pool: PathClear failed to compile"
+        return
+    endif
+    let aLP["fallbackOpponent"] := CompileScript "Minigames/Pool/FallbackOpponent.txt"
+    if eval (aLP["fallbackOpponent"]) == 0
+        Print "FC Pool: FallbackOpponent failed to compile"
+        return
+    endif
+    let aLP["planCandidateFn"] := CompileScript "FilthyCasualPool/PlanCandidate.txt"
+    if eval (aLP["planCandidateFn"]) == 0
+        Print "FC Pool: PlanCandidate failed to compile"
+        return
+    endif
+    let aLP["planBallFn"] := CompileScript "Minigames/Pool/PlanBall.txt"
+    if eval (aLP["planBallFn"]) == 0
+        Print "FC Pool: PlanBall failed to compile"
+        return
+    endif
+    let aLP["planStepFn"] := CompileScript "Minigames/Pool/PlanStep.txt"
+    if eval (aLP["planStepFn"]) == 0
+        Print "FC Pool: PlanStep failed to compile"
+        return
+    endif
+    let aLP["planFinishFn"] := CompileScript "Minigames/Pool/PlanFinish.txt"
+    if eval (aLP["planFinishFn"]) == 0
+        Print "FC Pool: PlanFinish failed to compile"
+        return
+    endif
+    let aLP["planOpponent"] := CompileScript "Minigames/Pool/PlanOpponent.txt"
+    if eval (aLP["planOpponent"]) == 0
+        Print "FC Pool: PlanOpponent failed to compile"
+        return
+    endif
+    let aLP["opponentAvailable"] := CompileScript "Minigames/Pool/OpponentAvailable.txt"
+    if eval (aLP["opponentAvailable"]) == 0
+        Print "FC Pool: OpponentAvailable failed to compile"
+        return
+    endif
+    let aLP["valid"] := CompileScript "Minigames/Pool/ValidPosition.txt"
+    if eval (aLP["valid"]) == 0
+        Print "FC Pool: ValidPosition failed to compile"
+        return
+    endif
+    let aLP["clearTable"] := CompileScript "Minigames/Pool/ClearTable.txt"
+    if eval (aLP["clearTable"]) == 0
+        Print "FC Pool: ClearTable failed to compile"
+        return
+    endif
+    let aLP["challenge"] := CompileScript "Minigames/Pool/Challenge.txt"
+    if eval (aLP["challenge"]) == 0
+        Print "FC Pool: Challenge failed to compile"
+        return
+    endif
+
+    let fnTick := CompileScript "FilthyCasualPool/Tick.txt"
+    let fnRunning := CompileScript "FilthyCasualPool/Running.txt"
+    let aLP["close"] := CompileScript "FilthyCasualPool/Close.txt"
+    if eval fnTick == 0 || fnRunning == 0 || (aLP["close"]) == 0
+        return
+    endif
+    let aLP["table"] := rTable
+    let aLP["yaw"] := rTable.GetAngle Z
+    let aLP["mode"] := 1 + opponent
+    let aLP["difficulty"] := 5
+    let aLP["notice"] := ""
+    let aLP["turn"] := 0
+    let aLP["shotsLeft"] := 1
+    let aLP["opponentRef"] := 0
+    let aLP["opponentName"] := "Practice"
+    if eval opponent
+        let aLP["turn"] := 1
+        let aLP["opponentRef"] := SunnyRef
+        let aLP["opponentName"] := "Sunny Smiles"
+        let aLP["actorRequired"] := 1
+        let aLP["priorAIType"] := SunnyRef.GetCurrentAIPackage
+        let aLP["priorPackage"] := SunnyRef.GetCurrentStablePackage
+    endif
+    let aLP["canStart"] := 0
+    DispatchEvent "FC:PoolCheck" aLP
+    if eval (aLP["canStart"]) == 0
+        MessageEx "Pool: Sunny is busy with another activity."
+        return
+    endif
+    let aLP["sunnyTick"] := CompileScript "FilthyCasualPool/SunnyTick.txt"
+    let aLP["releaseSunny"] := CompileScript "FilthyCasualPool/ReleaseSunny.txt"
+    let aLP["opponentAvailable"] := CompileScript "FilthyCasualPool/OpponentAvailable.txt"
+    if eval opponent
+        let rPackage := GetFormFromMod "Filthy Casual Pool.esp" "000802"
+        let rMarker := PlayerRef.AuxVarGetRef "_FC_PoolMarker"
+        if eval rMarker == 0
+            let rMarker := rTable.PlaceAtMe XMarker 1
+        endif
+        if eval rPackage == 0 || rMarker == 0
+            return
+        endif
+        rMarker.MoveTo rTable 120 0 -24
+        rMarker.Enable
+        PlayerRef.AuxVarSetRef "_FC_PoolMarker" rMarker
+        let aLP["actorMarker"] := rMarker
+        let aLP["actorPackage"] := rPackage
+        let aLP["actorIdle"] := GetFormFromMod "Filthy Casual Pool.esp" "000803"
+        SetPackageLocationReference rPackage rMarker
+        SunnyRef.AddScriptPackage rPackage
+    endif
+    let aRefs := ar_Construct Array
+    let aRefs[0] := GetFormFromMod "Pool Table Minigame.esp" "000B20"
+    let aRefs[1] := GetFormFromMod "Pool Table Minigame.esp" "000B21"
+    let aRefs[2] := GetFormFromMod "Pool Table Minigame.esp" "000B22"
+    let aRefs[3] := GetFormFromMod "Pool Table Minigame.esp" "000B23"
+    let aRefs[4] := GetFormFromMod "Pool Table Minigame.esp" "000B24"
+    let aRefs[5] := GetFormFromMod "Pool Table Minigame.esp" "000B25"
+    let aRefs[6] := GetFormFromMod "Pool Table Minigame.esp" "000B26"
+    let aRefs[7] := GetFormFromMod "Pool Table Minigame.esp" "000B27"
+    let aRefs[8] := GetFormFromMod "Pool Table Minigame.esp" "000B28"
+    let aRefs[9] := GetFormFromMod "Pool Table Minigame.esp" "000B29"
+    let aRefs[10] := GetFormFromMod "Pool Table Minigame.esp" "000B2A"
+    let aRefs[11] := GetFormFromMod "Pool Table Minigame.esp" "000B2B"
+    let aRefs[12] := GetFormFromMod "Pool Table Minigame.esp" "000B2C"
+    let aRefs[13] := GetFormFromMod "Pool Table Minigame.esp" "000B2D"
+    let aRefs[14] := GetFormFromMod "Pool Table Minigame.esp" "000B2E"
+    let aRefs[15] := GetFormFromMod "Pool Table Minigame.esp" "000B2F"
+    let aLP["ballRefs"] := aRefs
+    let aLP["cueRef"] := GetFormFromMod "Pool Table Minigame.esp" "000AE0"
+    let i := 0
+    while i < 16
+        let rBall := aRefs[i]
+        if eval rBall == 0
+            return
+        endif
+        rBall.Disable
+        rBall.MoveTo rTable
+        let i += 1
+    loop
+    let rBall := aLP["cueRef"]
+    rBall.Disable
+    rBall.MoveTo rTable
+    Call (aLP["rack"]) aLP
+    Call (aLP["clearTable"]) aLP
+    let aLP["breakShot"] := opponent
+    let aLP["vrEnd"] := 0
+    let aLP["vrShot"] := 0
+    let aLP["vrPlace"] := 0
+    let aLP["vrShowCue"] := 0
+    let aLP["actorFollow"] := 0
+    let aLP["actorAimTime"] := 0
+    let aLP["actorStarted"] := 0
+    let aLP["actorAligned"] := 0
+    let aLP["actorHitDone"] := 0
+    let aLP["actorGapValid"] := 0
+    let aLP["actorOwnIdle"] := 0
+    let aLP["actorClockStall"] := 0
+    let aLP["actorClockWait"] := 0
+    let aLP["actorReady"] := 0
+    let aLP["actorIdleResult"] := 0
+    let aLP["actorIdleChosen"] := 0
+    let aLP["actorSettled"] := 0
+    let aLP["actorSettleTime"] := 0
+    let aLP["lastTurn"] := -1
+    let aLP["generation"] := (PlayerRef.AuxVarGetFlt "*_FC_PoolGeneration") + 1
+    PlayerRef.AuxVarSetFlt "*_FC_PoolGeneration" (aLP["generation"])
+    PlayerRef.AuxVarSetFlt "*_FC_PoolActive" 1
+    MessageEx "Pool: hold both grips. Left hand guides. Slide the cue with your right. B leaves."
+    CallWhile fnTick fnRunning 3 aLP
+end

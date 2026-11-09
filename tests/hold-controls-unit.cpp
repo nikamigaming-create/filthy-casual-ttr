@@ -5,7 +5,7 @@
 using namespace hold_controls;
 int main(){
  for(unsigned rest:{1u,2u}){
-  unsigned modifier=rest==1?16u:8u,combo=rest|modifier;int want=rest==1?Consumables:Weapons;
+  unsigned modifier=rest==1?2u:1u,combo=rest|modifier;int want=rest==1?Consumables:Weapons;
   State s;s.update(modifier,0,true,true);
   assert(s.update(combo,100,true,true)==None);
   assert(s.update(modifier,180,true,true)==None);
@@ -22,6 +22,10 @@ int main(){
   held.update(combo,5110,true,true);assert(held.update(combo,5160,true,true)==None);
   State bare;bare.update(0,0,true,true);bare.update(rest,10,true,true);bare.update(0,100,true,true);
   bare.update(rest,200,true,true);assert(bare.update(rest,250,true,true)==None);
+  unsigned oldModifier=rest==1?16u:8u;
+  State stick;stick.update(oldModifier,0,true,true);stick.update(oldModifier|rest,100,true,true);
+  stick.update(oldModifier,180,true,true);stick.update(oldModifier|rest,280,true,true);
+  assert(stick.update(oldModifier|rest,330,true,true)==None);
   for(int mode=0;mode<4;mode++){
    State t;t.update(modifier,0,true,true);t.update(combo,100,true,true);t.update(modifier,180,true,true);
    if(mode==0){t.update(combo,700,true,true);assert(t.update(combo,750,true,true)==None);}
@@ -43,6 +47,7 @@ int main(){
  {State s;s.update(0,0,true,true);s.update(4,10,true,true);s.update(4,1000,true,true);assert(s.update(0,1020,true,true)==Settings);}
  {State s;s.update(4,0,true,true);assert(s.update(4,2000,true,true)==None);assert(s.update(0,2100,true,true)==None);}
  {State s;s.delayMs=1500;s.update(0,0,true,true);s.update(4,10,true,true);assert(s.update(4,1010,true,true)==None);assert(s.update(4,1510,true,true)==Settings);}
- {State s;s.update(16,0,true,true);s.update(17,100,true,true);s.update(16,180,true,true);s.update(20,220,true,true);s.update(21,280,true,true);assert(s.update(21,330,true,true)==None);assert(s.update(21,1220,true,true)==Settings);}
- puts("PASS: opposite-stick double taps, debounce, timeout, cancellation, single-fire and Menu tap/hold exclusion");
+ {State s;s.update(2,0,true,true);s.update(3,100,true,true);s.update(2,180,true,true);s.update(6,220,true,true);s.update(7,280,true,true);assert(s.update(7,330,true,true)==None);assert(s.update(7,1220,true,true)==Settings);}
+ {State s;s.update(0,0,true,true);assert(s.update(3,100,true,true)==None);assert(s.update(3,5000,true,true)==None);assert(s.update(0,5100,true,true)==None);}
+ puts("PASS: opposite-thumbrest double taps, old stick modifier rejected, debounce, timeout, cancellation, single-fire and Menu exclusion");
 }

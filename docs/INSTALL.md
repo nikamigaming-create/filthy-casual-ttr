@@ -2,9 +2,10 @@
 
 [Back to the controls and overview](../README.md)
 
-Revision 1.4.4 is a beta with thumbrest double taps, Menu tap/hold and empty-hand
-finger gestures. Physical-headset acceptance
-and the updated guide video remain pending; older footage uses older controls.
+Revision 1.4.5 is a beta with thumbrest double taps, Menu tap/hold and empty-hand
+finger gestures. The current portrait guide is available as `outputs/Filthy-Casuals-Mobile.mp4`.
+The November 9 local test build includes sticky food-to-mouth use and the
+separately installed pool addon. Latest physical-headset acceptance remains pending.
 
 ## Before installing
 
@@ -36,7 +37,7 @@ xNVSE, JIP LN NVSE, or game content.
 
 1. Close the game. Open the MO2 instance and profile you normally use for TTWVR.
 2. Choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.4.4.zip`.
+   `Filthy-Casual-TTR-1.4.5.zip` (or the supplied local-test ZIP).
 3. Name the new mod **Filthy Casual TTR** and complete installation. The
    archive's data root contains `NVSE`; no enclosing mod folder needs to be selected.
 4. Enable the new mod in MO2's left pane. Place it below the enabled base TTWVR
@@ -72,9 +73,9 @@ or SteamVR settings, and does not change those settings during normal play.
 ## First session
 
 Double-tap the right thumbrest for weapons or the left thumbrest for consumables
-while keeping the opposite thumb on its stick. No stick click or wheel hold.
-Keep the opposite stick touched throughout the two taps. Both rests together
-or releasing the opposite stick cancels the sequence. Tap left
+while keeping the opposite thumb on its thumbrest. No stick click or wheel hold.
+Keep the opposite thumbrest touched throughout the two taps. Releasing that
+thumbrest cancels the sequence; resting both thumbs alone opens nothing. Tap left
 Menu to change reload mode; hold it for one second to open seated settings.
 A long hold never also changes reload. Left Menu replaces its native binding
 during gameplay and passes through in native menus. Y Pause, face buttons,

@@ -1,0 +1,6 @@
+LIBRARY FilthyCasualPool
+EXPORTS
+ NVSEPlugin_Query
+ NVSEPlugin_Load
+ FC_PoolInput
+ FC_PoolActive

@@ -10,14 +10,20 @@ Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
 and set a comfortable seated eye height. An independent addon for an existing
 **Tale of Two Wastelands VR** installation.
 
-**Revision 1.4.4 · Beta.** Modified thumbrest double taps open the
+**Revision 1.4.5 · Beta.** Modified thumbrest double taps open the
 selectors; left Menu tap/hold changes reload mode or opens seated settings.
 Empty hands have smooth thumb and index gestures. Physical-headset acceptance
-of this revision and an updated guide video remain pending.
+of the newest integration remains pending. A phone-friendly showcase is attached
+to the release.
 Graphics tuning (DLSS, anti-aliasing, resolution, or reprojection) is separate
 from this addon and is not included in its package.
 
-[Download the MO2 ZIP](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.4.4) · [Meta Link companion mod](https://github.com/nikamigaming-create/ttr-meta-link)
+[Download Filthy Casual TTR](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.4.5) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+
+**Choose independently:** this seated addon does not need pool. Filthy Casual
+Pool needs only working TTR plus the separately downloaded original pool mod;
+it does not require this addon. If you use both, install version 1.4.5 or newer
+of Filthy Casual TTR. The original mods are linked, never bundled.
 
 ## Install through Mod Organizer 2
 
@@ -26,7 +32,7 @@ requirements. This addon supports one exact TTWVR build; check the
 [supported DLL and detailed installation guide](docs/INSTALL.md).
 
 1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.4.4.zip`.
+   `Filthy-Casual-TTR-1.4.5.zip`.
 2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
 3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
    file priority. Keep the base TTWVR mod enabled.
@@ -39,7 +45,7 @@ required. The archive contains the addon, documentation, and license notices.
 
 ## Reach, touch, equip
 
-Keep your opposite thumb resting on its stick, then **double-tap the right thumbrest**
+Keep your opposite thumb resting on its thumbrest, then **double-tap the right thumbrest**
 for weapons or **double-tap the left thumbrest** for consumables. No stick click.
 The selector stays where you opened it,
 with compact previews arranged within reach. Touch an item with **either hand**;
@@ -48,8 +54,8 @@ selector closes.
 
 | Action | Control |
 | --- | --- |
-| Open weapons | Keep **left stick touched**, **double-tap right thumbrest** |
-| Open aid | Keep **right stick touched**, **double-tap left thumbrest** |
+| Open weapons | Keep **left thumbrest touched**, **double-tap right thumbrest** |
+| Open aid | Keep **right thumbrest touched**, **double-tap left thumbrest** |
 | Choose an item | Touch its preview with either hand |
 | Select nothing / clear your hand | Touch the large center bottle cap |
 | Holster the drawn weapon | Touch that weapon in the selector again |
@@ -62,10 +68,10 @@ selector closes.
 | Open seated-height settings | Hold **left Menu** for **1 s** |
 
 The thumbrests are the small touch-sensitive resting pads, not the thumbsticks
-or face buttons. Keep the opposite stick touched throughout two short taps.
+or face buttons. Keep the opposite thumbrest touched throughout two short taps.
 The wheel opens on the second contact; simply resting there never opens it.
-Both rests together, loss of the opposite stick contact, and tracking/menu
-interruptions cancel an unfinished sequence. `[Controls] DoubleTapMs=450` sets
+Loss of the opposite thumbrest contact and tracking/menu interruptions cancel
+an unfinished sequence. Resting both thumbs without tapping opens nothing. `[Controls] DoubleTapMs=450` sets
 the gap allowed between taps (200–700 ms). `HoldMs=1000` controls Menu only.
 
 A short left Menu press toggles reload **on release**. A full hold opens settings
@@ -107,9 +113,10 @@ trigger and stab into the body. Selecting a Stimpak alone does not consume it.
 **Other aid:** selection puts an ordinary native grabbed item in your right hand.
 Squeeze and release the right grip to drop it, or release over a shoulder to stow
 it in the backpack. Selecting another item also returns the held item to inventory.
-The addon does not intercept Y or add a separate consume command. Native item
-use remains TTR's responsibility. Ordinary food consumption through its held-item
-path has not yet been verified; the current hold-A check returned it to inventory.
+**Food in sticky mode:** move it away from your face, then bring it to your mouth
+and hold it there briefly to eat one item through the game's normal food-use path.
+A/X return the held food to inventory. Squeezing back into native holding disables
+this mouth gesture. Other aid keeps its native use; there is no Y-consume command.
 Y remains native Pause outside our panels. The height panel keeps its own Y
 popup-toggle action. Quest aid is excluded from the selector.
 
@@ -160,7 +167,7 @@ not write TTR's SavedPouch file.
 ## Set your seated height
 
 Sit comfortably and look forward. Hold **left Menu** for one second,
-release it, press **A** to calibrate, then **B** to save and close.
+release them, press **A** to calibrate, then **B** to save and close.
 
 | While the height panel is open | Result |
 | --- | --- |
@@ -213,10 +220,3 @@ Built on KUPOkinz's A Tale of Two Realities / TTWVR. The base mod supplies the
 VR experience; this addon supplies a little more couch comfort.
 Game assets and dependency binaries are not included. Third-party notices and
 licenses are retained; see [THIRD_PARTY.md](THIRD_PARTY.md).
-
-## Illustrated overview
-
-![Nikami TTR mods: features, Quest controls and MO2 installation](docs/assets/nikami-ttr-mods.png)
-
-The artwork is illustrative. It is not a gameplay screenshot.
-

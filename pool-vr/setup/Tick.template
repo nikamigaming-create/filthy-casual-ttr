@@ -1,0 +1,139 @@
+array_var aLP
+array_var balls
+array_var cue
+ref table
+ref cueRef
+ref rActor
+ref rIdle
+float dt
+int steps
+int valid
+begin function {aLP}
+    let table := aLP["table"]
+    if eval (PlayerRef.GetParentCell) != (table.GetParentCell) || player.GetDead || player.IsInCombat || (player.GetDistance table) > 1200 || (aLP["vrEnd"])
+        Call (aLP["close"]) aLP
+        return
+    endif
+    if eval MenuMode
+        DispatchEvent "FC:PoolSuspend" aLP
+        return
+    endif
+    let dt := GetMinOf 0.0666667 (GetMaxOf 0 (GetSecondsPassed))
+    let aLP["dt"] := dt
+    let aLP["actorOwnIdle"] := 0
+    if eval aLP["actorStarted"]
+        let rActor := aLP["opponentRef"]
+        let rIdle := aLP["actorIdle"]
+        let aLP["actorOwnIdle"] := rActor.IsIdlePlayingEx rIdle
+    endif
+    let aLP["age"] += dt
+    let aLP["frames"] += 1
+    DispatchEvent "FC:PoolFrame" aLP
+@@UPSTREAM_PHYSICS@@
+    else
+        let aLP["accum"] := 0
+        if eval (aLP["mode"]) == 2
+            if eval (Call (aLP["opponentAvailable"]) aLP) == 0
+                Call (aLP["close"]) aLP
+                return
+            endif
+            if eval (aLP["shotPending"]) && (aLP["actorFollow"]) <= 0
+                Call (aLP["resolveShot"]) aLP
+                MessageEx "Pool: %z" (aLP["notice"])
+                let aLP["aiPlanned"] := 0
+                let aLP["aiAttempted"] := 0
+                let aLP["aiPlanning"] := 0
+                let aLP["actorPositioned"] := 0
+                let aLP["actorIdleChosen"] := 0
+                let aLP["actorSettled"] := 0
+                let aLP["actorSettleTime"] := 0
+                let aLP["actorAimTime"] := 0
+                let aLP["actorStarted"] := 0
+                let aLP["actorAligned"] := 0
+                let aLP["actorHitDone"] := 0
+                let aLP["actorGapValid"] := 0
+                let aLP["actorOwnIdle"] := 0
+                let aLP["actorClockStall"] := 0
+    let aLP["actorClockWait"] := 0
+            endif
+            if eval (aLP["finished"])
+                if eval (aLP["settled"]) == 0
+                    if eval (aLP["winner"]) == 0
+                        MessageEx "Pool: you win! B to leave the table."
+                    else
+                        MessageEx "Pool: Sunny wins. B to leave the table."
+                    endif
+                    let aLP["settled"] := 1
+                endif
+            elseif eval aLP["turn"]
+                let aLP["aiWait"] += dt
+                if eval (aLP["aiAttempted"]) == 0 && (aLP["aiWait"]) >= 0.8
+                    let aLP["aiAttempted"] := 1
+                    Call (aLP["planOpponent"]) aLP
+                endif
+                if eval aLP["aiPlanning"]
+                    Call (aLP["planStepFn"]) aLP
+                endif
+                if eval (aLP["aiAttempted"]) && (aLP["aiPlanned"]) == 0 && (aLP["aiPlanning"]) == 0
+                    Call (aLP["fallbackOpponent"]) aLP
+                endif
+                Call (aLP["sunnyTick"]) aLP
+                if eval (aLP["aiPlanned"]) && (aLP["actorReady"]) && (aLP["actorContact"]) && (aLP["actorHitDone"]) == 0
+                    Call (aLP["shotStart"]) aLP
+@@UPSTREAM_SHOT@@
+                    let aLP["actorHitDone"] := 1
+                endif
+            endif
+        elseif eval (cue[4]) == 0
+            let aLP["inhand"] := 1
+        endif
+        if eval (aLP["turn"]) == 0 && (aLP["finished"]) == 0
+            if eval aLP["inhand"]
+                let valid := Call (aLP["valid"]) balls (aLP["vrBallX"]) (aLP["vrBallY"])
+                if eval valid && (aLP["vrPlace"])
+                    let cue[0] := aLP["vrBallX"]
+                    let cue[1] := aLP["vrBallY"]
+                    let cue[4] := 1
+                    let aLP["inhand"] := 0
+                endif
+            elseif eval (aLP["vrShot"]) > 0
+                if eval (aLP["mode"]) == 2
+                    Call (aLP["shotStart"]) aLP
+                endif
+                let cue[2] := (aLP["vrNX"]) * (aLP["vrShot"])
+                let cue[3] := (aLP["vrNY"]) * (aLP["vrShot"])
+                let aLP["moving"] := 1
+                let aLP["shots"] += 1
+                let aLP["shotSound"] := 1
+            endif
+        endif
+    endif
+    let aLP["vrShot"] := 0
+    let aLP["vrPlace"] := 0
+    if eval (aLP["lastTurn"]) != (aLP["turn"])
+        let aLP["lastTurn"] := aLP["turn"]
+        if eval aLP["turn"]
+            MessageEx "Pool: Sunny's turn."
+        else
+            if eval (aLP["playerGroup"]) == 1
+                MessageEx "Pool: your turn. You are solids."
+            elseif eval (aLP["playerGroup"]) == 2
+                MessageEx "Pool: your turn. You are stripes."
+            else
+                MessageEx "Pool: your turn. Table is open."
+            endif
+        endif
+    endif
+    Call (aLP["drawBalls"]) aLP
+    Call (aLP["audio"]) aLP dt
+    let cueRef := aLP["cueRef"]
+    if eval aLP["vrShowCue"]
+        if eval cueRef.GetDisabled
+            cueRef.Enable
+        endif
+    elseif eval cueRef.GetDisabled == 0
+        DispatchEvent "FC:PoolDraw" aLP
+        cueRef.Disable
+    endif
+    DispatchEvent "FC:PoolDraw" aLP
+end

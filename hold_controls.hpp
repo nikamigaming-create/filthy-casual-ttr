@@ -10,13 +10,13 @@ struct State {
   mask&=31;menuOwned=menuOwned&&active&&(mask&4);
   if(!active||!allowed){menu={};for(auto& t:taps)t={};return None;}
   int result=None;
-  // Menu has priority. Both resting thumbs are deliberately ambiguous: cancel
-  // and require a fresh lift/contact, rather than opening two wheels in turn.
-  bool restBlocked=(mask&4)||((mask&3)==3);
+  // Menu has priority. The opposite thumbrest must stay touched throughout
+  // both taps; simultaneous contact alone never arms either wheel.
+  bool restBlocked=(mask&4)!=0;
   for(int i=0;i<2;i++){
    auto& t=taps[i];bool down=(mask&(1u<<i))!=0;
-   bool oppositeStick=i==0?(mask&16)!=0:(mask&8)!=0;
-   if(restBlocked||!oppositeStick){t={};continue;}
+   bool oppositeRest=(mask&(1u<<(1-i)))!=0;
+   if(restBlocked||!oppositeRest){t={};continue;}
    if(t.first&&now-t.released>doubleTapMs)t.first=false;
    if(!down){
     if(t.down){

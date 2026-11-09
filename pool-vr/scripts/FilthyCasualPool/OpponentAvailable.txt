@@ -1,0 +1,8 @@
+array_var aLP
+ref rActor
+ref rTable
+begin function {aLP}
+    let rActor := aLP["opponentRef"]
+    let rTable := aLP["table"]
+    SetFunctionValue (rActor && rActor.GetDead == 0 && rActor.GetDisabled == 0 && rActor.IsInCombat == 0 && (rActor.GetParentCell) == (rTable.GetParentCell))
+end

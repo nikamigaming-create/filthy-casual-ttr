@@ -1,0 +1,35 @@
+ref fn
+ref topic
+ref greeting
+array_var choices
+int i
+int iChoicePresent
+begin function {}
+    Print "FC Pool init begin"
+    PlayerRef.AuxVarSetFlt "*_FC_PoolRequest" 0
+    PlayerRef.AuxVarSetFlt "*_FC_PoolActive" 0
+    Call (CompileScript "FilthyCasualPool/ReleaseSunny.txt")
+    Call (CompileScript "FilthyCasualPool/ResetProps.txt")
+    let fn := CompileScript "FilthyCasualPool/SunnyTopic.txt"
+    let topic := GetFormFromMod "Filthy Casual Pool.esp" "000804"
+    StartQuest topic
+    let topic := GetFormFromMod "Filthy Casual Pool.esp" "000800"
+    if eval fn && topic
+        SetOnDialogTopicEventHandler fn 0 topic
+        SetOnDialogTopicEventHandler fn 1 topic
+        Print "FC Pool registering greeting choice"
+        let greeting := StringToRef "00104E7E"
+        let choices := DialogResponseRelatedGetAll greeting 1
+        let iChoicePresent := 0
+        let i := 0
+        while i < (ar_Size choices)
+            if eval choices[i] == topic
+                let iChoicePresent := 1
+            endif
+            let i += 1
+        loop
+        if eval iChoicePresent == 0
+            DialogResponseAddRelatedTopic greeting topic 1 0
+        endif
+    endif
+end

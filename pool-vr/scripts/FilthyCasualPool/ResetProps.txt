@@ -1,0 +1,71 @@
+ref rObject
+begin function {}
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000AE0"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B20"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B21"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B22"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B23"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B24"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B25"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B26"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B27"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B28"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B29"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2A"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2B"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2C"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2D"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2E"
+    if eval rObject
+        rObject.Disable
+    endif
+    let rObject := GetFormFromMod "Pool Table Minigame.esp" "000B2F"
+    if eval rObject
+        rObject.Disable
+    endif
+end

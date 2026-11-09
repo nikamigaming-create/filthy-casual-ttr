@@ -1,0 +1,7 @@
+ref target
+ref who
+begin function {target,who}
+    if eval who == player && target == (StringToRef "00107D7B")
+        PlayerRef.AuxVarSetFlt "*_FC_PoolRequest" 1
+    endif
+end

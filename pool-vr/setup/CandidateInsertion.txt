@@ -1,0 +1,7 @@
+    let aLP["candidateNX"] := fPlanNX
+    let aLP["candidateNY"] := fPlanNY
+    DispatchEvent "FC:PoolCandidate" aLP
+    if eval (aLP["candidateReachable"]) == 0
+        let aLP["candidateDone"] := 1
+        return
+    endif

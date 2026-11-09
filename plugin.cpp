@@ -21,6 +21,8 @@
 #include "wrist_controls.hpp"
 #include "finger_adapter.hpp"
 #include "hold_controls.hpp"
+#include "sticky_food.hpp"
+#include "presentation_adapter.hpp"
 #include "layer_discovery.hpp"
 namespace {
  Scripts* scripts=nullptr;Arrays* arrays=nullptr;Console* consoleApi=nullptr;
@@ -65,10 +67,13 @@ namespace {
  ULONGLONG openedAt=0,touchSince=0,chordSince=0,heightStepAt=0;int touchSlot=-1,touchHand=-1;bool chordLatch=false,triggerArmed=false;
  struct Item {Form* form=nullptr;u32 id=0;std::string name,model;int count=0;float scale=.25f;};
  std::vector<Item> items;Item heldAid;Form* selectedRef=nullptr;std::atomic<bool> aidGripLatch{false};
+ sticky_food::MouthGate mouthGate;bool heldFood=false;float mouthDistance=-1;
+ Vec foodMouthPoint{};
+ std::atomic<bool> stickyAidButtons{false};
  bool pendingAid=false,aidDropPending=false;ULONGLONG aidDeadline=0;
  Item pendingWeapon;int pendingHand=-1,pendingStage=0;ULONGLONG pendingAt=0;
  u32 selectedWeaponID=0;ULONGLONG redrawAfter=0;
- Script *dialogueTarget=nullptr,*combatDisabled=nullptr,*playerDead=nullptr;
+ Script *dialogueTarget=nullptr,*dialoguePartner=nullptr,*combatDisabled=nullptr,*playerDead=nullptr;
  struct Preview {std::string holder,attachment;bool inserted=false,attached=false;scene::WorldPin pin;std::vector<scene::Box> mesh;};
  Preview previews[previewCount];
  bool touchMustLeave[2][previewCount]{};
@@ -76,6 +81,7 @@ namespace {
  Script *getPlayer=nullptr,*getMenu=nullptr,*getWeapons=nullptr,*getAid=nullptr,*getName=nullptr,*getModel=nullptr,*getCount=nullptr,*getDimension=nullptr,*rootScale=nullptr,*getEquipped=nullptr,*weaponOut=nullptr,*holster=nullptr,*draw=nullptr;
  Script *insert=nullptr,*removeNode=nullptr,*attach=nullptr,*detach=nullptr,*translate=nullptr,*scale=nullptr,*position=nullptr,*equip=nullptr,*notice=nullptr;
  Script *getInventoryRefs=nullptr,*moveRef=nullptr,*takeRef=nullptr;
+ Script* isFood=nullptr;
  void log(const char* fmt,...){std::lock_guard<std::mutex> lock(logMutex);if(!logfile)return;fprintf(logfile,"[%llu] ",GetTickCount64());va_list ap;va_start(ap,fmt);vfprintf(logfile,fmt,ap);va_end(ap);fputc('\n',logfile);fflush(logfile);}
  void release(Element& e){if(e.type==3&&e.value.string)build_adapter::freeGameString(e.value.string);e={};}
  template<typename... Args> bool call(Script* s,Element& out,Args... args){if(!s)return false;return scripts->call(s,nullptr,nullptr,&out,sizeof...(args),args...);}
@@ -137,6 +143,7 @@ namespace {
   getEquipped=compile("equipped","player.GetEquippedObject 5",true);
   weaponOut=compile("weapon out","player.IsWeaponOut",true);
   dialogueTarget=compile("dialogue target","GetDialogueTarget",true);
+  dialoguePartner=compile("dialogue menu partner","GetMenuTargetRef 1009",true);
   combatDisabled=compile("combat controls disabled","GetPlayerControlsDisabled 0 1 0 0 0 0 0",true);
   playerDead=compile("player dead","player.GetDead",true);
   holster=compile("holster","begin function {}\nplayer.SetWeaponOut 0\nSetFunctionValue 1\nend");
@@ -145,6 +152,7 @@ namespace {
   getName=compile("name","ref item\nbegin function {item}\nSetFunctionValue (GetName item)\nend");
   getModel=compile("model","ref item\nbegin function {item}\nSetFunctionValue (GetModelPath item)\nend");
   getCount=compile("count","ref item\nbegin function {item}\nSetFunctionValue (player.GetItemCount item)\nend");
+  isFood=compile("food flag","ref item\nbegin function {item}\nSetFunctionValue (GetIngestibleFlag item 2)\nend");
   getDimension=compile("dimensions","ref item\nbegin function {item}\nSetFunctionValue (GetObjectDimensions X item + GetObjectDimensions Y item + GetObjectDimensions Z item)\nend");
   insert=compile("insert","string_var n\nbegin function {n}\nSetFunctionValue (InsertNode player 3 \"%z\" n)\nend");
   removeNode=compile("remove node","string_var n\nbegin function {n}\nSetFunctionValue (InsertNode player 2 \"%z\" n)\nend");
@@ -170,7 +178,7 @@ namespace {
 
  Form* playerForm(){Element e;Form* p=nullptr;if(call(getPlayer,e)&&e.type==2)p=e.value.form;release(e);return p;}
  void clearPreviews(){for(auto& p:previews){p.pin.restore();if(p.attached)number(detach,p.attachment.c_str());if(p.inserted)number(removeNode,p.holder.c_str());p={};}}
- void forgetHeldAid(){aidHand=-1;aidGripLatch=false;aidDropPending=false;selectedRef=nullptr;heldAid={};}
+ void forgetHeldAid(){stickyAidButtons=false;mouthGate.reset();mouthDistance=-1;heldFood=false;aidHand=-1;aidGripLatch=false;aidDropPending=false;selectedRef=nullptr;heldAid={};}
  void clearAid(){
   if(aidHand>=0){
    if(heldAid.id==0x15169)build_adapter::clearStim(playerForm());
@@ -188,6 +196,7 @@ namespace {
  }
  bool holdAid(const Item& item){
   heldAid=item;aidHand=1;aidGripLatch=true;
+  mouthGate.reset();mouthDistance=-1;heldFood=item.form&&item.form->type==47&&isFood&&number(isFood,item.form)!=0;
   if(item.id==0x15169){if(!build_adapter::selectStim(playerForm())){clearAid();return false;}log("NATIVE STIM selected right count=%.0f",number(getCount,item.form));return true;}
   auto instance=ownedInstance(item.form);if(!instance){clearAid();return false;}
   double count=number(getCount,item.form);selectedRef=static_cast<Form*>(build_adapter::dropOneAid(playerForm(),item.form,instance->extra));
@@ -196,6 +205,24 @@ namespace {
   if(!selectedRef){log("NATIVE AID drop could not resolve new reference; item remains in world");clearAid();return false;}
   auto palm=scene::palm(scene::root(playerForm()),1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));
   log("NATIVE AID dropped %08X ref=%08X for right hand",item.id,selectedRef->id);return true;
+ }
+ void eatStickyFood(){
+  if(!heldFood||!aidGripLatch||!selectedRef||build_adapter::grabbedItem()!=selectedRef)return;
+  // Clear native grab ownership before activation can delete its world ref.
+  // Consume through the engine inventory-use path, retaining all normal effects.
+  Item food=heldAid;double before=number(getCount,food.form);
+  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x1114215],*reinterpret_cast<void**>(b+0x11146D0),*reinterpret_cast<void**>(b+0x11146D4),*reinterpret_cast<int*>(b+0xDC53E8),b[0x11142E4],*reinterpret_cast<void**>(b+0x11142EC),*reinterpret_cast<void**>(b+0x11142F0),*reinterpret_cast<int*>(b+0x11142E8));
+  if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
+   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x1114215],*reinterpret_cast<void**>(b+0x11146D0),*reinterpret_cast<int*>(b+0xDC53E8),b[0x11142E4],*reinterpret_cast<void**>(b+0x11142EC),*reinterpret_cast<int*>(b+0x11142E8),b[0x195D10],b[0x195D11],b[0x195D12],b[0x195D13]);
+   mouthGate.reset();return;
+  }
+  forgetHeldAid();
+  double returned=number(getCount,food.form);
+  if(returned!=before+1){log("FOOD mouth cancelled: stow count %.0f -> %.0f",before,returned);return;}
+  double result=number(equip,food.form,0);
+  double after=number(getCount,food.form);
+  log("FOOD mouth %08X native-use=%.0f inventory %.0f -> %.0f -> %.0f",food.id,result,before,returned,after);
+  if(after==before)tell("Ate: "+food.name);
  }
  void selectItem(int index){
   constexpr int hand=1; // Either hand may touch; selected items always go right.
@@ -321,6 +348,17 @@ namespace {
  }
  void tick(){
   if(!ready||!loaded){enabled=false;gestureGameplayAllowed=false;return;}auto now=GetTickCount64();if(now-lastLoop<10)return;lastLoop=now;
+  if(presentation_adapter::base){
+   unsigned id=0;Vec namePoint{};
+   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xB3E8)()==0x3F1){
+    Element e;if(call(dialoguePartner,e)&&e.type==2&&e.value.form){
+     auto actorRoot=scene::root(e.value.form);auto head=scene::find(actorRoot,"Bip01 Head");
+     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0x8F7B)();
+      namePoint.z+=.22f*(*reinterpret_cast<float*>(nativeSettings+0x28));id=e.value.form->id;}
+    }release(e);
+   }
+   presentation_adapter::setSpeaker(id,namePoint);
+  }
   Input current;{std::lock_guard<std::mutex> lock(inputMutex);current=input;}
   if(!reloadPreferenceApplied&&build_adapter::setManualReload(!automaticReload)){reloadPreferenceApplied=true;log("RELOAD preference applied: %s",automaticReload?"automatic":"manual");}
   auto player=playerForm();auto root=scene::root(player);bool usable=root&&number(getMenu)==0&&now-current.time<500&&current.h[0].active&&current.h[1].active;
@@ -333,8 +371,9 @@ namespace {
   }
   int wristAction=-1;
   int action=pendingControl.exchange(-1);
+  if(selectorOpen||heightMenu||weaponTransition||action>=0)mouthGate.reset();
   if(usable&&!selectorOpen&&!heightMenu&&!weaponTransition)wristAction=action;
-  if(!usable){redrawAfter=now+250;if(selectorOpen)close();if(aidDropPending)forgetHeldAid();heightMenu=false;weaponTransition=false;pendingWeapon={};previous=current;return;}
+  if(!usable){mouthGate.reset();stickyAidButtons=false;redrawAfter=now+250;if(selectorOpen)close();if(aidDropPending)forgetHeldAid();heightMenu=false;weaponTransition=false;pendingWeapon={};previous=current;return;}
   if(wristAction>=0){
    log("HOLD CONTROL action=%d",action);
    if(wristAction==wrist_controls::Weapons)open(1);
@@ -357,7 +396,7 @@ namespace {
       else {pendingStage=3;pendingAt=now+150;aidDeadline=now+2000;}
      }else{
       Vec head;int result=0;if(pos("Bip01 Head",1,head))result=build_adapter::grabSelected(playerForm(),&head.x,selectedRef);
-      if(build_adapter::grabbedItem()==selectedRef&&build_adapter::grabbedHand()==1){aidDropPending=false;weaponTransition=false;log("NATIVE AID handoff %08X result=%d",heldAid.id,result);tell(heldAid.name+" in right hand");}
+      if(build_adapter::grabbedItem()==selectedRef&&build_adapter::grabbedHand()==1){aidDropPending=false;weaponTransition=false;stickyAidButtons=true;log("NATIVE AID handoff %08X result=%d",heldAid.id,result);tell(heldAid.name+" in right hand");}
       else if(now>=aidDeadline){clearAid();weaponTransition=false;tell("Item returned to inventory; native handoff unavailable");}
       else {pendingAt=now+100;auto palm=scene::palm(root,1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));}
      }
@@ -414,7 +453,21 @@ namespace {
   }else if(aidHand>=0){
    bool held=heldAid.id==0x15169?build_adapter::stimHand()==1:build_adapter::grabbedItem()==selectedRef;
    if(!held)forgetHeldAid();
-   else if(r.grip>.65f&&oldR.grip<=.65f){aidGripLatch=false;log("Aid grip: native control resumed");}
+   else if(r.grip>.65f&&oldR.grip<=.65f){aidGripLatch=false;stickyAidButtons=false;mouthGate.reset();log("Aid grip: native control resumed");}
+   else if(aidGripLatch&&heldAid.id!=0x15169){
+    stickyAidButtons=true;
+    if(a||x){if(build_adapter::stowSelectedGrab(player,selectedRef)){forgetHeldAid();tell("Item returned to inventory");}else mouthGate.reset();}
+    else {
+     auto head=scene::find(root,"Bip01 Head");auto itemRoot=scene::root(selectedRef);
+     mouthDistance=-1;
+     if(heldFood&&head&&itemRoot){
+      Vec mouth=scene::world(head).p;mouth.z-=7.f;foodMouthPoint=mouth;
+      std::vector<scene::Box> mesh;scene::boxes(itemRoot,mesh);
+      mouthDistance=mesh.empty()?scene::distance(scene::world(itemRoot).p,mouth):scene::touchDistance(mesh,mouth);
+     }
+     if(mouthGate.update(heldFood&&mouthDistance>=0,mouthDistance,now))eatStickyFood();
+    }
+   }
   }
   previous=current;
  }
@@ -447,11 +500,31 @@ namespace {
   while(std::getline(file,line))if(!line.empty())lines.push_back(line);file.close();
   if(!DeleteFileA(path.c_str()))return;
   for(const auto& cmd:lines){
+   if(cmd.rfind("sc_target ",0)==0){
+    const auto expression=std::string("StringToRef \"")+cmd.substr(10)+"\"";
+    auto script=compile("target probe",expression.c_str(),true);Element e;
+    auto b=build_adapter::heldModule();Vec centre{},tracking{};float extent=0;
+    bool ok=call(script,e)&&e.type==2&&e.value.form&&b;
+    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1929B0)(e.value.form,&centre,&extent);
+    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)();
+     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x572320)(manager,&tracking,&centre);}
+    std::ofstream probe(std::string(dir)+"\\target-probe.json");
+    probe<<"{\"ok\":"<<(ok?"true":"false")<<",\"tracking\":["<<tracking.x<<","<<tracking.y<<","<<tracking.z<<"],\"extent\":"<<extent<<"}";
+    release(e);continue;
+   }
+   if(cmd=="sc_scope_guard"||cmd=="sc_scope_native"){scope_surface_adapter::enabled=(cmd=="sc_scope_guard");continue;}
+   if(cmd=="sc_scope_inline"||cmd=="sc_scope_separate"){presentation_adapter::testScopeSchedule(cmd=="sc_scope_inline");continue;}
    if(cmd=="sc_state"){
     std::ofstream state(std::string(dir)+"\\addon-state.json");auto rig=scene::root(playerForm());
     state<<"{\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
+    state<<",\"dialoguePlacements\":"<<presentation_adapter::placements.load()<<",\"dialogueTargetDistance\":"<<presentation_adapter::lastDistance.load()<<",\"dialogueSideDegrees\":"<<presentation_adapter::lastAngle.load();
+    presentation_adapter::diagnostics(state);
+    {DialogueAnchor anchor{};bool valid=presentation_adapter::readSpeaker(anchor);state<<",\"speakerSourceId\":"<<presentation_adapter::speakerId<<",\"speakerFrameUpdates\":"<<presentation_adapter::speakerFrameUpdates.load()<<",\"speakerNameActive\":"<<(valid?"true":"false")<<",\"speakerNameTracking\":["<<anchor.position[0]<<","<<anchor.position[1]<<","<<anchor.position[2]<<"]";
+     using Debug=void(__cdecl*)(char*,unsigned);auto layer=GetModuleHandleW(L"SeatedInput.dll");auto debug=layer?reinterpret_cast<Debug>(GetProcAddress(layer,"SC_LabelDebug")):nullptr;
+     if(debug){char json[512]{};debug(json,sizeof(json));state<<",\"speakerNameCrop\":"<<json;}}
     auto grab=static_cast<Form*>(build_adapter::grabbedItem());auto grabRoot=scene::root(grab);
     state<<",\"nativeStimHand\":"<<build_adapter::stimHand()<<",\"nativeGrabHand\":"<<build_adapter::grabbedHand()<<",\"nativeGrabRef\":"<<(grab?grab->id:0)<<",\"nativeGrabScale\":"<<(grabRoot?scene::world(grabRoot).scale:0)<<",\"aidGripLatch\":"<<(aidGripLatch?"true":"false");
+    state<<",\"heldFood\":"<<(heldFood?"true":"false")<<",\"mouthDistance\":"<<mouthDistance<<",\"mouthArmed\":"<<(mouthGate.armed?"true":"false")<<",\"freePoseWeight\":["<<finger_adapter::freePoseWeight[0].load()<<","<<finger_adapter::freePoseWeight[1].load()<<"]";
     bool manual=false;bool reloadKnown=build_adapter::readManualReload(manual);state<<",\"manualReloadKnown\":"<<(reloadKnown?"true":"false")<<",\"manualReload\":"<<(manual?"true":"false")<<",\"seatedPouchApplied\":"<<(pouchApplied?"true":"false");
     build_adapter::PouchDiagnostics pouch;
     if(build_adapter::readPouchDiagnostics(pouch)){
@@ -461,6 +534,8 @@ namespace {
      state<<"}";
     }
     auto vec=[&](Vec p){state<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";};
+    state<<",\"mouthPoint\":";vec(foodMouthPoint);state<<",\"heldCenter\":";
+    {std::vector<scene::Box> mesh;if(grabRoot)scene::boxes(grabRoot,mesh);vec(mesh.empty()?Vec{}:scene::boxCenter(mesh));}
     state<<",\"wrist\":{\"attached\":"<<(wristNode?"true":"false")<<",\"valid\":"<<(wristFrame.valid?"true":"false")<<",\"facing\":"<<(wristFrame.facing?"true":"false")<<",\"tip\":";vec(wristFrame.fingertip);state<<",\"origin\":";vec(wristFrame.world.p);state<<",\"normal\":";vec(wrist_controls::axis(wristFrame.world,2));state<<",\"targets\":[";for(int i=0;i<4;i++){if(i)state<<",";vec(wrist_controls::buttonWorld(wristFrame,i));}state<<"]}";
     state<<",\"wristEye\":";vec(wristFrame.eye);
     state<<",\"leftFingertips\":[";const char* fingers[]={"Bip01 L Thumb12","Bip01 L Finger12","Bip01 L Finger22","Bip01 L Finger32","Bip01 L Finger42"};
@@ -478,13 +553,14 @@ namespace {
    else if(cmd=="sc_aid")open(0);
    else if(cmd=="sc_settings"){if(selectorOpen)close();heightMenu=true;uiEpoch++;heightText();}
    else if(cmd=="sc_reload")toggleReload();
+   else if(cmd.rfind("sc_pick ",0)==0){unsigned id=0;sscanf_s(cmd.c_str()+8,"%x",&id);for(size_t i=0;i<items.size();i++)if(items[i].id==id){selectItem(static_cast<int>(i));break;}}
    else if(cmd.rfind("expr ",0)==0){auto s=compile("test expression",cmd.c_str()+5,true);Element e;bool ok=call(s,e);log("TEST EXPR %s => ok=%d type=%u number=%g form=%08X",cmd.c_str()+5,ok,e.type,e.type==1?e.value.number:0,e.type==2&&e.value.form?e.value.form->id:0);release(e);}
    else {bool ok=consoleApi&&consoleApi->run(cmd.c_str(),nullptr);log("TEST CMD %s => %d",cmd.c_str(),ok);}
   }
  }
  void __cdecl message(Message* m){
   static bool seen[64]{};if(m->type<64&&!seen[m->type]){seen[m->type]=true;log("NVSE message %u dataLen=%u",m->type,m->len);}
-  if(m->type==DeferredInit){init();if(fingerGestures)log("FINGERS %s",finger_adapter::install(queryGesture));return;}
+  if(m->type==DeferredInit){init();if(fingerGestures)log("FINGERS %s",finger_adapter::install(queryGesture));log("PRESENTATION %s",presentation_adapter::install(GetPrivateProfileIntA("Presentation","StableWorldPanels",0,settingsPath)!=0));return;}
   // xNVSE Serialization.cpp sends the boolean value cast to void*, not a pointer.
   if(m->type==PostLoadGame){loaded=m->data!=nullptr;log("PostLoadGame loaded=%d",loaded);return;}
   if(m->type==NewGame){clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
@@ -507,6 +583,7 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
   std::lock_guard<std::mutex> lock(inputMutex);auto& g=gestures[hand];g.active=active;g.thumb=x>.5f;g.index=y>.5f;g.time=GetTickCount64();if(!active)g.blendTime=0;return 0;
  }
  bool stick=!strcmp(name,"thumbstick_click");
+ const bool lootHorizontal=hand==1&&kind==2&&!strcmp(name,"thumbstick")&&floating_hud_adapter::horizontalInput(x,active);
  if(!strcmp(name,"menu_click")&&hand==0){
   bool own=menuOwned||(enabled&&controlsActive&&GetTickCount64()-controlsAt.load()<250);
   return own?1:0;
@@ -524,19 +601,19 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
  if(control<0)return 0;
  bool pressed=kind==2?(x*x+y*y>.09f):x>.15f;
  bool locomotion=selectorOpen.load()&&!heightMenu.load()&&hand==0&&control==5;
- bool owned=modal&&!locomotion;
+ bool owned=(modal&&!locomotion)||(stickyAidButtons.load()&&aidGripLatch.load()&&control==1);
  bool suppress=owned;
  {std::lock_guard<std::mutex> lock(inputMutex);auto& drain=controlDrain[hand][control];
   if(owned&&pressed)drain=true;if(drain){suppress=true;if(!pressed)drain=false;}}
  if(active&&weaponHand.load()==hand&&control==3)return 2;
- return suppress?1:0;
+ return suppress?1:lootHorizontal?3:0;
 }
 extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Query(const NVSE* nvse,PluginInfo* info){info->infoVersion=1;info->name="SeatedControls";info->version=2;return !nvse->isEditor&&nvse->runtime==0x040020D0&&nvse->version>=6;}
 extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse){
  std::string path=std::string(nvse->runtimeDirectory())+"SeatedControls.log";logfile=_fsopen(path.c_str(),"w",_SH_DENYNO);
  scripts=static_cast<Scripts*>(nvse->queryInterface(6));arrays=static_cast<Arrays*>(nvse->queryInterface(5));consoleApi=static_cast<Console*>(nvse->queryInterface(1));auto messaging=static_cast<Messaging*>(nvse->queryInterface(2));
  if(auto data=static_cast<DataInterface*>(nvse->queryInterface(7)))inventoryRef=reinterpret_cast<InventoryRef*(__cdecl*)(u32)>(data->function(2));
- log("SeatedControls 1.4.4; runtime %08X; nvse %u",nvse->runtime,nvse->version);
+ log("SeatedControls 1.4.5; runtime %08X; nvse %u",nvse->runtime,nvse->version);
  if(!scripts||!arrays||!messaging||!inventoryRef||!build_adapter::verifiedTTWVR(GetModuleHandleW(L"TTWVR.dll")))return false;
  if(!enableInputLayer()){log("Input layer missing; reinstall the complete addon archive");return false;}
  log("OpenXR input layer enabled for this process");
@@ -554,5 +631,6 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_UI(char* text,u32 capacity){
 }
 
 extern "C" __declspec(dllexport) float __cdecl SC_Height(float rawHeadHeight){if(rawHeadHeight>0)physicalHeight=rawHeadHeight;return heightOffset.load();}
+extern "C" __declspec(dllexport) bool __cdecl SC_DialogueAnchor(DialogueAnchor* out){return out&&presentation_adapter::readSpeaker(*out);}
 extern "C" __declspec(dllexport) void __cdecl SC_Head(float x,float y,float z){std::lock_guard<std::mutex> lock(inputMutex);input.head={x,y,z};input.headValid=std::isfinite(x)&&std::isfinite(y)&&std::isfinite(z);}
 extern "C" __declspec(dllexport) unsigned __cdecl SC_UIState(){return (uiEpoch.load()<<2)|(selectorOpen.load()?1:0)|(heightMenu.load()?2:0);}

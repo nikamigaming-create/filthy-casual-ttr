@@ -1,3 +1,5 @@
 LIBRARY SeatedInput
 EXPORTS
+ SC_PoolBridgeVersion
+ SC_LabelDebug
  xrNegotiateLoaderApiLayerInterface=_xrNegotiateLoaderApiLayerInterface@12

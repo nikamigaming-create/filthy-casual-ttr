@@ -1,0 +1,3 @@
+LIBRARY FilthyCasualPoolInput
+EXPORTS
+ xrNegotiateLoaderApiLayerInterface=_xrNegotiateLoaderApiLayerInterface@12

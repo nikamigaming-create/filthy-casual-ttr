@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 150" role="img" aria-labelledby="title desc">
+<title id="title">Filthy Casual: hold a pair for half a second</title>
+<desc id="desc">X plus A: weapons. X plus B: consumables. Y plus B: height. Y plus A: reload mode. Release to repeat.</desc>
+<rect width="1200" height="150" rx="12" fill="#101e17"/>
+<path d="M300 20v110M600 20v110M900 20v110" stroke="#87d899" stroke-opacity=".3"/>
+<g font-family="Consolas, monospace" text-anchor="middle">
+<g fill="#edbe70" font-size="31" font-weight="700"><text x="150" y="51">X + A</text><text x="450" y="51">X + B</text><text x="750" y="51">Y + B</text><text x="1050" y="51">Y + A</text></g>
+<g fill="#a5eab3" font-size="22"><text x="150" y="87">WEAPONS</text><text x="450" y="87">CONSUMABLES</text><text x="750" y="87">SEATED HEIGHT</text><text x="1050" y="87">RELOAD MODE</text></g>
+<g fill="#c9d8cc" font-size="16"><text x="150" y="121">Hold 0.5 s</text><text x="450" y="121">Hold 0.5 s</text><text x="750" y="121">Hold 0.5 s</text><text x="1050" y="121">Hold 0.5 s</text></g>
+</g></svg>

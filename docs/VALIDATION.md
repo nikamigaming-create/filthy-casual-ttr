@@ -1,18 +1,26 @@
-# v1.4.4 beta validation
+# November 9 beta validation
 
-- x86 MSVC build and focused layer/control unit checks passed.
-- Isolated native-game test opened both wheels using the actual double-tap inputs.
-- All five fingertips changed on both free hands while each wheel stayed open.
-- Squeezing during either wheel did not draw a weapon or grab a native item.
-- Both-eye captures showed visible hand closure and attached forearms.
-- Normal wheel cancellation passed; test sessions were closed afterward.
-- The updated addon initialized through MO2 with Meta Link on a Quest 3.
+Standalone pool: the game loaded with SeatedControls.dll and SeatedInput.dll
+absent and the dedicated pool input companion present. Physical forward stroke,
+no shot on tracking loss/reacquisition, B exit and native tracked camera passed.
 
-The latest wheel/finger revision has not yet received physical-headset approval.
-Ordinary food consumption through the native held-item path remains unverified.
-Selecting aid does not consume it; there is no added Y-consume action.
-Older footage is not evidence for the current controls. No current guide video
-is included. Unknown TTWVR builds are refused by the integration guards.
+Combined pool + Filthy Casual TTR: physical stroke and exit passed; seated height
+and reload preference were preserved. Both wheels opened with the current
+thumbrest gestures. All five fingers on both hands changed through open/closed
+poses without grabbing or drawing a weapon. Weapon selection, reload toggling
+and height settings still worked after pool. Both game sessions closed normally.
 
-This public source snapshot preserves the release implementation while omitting
-private session logs, personal launchers, test saves, captures and game assets.
+Core food: one sticky-held food consumed through native use with normal healing;
+A/X stow without duplication; native hold mode does not auto-consume at the mouth.
+Saved height persisted across process launches. Current video includes actual
+submitted game-eye footage with choreographed XR input at real time; the unchanged
+gesture take is reused. Source/capture metadata is preserved privately.
+
+Pool setup generates byte-identical tested scripts from four hash-verified
+upstream files. Unknown upstream inputs fail before output. No upstream files,
+retail assets, personal saves or development runtime are in release packages.
+
+Limits: latest physical-headset acceptance, full eight-ball match completion and
+save/restart during an active match are not certified. One earlier native worker
+crash near dialogue cleanup was observed; a settled dialogue handoff passed later
+first/repeat runs, without proving the cause of that crash. This remains a beta.

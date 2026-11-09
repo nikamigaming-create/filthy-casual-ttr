@@ -1,0 +1,59 @@
+array_var aLP
+ref rActor
+ref rMarker
+ref rIdle
+begin function {aLP}
+    if eval aLP["actorStarted"]
+        return
+    endif
+    let rActor := aLP["opponentRef"]
+    let rMarker := aLP["actorMarker"]
+    if eval (aLP["aiWait"]) > 45
+        MessageEx "Pool: Sunny cannot reach this shot. Game ended."
+        let aLP["vrEnd"] := 1
+        return
+    endif
+    if eval (aLP["aiPlanned"]) == 0 || rActor == 0 || rMarker == 0
+        return
+    endif
+    if eval aLP["actorMove"]
+        rMarker.SetPosEx (aLP["actorX"]) (aLP["actorY"]) (aLP["actorZ"])
+        rActor.EvaluatePackage
+        let aLP["actorMove"] := 0
+    endif
+    if eval (rActor.GetDistance rMarker) < 24
+        if eval (aLP["actorSettled"]) == 0
+            rMarker.MoveTo rActor
+            rActor.EvaluatePackage
+            let aLP["actorSettled"] := 1
+        endif
+        if eval (aLP["actorIdleChosen"]) == 0
+            return
+        endif
+        if eval (aLP["actorAligned"]) == 0
+            ; <=3.54 units of XY correction at the already reached approach,
+            ; before planting feet. Preserve the native floor height.
+            rActor.SetPosEx (aLP["actorAlignX"]) (aLP["actorAlignY"]) (rActor.GetPos Z)
+            rMarker.MoveTo rActor
+            let aLP["actorAligned"] := 1
+            let aLP["actorSettleTime"] := 0
+            return
+        endif
+        let aLP["actorSettleTime"] += aLP["dt"]
+        if eval (aLP["actorSettleTime"]) < 0.7
+            return
+        endif
+        if eval (aLP["actorAlignmentOK"]) == 0
+            let aLP["vrEnd"] := 1
+            return
+        endif
+        rActor.SetAngle Z (aLP["actorYaw"])
+        let rIdle := aLP["actorIdle"]
+        PlayerRef.AuxVarSetRef "*_FC_PoolIdle" rIdle
+        let aLP["actorIdleResult"] := rActor.ForcePlayIdle rIdle
+        let aLP["actorStarted"] := 1
+        let aLP["actorAimTime"] := 0
+        let aLP["actorClockStall"] := 0
+    let aLP["actorClockWait"] := 0
+    endif
+end

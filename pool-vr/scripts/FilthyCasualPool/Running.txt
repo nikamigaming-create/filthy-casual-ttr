@@ -1,0 +1,4 @@
+array_var aLP
+begin function {aLP}
+    SetFunctionValue ((PlayerRef.AuxVarGetFlt "*_FC_PoolActive") && (aLP["generation"]) == (PlayerRef.AuxVarGetFlt "*_FC_PoolGeneration"))
+end

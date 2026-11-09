@@ -7,3 +7,4 @@ EXPORTS
  SC_Height
 SC_Head
  SC_UIState
+ SC_DialogueAnchor

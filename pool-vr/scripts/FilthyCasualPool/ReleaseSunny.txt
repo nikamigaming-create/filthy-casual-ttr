@@ -1,0 +1,33 @@
+array_var aRelease
+ref rMarker
+ref rPackage
+ref rIdle
+begin function {}
+    let rPackage := GetFormFromMod "Filthy Casual Pool.esp" "000802"
+    let aRelease := ar_Construct StringMap
+    let aRelease["table"] := StringToRef "00107D7B"
+    let aRelease["opponentRef"] := SunnyRef
+    let aRelease["actorPackage"] := rPackage
+    let aRelease["stablePackage"] := SunnyRef.GetCurrentStablePackage
+    let aRelease["removePackage"] := 0
+    DispatchEvent "FC:PoolRelease" aRelease
+    Print "FC Pool release: ownership checked"
+    let rIdle := PlayerRef.AuxVarGetRef "*_FC_PoolIdle"
+    if eval rIdle && (SunnyRef.IsIdlePlayingEx rIdle)
+        SunnyRef.ForceStopIdle
+    endif
+    PlayerRef.AuxVarErase "*_FC_PoolIdle"
+    if eval aRelease["removePackage"]
+        SunnyRef.RemoveScriptPackage
+        Print "FC Pool release: own package removed"
+        SunnyRef.EvaluatePackage
+    endif
+    if eval rPackage
+        SetPackageLocationReference rPackage (StringToRef "00107D7B")
+    endif
+    let rMarker := PlayerRef.AuxVarGetRef "_FC_PoolMarker"
+    if eval rMarker
+        rMarker.Disable
+    endif
+    Print "FC Pool release: complete"
+end
