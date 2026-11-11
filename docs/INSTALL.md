@@ -2,11 +2,10 @@
 
 [Back to the controls and overview](../README.md)
 
-Revision 1.4.5 is a beta with thumbrest double taps, Menu tap/hold and empty-hand
-finger gestures. The current portrait guide is available as `outputs/Filthy-Casuals-Mobile.mp4`.
-The November 9 local test build includes sticky food-to-mouth use and the
-separately installed pool addon. Latest physical-headset acceptance remains pending.
-
+Revision 1.5 beta adds physical manual-reload parts while keeping the existing
+thumbrest selectors, Menu tap/hold controls and seated height. The phone video is
+`outputs/Filthy-Casual-Physical-Parts-Mobile.mp4`. See
+[physical parts, tested coverage and limits](PHYSICAL_PARTS.md).
 ## Before installing
 
 Use a working Tale of Two Wastelands VR setup in Mod Organizer 2. Verify that your
@@ -37,12 +36,14 @@ xNVSE, JIP LN NVSE, or game content.
 
 1. Close the game. Open the MO2 instance and profile you normally use for TTWVR.
 2. Choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.4.5.zip` (or the supplied local-test ZIP).
+   `Filthy-Casual-TTR-1.5.0-beta.zip` (or the supplied local-test ZIP).
 3. Name the new mod **Filthy Casual TTR** and complete installation. The
    archive's data root contains `NVSE`; no enclosing mod folder needs to be selected.
 4. Enable the new mod in MO2's left pane. Place it below the enabled base TTWVR
    mod so the addon has higher file priority. This is left-pane mod priority,
-   not an ESP/ESM load-order change.
+   not the ESP load order. Also enable **Filthy Casual Reload Parts.esp** in the
+   right pane; it requires only FalloutNV.esm. Keep your existing personal INI
+   when updating, especially seated height and reload preferences.
 5. Start your headset/runtime as you normally would. Launch the same TTWVR
    executable entry through MO2 that worked before installing the addon.
 
@@ -53,6 +54,9 @@ or system-wide OpenXR registration is part of installation.
 The runtime files installed under the mod's data root are:
 
 ```text
+Filthy Casual Reload Parts.esp
+meshes/FilthyCasual/reload-carrier.nif
+textures/FilthyCasual/reload-carrier.dds
 NVSE/
   Plugins/
     SeatedControls.dll

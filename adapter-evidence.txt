@@ -1,0 +1,17 @@
+
+2026-11-10 physical reload parts (same supported TTWVR SHA256):
+- Guarded sites288B96,2868FD,258F90,283C8D,284005,284032; native success
+  continuations preserve reload cleanup. No global hook on ammo debit280450.
+- Preserve flags/registers/SIMD/x87 at mid-frame bridges, current thread only.
+- Native spare momentum255A40 at288AAE, valid onlyF001/F003; preserve native toss.
+- Native dynamic carrier requiresBSFadeNode,BSX66; original fitted box and0.15mass.
+  NiStream Havok export normalized from our own canonical payload, no shared live
+  shape mutation. Private generated meshes are never distributable assets.
+- JIP per-reference model path is nonpersistent through destruction (hooks.h4399);
+  reapply after native cell return, defer while no root, preserve native position.
+- Pickup uses native triangle test1A92C0 and native grab; no new grab/throw hook.
+- Installed interaction diagnostics: hand25C610, contact1DBAF0, parent26AD10;
+  native axisDCE340, endpoint offset -0.95*radius or121F11C scale override.
+  These only support isolated observation; gameplay input remains native.
+- Independent review found/fixed pending-placement and early-held object edges.
+  Representative physics/inventory/video coverage documented in PHYSICAL_PARTS.md.

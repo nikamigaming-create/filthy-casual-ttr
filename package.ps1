@@ -1,3 +1,4 @@
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.5.0-beta.zip')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -9,12 +10,13 @@ $files = [ordered]@{
     'NVSE/Plugins/SeatedControls.ini' = 'SeatedControls.ini'
     'NVSE/Plugins/SeatedControls/SeatedInput.dll' = 'build/SeatedInput.dll'
     'NVSE/Plugins/SeatedControls/SeatedInput.json' = 'SeatedInput.json'
+    'Filthy Casual Reload Parts.esp' = 'build/reload-parts/mod/Filthy Casual Reload Parts.esp'
+    'meshes/FilthyCasual/reload-carrier.nif' = 'build/reload-parts/mod/meshes/FilthyCasual/reload-carrier.nif'
+    'textures/FilthyCasual/reload-carrier.dds' = 'build/reload-parts/mod/textures/FilthyCasual/reload-carrier.dds'
+    'docs/PHYSICAL_PARTS.md' = 'docs/PHYSICAL_PARTS.md'
     'README.md' = 'README.md'
-    'LICENSE' = 'LICENSE'
-    'docs/VALIDATION.md' = 'docs/VALIDATION.md'
     'docs/INSTALL.md' = 'docs/INSTALL.md'
     'docs/assets/terminal-banner.svg' = 'docs/assets/terminal-banner.svg'
-    'docs/assets/ART-PROVENANCE.md' = 'docs/assets/ART-PROVENANCE.md'
     'meta.ini' = 'meta.ini'
     'THIRD_PARTY.md' = 'THIRD_PARTY.md'
     'third_party/openxr/LICENSES/Apache-2.0.txt' = 'third_party/openxr/LICENSES/Apache-2.0.txt'
@@ -33,7 +35,7 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.4.5'
+    version = '1.5.0-beta'
     architecture = 'x86'
     supportedTTWVR = 'C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB'
     sourceCommit = "$sourceCommit".Trim()
@@ -49,7 +51,7 @@ $manifestText = ($manifest | ConvertTo-Json -Depth 5) + "`n"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 Add-Type -AssemblyName System.IO.Compression
 New-Item -ItemType Directory -Force -Path $out | Out-Null
-$destination = Join-Path $out 'Filthy-Casual-TTR-1.4.5.zip'
+$destination = Join-Path $out $OutputName
 $temporary = Join-Path $out ('package-' + [guid]::NewGuid().ToString('N') + '.tmp')
 # Fixed ordering and timestamps make identical inputs produce identical ZIPs
 # under the same compression runtime. No file creation times enter the archive.

@@ -10,15 +10,15 @@ Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
 and set a comfortable seated eye height. An independent addon for an existing
 **Tale of Two Wastelands VR** installation.
 
-**Revision 1.4.5 · Beta.** Modified thumbrest double taps open the
+**Revision 1.5 beta (local candidate).** Modified thumbrest double taps open the
 selectors; left Menu tap/hold changes reload mode or opens seated settings.
 Empty hands have smooth thumb and index gestures. Physical-headset acceptance
-of the newest integration remains pending. A phone-friendly showcase is attached
-to the release.
+of the newest integration remains pending. The new phone video accompanies the
+local beta package.
 Graphics tuning (DLSS, anti-aliasing, resolution, or reprojection) is separate
 from this addon and is not included in its package.
 
-[Download Filthy Casual TTR](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.4.5) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+[Current public release (1.4.5)](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.4.5) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
 
 **Choose independently:** this seated addon does not need pool. Filthy Casual
 Pool needs only working TTR plus the separately downloaded original pool mod;
@@ -32,7 +32,7 @@ requirements. This addon supports one exact TTWVR build; check the
 [supported DLL and detailed installation guide](docs/INSTALL.md).
 
 1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.4.5.zip`.
+   `Filthy-Casual-TTR-1.5.0-beta.zip`.
 2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
 3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
    file priority. Keep the base TTWVR mod enabled.
@@ -220,3 +220,16 @@ Built on KUPOkinz's A Tale of Two Realities / TTWVR. The base mod supplies the
 VR experience; this addon supplies a little more couch comfort.
 Game assets and dependency binaries are not included. Third-party notices and
 licenses are retained; see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+### Physical reload parts
+
+In manual mode, dropped magazines and native loose reload parts become real
+world objects. Use the original grip and release controls to pick them up or
+throw them. Native Take returns their ammunition to inventory for the original
+pouch/reload path. Automatic reload and returning a spare to the pouch stay native.
+
+Enable the included **Filthy Casual Reload Parts.esp**. The package contains only
+our original carrier assets and code. Reload models are derived from your own
+installation into `meshes/FilthyCasualLocal/Reload`; keep this cache local and never
+redistribute it. See [tested coverage, video and limits](docs/PHYSICAL_PARTS.md).
+The phone video shows rifle magazines and plasma cells at normal speed.

@@ -12,12 +12,16 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <unordered_map>
 #include <algorithm>
 #include "nvse_api.hpp"
 #include "build_adapter.hpp"
 #include "reload_adapter.hpp"
+#include "reload_trace_adapter.hpp"
 #include "scene_adapter.hpp"
+#include "physical_reload_adapter.hpp"
 #include "wrist_controls.hpp"
 #include "finger_adapter.hpp"
 #include "hold_controls.hpp"
@@ -25,7 +29,7 @@
 #include "presentation_adapter.hpp"
 #include "layer_discovery.hpp"
 namespace {
- Scripts* scripts=nullptr;Arrays* arrays=nullptr;Console* consoleApi=nullptr;
+ Scripts* scripts=nullptr;Arrays* arrays=nullptr;Console* consoleApi=nullptr;std::string gameDirectory;
  InventoryRef*(__cdecl* inventoryRef)(u32)=nullptr;
  FILE* logfile=nullptr;std::mutex logMutex,inputMutex,displayMutex;
  std::string displayText;ULONGLONG displayUntil=0;
@@ -177,6 +181,170 @@ namespace {
  }
 
  Form* playerForm(){Element e;Form* p=nullptr;if(call(getPlayer,e)&&e.type==2)p=e.value.form;release(e);return p;}
+
+ // First physical-magazine slice. World references retain engine collision;
+ // only their visible geometry is replaced by a separately retained clone.
+ struct PhysicalMag {unsigned refID=0;void* visual=nullptr;scene::Transform pose{};Vec center{},velocity{};ULONGLONG born=0;bool attached=false;std::string cache;scene::Transform relative{};bool restoring=false;bool fullModel=false,modelAssigned=false;bool metadataDirty=false;ULONGLONG retryAt=0,metadataAt=0;};
+ std::vector<PhysicalMag> physicalMags;
+ Script *partSet=nullptr,*partGet=nullptr,*partKeys=nullptr,*partErase=nullptr,*partModel=nullptr;ULONGLONG partDiscoverAt=0;
+ bool initPartMetadata(){
+  if(partSet&&partGet&&partKeys&&partErase&&partModel)return true;
+  static bool attempted=false;if(attempted)return false;attempted=true;
+  partSet=compile("save part appearance","ref target\nstring_var value\nbegin function {target,value}\ntarget.RefMapSetStr \"_FC_PhysicalReload_v1\" \"$value\"\nSetFunctionValue 1\nend");
+  partGet=compile("read part appearance","ref target\nbegin function {target}\nSetFunctionValue (target.RefMapGetStr \"_FC_PhysicalReload_v1\")\nend");
+  partKeys=compile("part appearance keys","RefMapKeys \"_FC_PhysicalReload_v1\"",true);
+  partErase=compile("forget removed part appearance","ref target\nbegin function {target}\ntarget.RefMapErase \"_FC_PhysicalReload_v1\"\nSetFunctionValue 1\nend");
+  partModel=compile("physical part model","ref target\nstring_var value\nbegin function {target,value}\ntarget.SetRefrModelPath \"$value\"\nSetFunctionValue 1\nend");
+  return partSet&&partGet&&partKeys&&partErase&&partModel;
+ }
+ bool rememberPart(PhysicalMag& m){
+  m.metadataDirty=true;m.metadataAt=GetTickCount64();
+  auto ref=static_cast<Form*>(physical_reload_adapter::lookup(m.refID));if(!ref||!initPartMetadata()||m.cache.size()<68)return false;
+  std::ostringstream text;text<<std::setprecision(9)<<(m.fullModel?"2 ":"1 ")<<((m.attached||m.restoring)?2:1)<<" "<<m.cache.substr(m.cache.size()-68,64);
+  const auto& transform=(m.attached||m.restoring)?m.relative:m.pose;const auto values=reinterpret_cast<const float*>(&transform);
+  for(unsigned i=0;i<13;i++)text<<" "<<values[i];
+  text<<" "<<m.center.x<<" "<<m.center.y<<" "<<m.center.z<<" "<<m.velocity.x<<" "<<m.velocity.y<<" "<<m.velocity.z;
+  const auto value=text.str();Element result;bool written=call(partSet,result,ref,value.c_str());release(result);bool ok=written&&string(partGet,ref)==value;if(!ok)log("PHYSICAL MAG metadata roundtrip failed ref=%08X stored=%s",m.refID,string(partGet,ref).substr(0,100).c_str());m.metadataDirty=!ok;return ok;
+ }
+ Form* emptyReloadPart(){
+  static Script* query=nullptr;static bool tried=false;
+  if(!tried){tried=true;query=compile("empty reload part","GetFormFromMod \"Filthy Casual Reload Parts.esp\" \"000800\"",true);}
+  Element e;Form* base=nullptr;if(query&&call(query,e)&&e.type==2)base=e.value.form;release(e);return base&&base->type==31?base:nullptr;
+ }
+ bool __cdecl commitPhysicalMag(const physical_reload_adapter::Drop& d);
+ const char* installPhysicalParts(){
+  char flag[8]{};const bool test=GetEnvironmentVariableA("SC_TEST_PHYSICAL_MAGS",flag,sizeof(flag))&&strcmp(flag,"1")==0;
+  if(!test&&!GetPrivateProfileIntA("Weapons","PhysicalReloadParts",1,settingsPath))return "disabled in INI (existing appearances still restored)";
+  if(!ready||!initPartMetadata())return "disabled: required JIP metadata commands unavailable";
+  if(!emptyReloadPart()||GetFileAttributesA((gameDirectory+"Data\\meshes\\FilthyCasual\\reload-carrier.nif").c_str())==INVALID_FILE_ATTRIBUTES||GetFileAttributesA((gameDirectory+"Data\\textures\\FilthyCasual\\reload-carrier.dds").c_str())==INVALID_FILE_ATTRIBUTES)return "disabled: enable Filthy Casual Reload Parts.esp and install its original carrier assets";
+  return physical_reload_adapter::install(commitPhysicalMag);
+ }
+ void discoverParts(){
+  if(!ready||!loaded||!initPartMetadata())return;Element e;
+  if(call(partKeys,e)&&e.type==4&&e.value.array){auto n=arrays->size(e.value.array);if(n<=8192){std::vector<Element> entries(n);if(arrays->elements(e.value.array,entries.data(),nullptr))for(auto& key:entries){
+   auto ref=key.type==2?key.value.form:nullptr;if(!ref||(ref->flags&0x20))continue;
+   if(std::any_of(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;}))continue;
+   std::istringstream text(string(partGet,ref));unsigned version=0,mode=0;std::string digest;PhysicalMag m{};text>>version>>mode>>digest;
+   if((version!=1&&version!=2)||(mode!=1&&mode!=2)||digest.size()!=64||digest.find_first_not_of("0123456789abcdef")!=std::string::npos)continue;
+   auto& transform=mode==1?m.pose:m.relative;auto values=reinterpret_cast<float*>(&transform);bool valid=true;
+   for(unsigned i=0;i<13;i++){if(!(text>>values[i])||!std::isfinite(values[i]))valid=false;}
+   if(!(text>>m.center.x>>m.center.y>>m.center.z>>m.velocity.x>>m.velocity.y>>m.velocity.z))valid=false;
+   if(!valid||!std::isfinite(m.center.x)||!std::isfinite(m.center.y)||!std::isfinite(m.center.z)||transform.scale<=0||transform.scale>100)continue;
+   m.fullModel=version==2;m.refID=ref->id;m.cache="FilthyCasualLocal\\Reload\\"+digest+".nif";m.restoring=mode==2;m.born=GetTickCount64();
+   physicalMags.push_back(std::move(m));log("PHYSICAL MAG discovered appearance ref=%08X mode=%u",ref->id,mode);
+  }for(auto& key:entries)release(key);}}
+  release(e);
+ }
+
+ bool __cdecl commitPhysicalMag(const physical_reload_adapter::Drop& d){
+  if(!ready||!loaded||!initPartMetadata())return false;
+  auto carrier=physical_reload_adapter::loadVisual("meshes\\FilthyCasual\\reload-carrier.nif");if(!carrier)return false;scene::retain(carrier);
+  auto model=physical_reload_adapter::clone(d.visual);if(!model){scene::release(carrier);return false;}scene::retain(model);
+  physical_reload_adapter::stripControllers(model);
+  scene::Transform identity{};identity.r[0][0]=identity.r[1][1]=identity.r[2][2]=1;identity.scale=1;
+  scene::local(carrier)=identity;scene::local(model)=identity;scene::local(model).scale=d.pose.scale;scene::update(model);
+  std::vector<scene::Box> meshes;scene::boxes(model,meshes);if(meshes.empty()){scene::release(model);scene::release(carrier);return false;}
+  Vec extent;auto center=scene::boxCenter(meshes,&extent);auto half=extent*.5f;half={std::max(.3f,half.x),std::max(.3f,half.y),std::max(.3f,half.z)};
+  auto target=d.pose;target.p=d.pose.p+scene::rotate(d.pose,center);target.scale=1;
+  if(auto visual=scene::find(carrier,"FCReloadCarrierVisual")){scene::retain(visual);reinterpret_cast<void(__thiscall*)(void*,void*)>(scene::field<void**>(carrier,0)[0xE8/4])(carrier,visual);scene::release(visual);}
+  scene::moveParent(model,carrier);scene::local(model).p=center*-1.f;scene::field<unsigned>(model,0x30)&=~1u;scene::update(carrier);
+  const auto folder=gameDirectory+"Data\\meshes\\FilthyCasualLocal\\Reload";
+  CreateDirectoryA((gameDirectory+"Data\\meshes").c_str(),nullptr);CreateDirectoryA((gameDirectory+"Data\\meshes\\FilthyCasualLocal").c_str(),nullptr);CreateDirectoryA(folder.c_str(),nullptr);
+  const auto temporary=folder+"\\pending-"+std::to_string(GetCurrentProcessId())+".nif";
+  bool exported=physical_reload_adapter::exportVisual(carrier,temporary.c_str());scene::release(model);scene::release(carrier);
+  if(exported)exported=physical_reload_adapter::fitCarrierFile(temporary.c_str(),half);
+  auto digest=exported?physical_reload_adapter::hashFile(temporary.c_str()):std::string{};
+  if(digest.empty()){log("PHYSICAL MAG fitted model cache failed; transaction left native");return false;}
+  const auto cache="FilthyCasualLocal\\Reload\\"+digest+".nif";const auto finalPath=folder+"\\"+digest+".nif";
+  if(GetFileAttributesA(finalPath.c_str())!=INVALID_FILE_ATTRIBUTES)DeleteFileA(temporary.c_str());else if(!MoveFileA(temporary.c_str(),finalPath.c_str()))return false;
+  auto before=d.ammo?number(getCount,static_cast<Form*>(d.ammo)):0;
+  if(before<d.rounds)return false;
+  Form* ref=nullptr;
+  if(d.rounds){ref=static_cast<Form*>(physical_reload_adapter::dropAmmo(d.player,d.ammo,unsigned(d.rounds)));}
+  else {
+   if(auto base=emptyReloadPart())ref=static_cast<Form*>(physical_reload_adapter::placeEmpty(d.player,base));
+  }
+  if(!ref){
+   const auto after=d.ammo?number(getCount,static_cast<Form*>(d.ammo)):0;
+   if(after!=before){log("PHYSICAL MAG unresolved reference after debit %.0f->%.0f; native second debit suppressed",before,after);return true;}
+   return false;
+  }
+  // Native RemoveItem owns the inventory transaction and creates the reference.
+  // Position after 3D creation; MoveTo queues a relocation that can overwrite SetPos.
+  PhysicalMag part{};part.refID=ref->id;part.pose=target;part.velocity=d.velocity;part.born=GetTickCount64();part.cache=cache;part.fullModel=true;physicalMags.push_back(std::move(part));
+  rememberPart(physicalMags.back());
+  physical_reload_adapter::lastRefID=ref->id;
+  log("PHYSICAL MAG ref=%08X ammo=%08X rounds=%d inventory=%.0f->%.0f",ref->id,d.ammo?static_cast<Form*>(d.ammo)->id:0,d.rounds,before,d.ammo?number(getCount,static_cast<Form*>(d.ammo)):0);
+  return true;
+ }
+ void tickPhysicalMags(){
+  if(!build_adapter::heldModule())return;
+  if(GetTickCount64()-partDiscoverAt>3000){partDiscoverAt=GetTickCount64();discoverParts();}
+  for(auto it=physicalMags.begin();it!=physicalMags.end();){auto ref=static_cast<Form*>(physical_reload_adapter::lookup(it->refID));
+   if(ref&&(ref->flags&0x20)){if(partErase)number(partErase,ref);if(it->visual)scene::release(it->visual);it=physicalMags.erase(it);}else ++it;}
+  for(auto& m:physicalMags){if(!m.refID)continue;
+   auto ref=static_cast<Form*>(physical_reload_adapter::lookup(m.refID));if(!ref)continue;
+   if(m.metadataDirty&&GetTickCount64()-m.metadataAt>1000)rememberPart(m);
+   auto root=scene::root(ref);
+   if(m.fullModel){
+    // Once native pickup owns a pending ref, its current pose wins. Never apply
+    // delayed release placement or momentum to an already-held world object.
+    if(!m.attached&&!m.restoring&&physical_reload_adapter::isHeld(ref)){
+     m.restoring=true;m.relative=root?scene::local(root):m.pose;rememberPart(m);
+    }
+    if(m.attached&&root!=m.visual){scene::release(m.visual);m.visual=nullptr;m.attached=false;m.restoring=true;m.modelAssigned=false;m.retryAt=0;}
+    if(m.restoring&&!root)continue; // JIP clears per-reference paths on destruction; wait for the returning object.
+    if(!m.modelAssigned){
+     if(physical_reload_adapter::isHeld(ref)||GetTickCount64()<m.retryAt)continue;m.retryAt=GetTickCount64()+3000;
+     if(GetFileAttributesA((gameDirectory+"Data\\meshes\\"+m.cache).c_str())==INVALID_FILE_ATTRIBUTES)continue;
+     auto checked=physical_reload_adapter::loadVisual(("meshes\\"+m.cache).c_str());if(!checked)continue;scene::retain(checked);bool fitted=!scene::find(checked,"FCReloadCarrierVisual")&&strcmp(scene::name(checked),"FCReloadPart")==0;scene::release(checked);if(!fitted)continue;
+     if(number(partModel,ref,m.cache.c_str())!=1)continue;m.modelAssigned=true;m.retryAt=0;if(root)physical_reload_adapter::rebuildReference(ref);continue;
+    }
+    if(!root||m.attached)continue;
+    if(strcmp(scene::name(root),"FCReloadPart")||scene::find(root,"FCReloadCarrierVisual")){if(GetTickCount64()>m.retryAt){m.retryAt=GetTickCount64()+3000;physical_reload_adapter::rebuildReference(ref);}continue;}
+    if(!m.restoring){
+     static Script* place=nullptr;if(!place)place=compile("place fitted part","ref target\nfloat x\nfloat y\nfloat z\nfloat ax\nfloat ay\nfloat az\nbegin function {target,x,y,z,ax,ay,az}\ntarget.SetAngleEx ax ay az 1\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");
+     constexpr float deg=57.295779513f;const auto& r=m.pose.r;
+     auto ax=std::atan2(r[2][1],r[2][2])*deg,ay=-std::asin(std::clamp(r[2][0],-1.f,1.f))*deg,az=std::atan2(r[1][0],r[0][0])*deg;
+     if(!place||number(place,ref,bits(m.pose.p.x),bits(m.pose.p.y),bits(m.pose.p.z),bits(ax),bits(ay),bits(az))!=1)continue;
+     physical_reload_adapter::momentum(root,m.velocity);
+    }
+    m.visual=root;scene::retain(root);m.attached=true;m.relative=scene::local(root);rememberPart(m);log("PHYSICAL MAG fitted model ready ref=%08X restored=%d",m.refID,m.restoring?1:0);continue;
+   }
+   if(m.attached&&(!root||scene::parent(m.visual)!=root)){scene::release(m.visual);m.visual=nullptr;m.attached=false;m.restoring=true;}
+   if(!root||m.attached)continue;
+   if(!reinterpret_cast<void*(__thiscall*)(void*)>(scene::field<void**>(root,0)[3])(root))continue;
+   if(!m.visual&&!m.cache.empty()){if(GetTickCount64()<m.retryAt)continue;m.retryAt=GetTickCount64()+3000;m.visual=physical_reload_adapter::loadVisual(("meshes\\"+m.cache).c_str());if(m.visual)scene::retain(m.visual);}
+   if(m.restoring){
+    if(!m.visual)continue;
+    std::vector<scene::Box> donor;scene::boxes(root,donor);if(donor.empty())continue;
+    scene::moveParent(m.visual,root);scene::local(m.visual)=m.relative;scene::field<unsigned>(m.visual,0x30)&=~1u;scene::update(m.visual);
+    for(auto& box:donor)scene::field<unsigned>(box.node,0x30)|=1;scene::update(root);
+    m.attached=true;log("PHYSICAL MAG restored appearance ref=%08X",m.refID);continue;
+   }
+   if(!m.visual)continue;
+   if(!reinterpret_cast<void*(__thiscall*)(void*)>(scene::field<void**>(root,0)[3])(root)){log("PHYSICAL MAG visual refused non-NiNode root %08X",m.refID);continue;}
+   static bool triedPosition=false;static Script* positionPart=nullptr;
+   if(!triedPosition){triedPosition=true;positionPart=compile("position physical part","ref target\nfloat x\nfloat y\nfloat z\nbegin function {target,x,y,z}\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");}
+   if(!positionPart)continue;
+   const auto target=m.pose.p+scene::rotate(m.pose,m.center)*m.pose.scale;
+   if(number(positionPart,ref,bits(target.x),bits(target.y),bits(target.z))!=1)continue;
+   // Preserve donor root and its native Havok collision. Cull only donor meshes.
+   std::vector<scene::Box> donor;scene::boxes(root,donor);if(donor.empty())continue;
+   auto donorCenter=scene::boxCenter(donor);auto wanted=m.pose;
+   wanted.p=donorCenter-scene::rotate(wanted,m.center)*wanted.scale;
+   scene::moveParent(m.visual,root);scene::field<unsigned>(m.visual,0x30)&=~1u;
+   if(!scene::setWorld(m.visual,wanted)){log("PHYSICAL MAG placement failed; donor retained %08X",m.refID);continue;}
+   for(auto& mesh:donor)scene::field<unsigned>(mesh.node,0x30)|=1;
+   scene::update(root);
+   log("PHYSICAL MAG attach delay=%llu ms rootDelta=%.3f",GetTickCount64()-m.born,scene::distance(donorCenter,m.pose.p));
+   physical_reload_adapter::momentum(root,m.velocity);
+   m.relative=scene::local(m.visual);m.attached=true;rememberPart(m);log("PHYSICAL MAG visual attached ref=%08X root=%p clone=%p",m.refID,root,m.visual);
+  }
+ }
+ void clearPhysicalMags(){for(auto& m:physicalMags)if(m.visual)scene::release(m.visual);physicalMags.clear();partDiscoverAt=0;physical_reload_adapter::lastRefID=0;}
+
+
  void clearPreviews(){for(auto& p:previews){p.pin.restore();if(p.attached)number(detach,p.attachment.c_str());if(p.inserted)number(removeNode,p.holder.c_str());p={};}}
  void forgetHeldAid(){stickyAidButtons=false;mouthGate.reset();mouthDistance=-1;heldFood=false;aidHand=-1;aidGripLatch=false;aidDropPending=false;selectedRef=nullptr;heldAid={};}
  void clearAid(){
@@ -518,10 +686,18 @@ namespace {
     std::ofstream state(std::string(dir)+"\\addon-state.json");auto rig=scene::root(playerForm());
     state<<"{\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
     state<<",\"dialoguePlacements\":"<<presentation_adapter::placements.load()<<",\"dialogueTargetDistance\":"<<presentation_adapter::lastDistance.load()<<",\"dialogueSideDegrees\":"<<presentation_adapter::lastAngle.load();
-    presentation_adapter::diagnostics(state);
+    presentation_adapter::diagnostics(state);reload_trace_adapter::diagnostics(state);physical_reload_adapter::diagnostics(state);
     {DialogueAnchor anchor{};bool valid=presentation_adapter::readSpeaker(anchor);state<<",\"speakerSourceId\":"<<presentation_adapter::speakerId<<",\"speakerFrameUpdates\":"<<presentation_adapter::speakerFrameUpdates.load()<<",\"speakerNameActive\":"<<(valid?"true":"false")<<",\"speakerNameTracking\":["<<anchor.position[0]<<","<<anchor.position[1]<<","<<anchor.position[2]<<"]";
      using Debug=void(__cdecl*)(char*,unsigned);auto layer=GetModuleHandleW(L"SeatedInput.dll");auto debug=layer?reinterpret_cast<Debug>(GetProcAddress(layer,"SC_LabelDebug")):nullptr;
      if(debug){char json[512]{};debug(json,sizeof(json));state<<",\"speakerNameCrop\":"<<json;}}
+    state<<",\"nativeGripPoints\":[";for(int h=0;h<2;h++){auto p=physical_reload_adapter::gripPoint(h);if(h)state<<",";state<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";}state<<"]";
+    state<<",\"nativeGripTracking\":[";for(int h=0;h<2;h++){auto p=physical_reload_adapter::trackingPoint(physical_reload_adapter::gripPoint(h));if(h)state<<",";state<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";}state<<"]";
+    state<<",\"physicalParts\":[";bool firstPart=true;
+    for(const auto& m:physicalMags){auto ref=physical_reload_adapter::lookup(m.refID);auto root=ref?scene::root(ref):nullptr;if(!root||!m.attached||(m.fullModel?m.visual!=root:scene::parent(m.visual)!=root))continue;
+     std::vector<scene::Box> mesh;scene::boxes(m.visual,mesh);if(mesh.empty())continue;auto c=scene::boxCenter(mesh);
+     if(!firstPart)state<<",";firstPart=false;auto bound=scene::field<float*>(root,0x20);auto track=physical_reload_adapter::trackingPoint(bound?Vec{bound[0],bound[1],bound[2]}:c);state<<"{\"ref\":"<<m.refID<<",\"stackCount\":"<<physical_reload_adapter::stackCount(ref)<<",\"center\":["<<c.x<<","<<c.y<<","<<c.z<<"],\"bound\":["<<(bound?bound[0]:0)<<","<<(bound?bound[1]:0)<<","<<(bound?bound[2]:0)<<","<<(bound?bound[3]:0)<<"],\"tracking\":["<<track.x<<","<<track.y<<","<<track.z<<"]";physical_reload_adapter::physicsDiagnostics(state,root);physical_reload_adapter::meshDiagnostics(state,root);state<<"}";
+    }state<<"]";
+    auto engineGrab=scene::field<Form*>(playerForm(),0x638);state<<",\"engineGrabRef\":"<<(engineGrab?engineGrab->id:0);
     auto grab=static_cast<Form*>(build_adapter::grabbedItem());auto grabRoot=scene::root(grab);
     state<<",\"nativeStimHand\":"<<build_adapter::stimHand()<<",\"nativeGrabHand\":"<<build_adapter::grabbedHand()<<",\"nativeGrabRef\":"<<(grab?grab->id:0)<<",\"nativeGrabScale\":"<<(grabRoot?scene::world(grabRoot).scale:0)<<",\"aidGripLatch\":"<<(aidGripLatch?"true":"false");
     state<<",\"heldFood\":"<<(heldFood?"true":"false")<<",\"mouthDistance\":"<<mouthDistance<<",\"mouthArmed\":"<<(mouthGate.armed?"true":"false")<<",\"freePoseWeight\":["<<finger_adapter::freePoseWeight[0].load()<<","<<finger_adapter::freePoseWeight[1].load()<<"]";
@@ -530,6 +706,7 @@ namespace {
     if(build_adapter::readPouchDiagnostics(pouch)){
      auto node=[&](const build_adapter::PouchNodeDiagnostics& n){state<<"{\"readable\":"<<(n.readable?"true":"false")<<",\"culled\":"<<(n.culled?"true":"false")<<",\"position\":["<<n.world[0]<<","<<n.world[1]<<","<<n.world[2]<<"],\"scale\":"<<n.scale<<"}";};
      state<<",\"pouch\":{\"spareEnabled\":"<<(pouch.spareEnabled?"true":"false")<<",\"anchor\":"<<(pouch.torsoAnchor?"true":"false")<<",\"shown\":"<<(pouch.primaryShown?"true":"false")<<",\"mode\":"<<pouch.nativeMode<<",\"unitsPerMetre\":"<<pouch.metresToUnits<<",\"primary\":";node(pouch.primary);state<<",\"copy\":";node(pouch.copy);
+     state<<",\"heldRounds\":"<<pouch.heldRounds<<",\"detachedMode\":"<<pouch.detachedMode<<",\"detachedRounds\":"<<pouch.detachedRounds<<",\"installedMode\":"<<pouch.installedMode<<",\"installedRounds\":"<<pouch.installedRounds<<",\"discardAmmo\":"<<(pouch.discardAmmo?"true":"false")<<",\"flightAge\":"<<pouch.flightAge;
      if(pouch.primary.readable){auto t=scene::world(pouch.primaryNode);auto center=t.p;if(pouch.spareCenterValid)center=center+scene::rotate(t,{pouch.spareLocalCenter[0],pouch.spareLocalCenter[1],pouch.spareLocalCenter[2]})*t.scale;state<<",\"center\":["<<center.x<<","<<center.y<<","<<center.z<<"]";}
      state<<"}";
     }
@@ -560,14 +737,14 @@ namespace {
  }
  void __cdecl message(Message* m){
   static bool seen[64]{};if(m->type<64&&!seen[m->type]){seen[m->type]=true;log("NVSE message %u dataLen=%u",m->type,m->len);}
-  if(m->type==DeferredInit){init();if(fingerGestures)log("FINGERS %s",finger_adapter::install(queryGesture));log("PRESENTATION %s",presentation_adapter::install(GetPrivateProfileIntA("Presentation","StableWorldPanels",0,settingsPath)!=0));return;}
+  if(m->type==DeferredInit){init();log("RELOAD TRACE %s",reload_trace_adapter::install());log("PHYSICAL RELOAD %s",installPhysicalParts());if(fingerGestures)log("FINGERS %s",finger_adapter::install(queryGesture));log("PRESENTATION %s",presentation_adapter::install(GetPrivateProfileIntA("Presentation","StableWorldPanels",0,settingsPath)!=0));return;}
   // xNVSE Serialization.cpp sends the boolean value cast to void*, not a pointer.
   if(m->type==PostLoadGame){loaded=m->data!=nullptr;log("PostLoadGame loaded=%d",loaded);return;}
-  if(m->type==NewGame){clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
+  if(m->type==NewGame){clearPhysicalMags();clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
   // Native TTWVR owns held-item save/load and teardown. Only discard addon
   // pointers here; never activate/stow a native object during lifecycle events.
-  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
-  if(m->type==MainLoop){testMailbox();tick();}
+  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearPhysicalMags();clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
+  if(m->type==MainLoop){testMailbox();tick();if(loaded)tickPhysicalMags();}
  }
 }
 extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,int kind,float x,float y){
@@ -610,10 +787,10 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
 }
 extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Query(const NVSE* nvse,PluginInfo* info){info->infoVersion=1;info->name="SeatedControls";info->version=2;return !nvse->isEditor&&nvse->runtime==0x040020D0&&nvse->version>=6;}
 extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse){
- std::string path=std::string(nvse->runtimeDirectory())+"SeatedControls.log";logfile=_fsopen(path.c_str(),"w",_SH_DENYNO);
+ gameDirectory=nvse->runtimeDirectory();std::string path=gameDirectory+"SeatedControls.log";logfile=_fsopen(path.c_str(),"w",_SH_DENYNO);
  scripts=static_cast<Scripts*>(nvse->queryInterface(6));arrays=static_cast<Arrays*>(nvse->queryInterface(5));consoleApi=static_cast<Console*>(nvse->queryInterface(1));auto messaging=static_cast<Messaging*>(nvse->queryInterface(2));
  if(auto data=static_cast<DataInterface*>(nvse->queryInterface(7)))inventoryRef=reinterpret_cast<InventoryRef*(__cdecl*)(u32)>(data->function(2));
- log("SeatedControls 1.4.5; runtime %08X; nvse %u",nvse->runtime,nvse->version);
+ log("SeatedControls 1.5.0-beta; runtime %08X; nvse %u",nvse->runtime,nvse->version);
  if(!scripts||!arrays||!messaging||!inventoryRef||!build_adapter::verifiedTTWVR(GetModuleHandleW(L"TTWVR.dll")))return false;
  if(!enableInputLayer()){log("Input layer missing; reinstall the complete addon archive");return false;}
  log("OpenXR input layer enabled for this process");

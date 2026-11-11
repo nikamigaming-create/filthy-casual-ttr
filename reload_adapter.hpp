@@ -124,6 +124,12 @@ struct PouchDiagnostics {
     bool torsoAnchor = false;
     bool primaryShown = false;
     int nativeMode = -1;
+    int heldRounds = 0;
+    int detachedMode = -1, detachedRounds = 0;
+    int installedMode = -1, installedRounds = 0;
+    bool discardAmmo = false;
+    float flightAge = 0;
+    float flightPosition[3]{}, flightVelocity[3]{};
     float metresToUnits = 0;
     float forward = 0, side = 0, height = 0, belowEye = 0;
     PouchNodeDiagnostics primary, copy;
@@ -168,6 +174,20 @@ inline bool readPouchDiagnostics(PouchDiagnostics& out) {
     out.torsoAnchor = b[0x121F1C4] != 0;
     out.primaryShown = b[0x121F17E] != 0;
     out.nativeMode = *reinterpret_cast<int*>(b + 0x121F260);
+    // Read-only lifecycle evidence. 288B7C releases held spare; 256F10 advances
+    // a visual-only flight, 257025 culls it. No world reference is created there.
+    out.heldRounds = *reinterpret_cast<int*>(b + 0x121F264);
+    out.detachedMode = *reinterpret_cast<int*>(b + 0x121F014);
+    out.detachedRounds = *reinterpret_cast<int*>(b + 0x121F018);
+    out.installedMode = *reinterpret_cast<int*>(b + 0x121F13C);
+    out.installedRounds = *reinterpret_cast<int*>(b + 0x121F140);
+    out.discardAmmo = settings[0x495] != 0;
+    out.flightAge = *reinterpret_cast<float*>(b + 0x121F07C);
+    memcpy(out.flightPosition, b + 0x121F058, sizeof(out.flightPosition));
+    memcpy(out.flightVelocity, b + 0x121F064, sizeof(out.flightVelocity));
+    if (!std::isfinite(out.flightAge)) out.flightAge = 0;
+    for (auto& v : out.flightPosition) if (!std::isfinite(v)) v = 0;
+    for (auto& v : out.flightVelocity) if (!std::isfinite(v)) v = 0;
     out.metresToUnits = *reinterpret_cast<float*>(settings + 0x28);
     out.forward = *reinterpret_cast<float*>(settings + 0x4B8);
     out.side = *reinterpret_cast<float*>(settings + 0x4BC);
