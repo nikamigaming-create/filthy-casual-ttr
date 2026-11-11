@@ -1,9 +1,16 @@
-# Physical reload parts - 1.5 beta
+# Physical reload parts - 1.5.1 beta
 
 Manual reload parts become native world objects. Drop a spare, eject a magazine,
 or use TTR's Save Ammo action and release it. Pick it up with the original grip
-control, move your hand, and release to throw. X Take returns the ammunition to
-inventory for use through the original pouch and reload path.
+control or the original gravity gloves. Move your hand and release to throw.
+Bring a recovered compatible magazine/cell to its gun's empty well, keep gripping,
+align it and insert using TTR's original manual-reload movement. The exact rounds
+remaining in that part are retained; an empty magazine stays empty.
+
+To return a recovered part to the ammo pouch, hold it inside the pouch and release
+grip. X Take also remains available. Gravity gloves use the original gesture:
+point at the part, hold grip, then flick back. No extra pickup, throw or reload
+button is introduced.
 
 Automatic reload and returning a spare to the pouch retain TTR's behavior.
 This addon does not introduce another throw button or change native grip poses.
@@ -21,7 +28,8 @@ Supported target: FalloutNV 1.4.0.525/x86, TTWVR SHA256
 `C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB`.
 Unknown builds are refused. JIP LN and the enabled carrier ESP are required.
 
-Set `[Weapons] PhysicalReloadParts=0` and restart to disable new physical drops.
+Set `[Weapons] PhysicalReloadParts=0` and restart to disable physical drops and
+recovered-part gun/pouch handoffs.
 Existing appearance metadata is still restored while the addon remains installed.
 
 ## Verified coverage
@@ -51,13 +59,14 @@ native early pickup takes ownership of its current position.
 The fitted box collider follows the actual part dimensions with dynamic native
 Havok physics. Local NIF round-trip, gravity, contact and settling checks passed.
 The game owns ammo stacks, reference physics and save serialization; the addon
-stores only its model association in JIP metadata. User saves were not edited.
+stores its model association and source weapon/ammo form references in JIP
+metadata. JIP performs normal load-order remapping; the addon does not rewrite saves. User saves were not edited.
 
 These are representative native paths, not a claim that every modded weapon was
 individually tested. Dependency/cache failure guards were reviewed; their runtime
 negative cases and physical-headset comfort remain unproven.
 
-## Video
+## Earlier physical-parts video
 
 `Filthy-Casual-Physical-Parts-Mobile.mp4`: 42.1 seconds, 1080x1920, H.264, 30fps,
 small download with fast-start playback. Assault Carbine and Plasma Defender
@@ -74,13 +83,24 @@ No QA/runtime labels appear in the promotional frames.
 
 ## Boundaries
 
-Recovered world magazines return their rounds through native Take. Directly
-reinserting that world reference as a TTR-held magazine is not implemented.
+Direct reinsertion accepts a tracked part from the same weapon base and selected
+ammo, within the current capacity, held in TTR's reload hand with an empty well.
+Different weapons/ammo remain ordinary world pickups; they can be returned to
+inventory. Source identity is stored on newly created parts. Parts created by the
+older 1.5.0 beta retain appearance/pickup/Take but lack reinsertion identity.
+Loose rounds/shells can be recovered into the pouch; direct world-part handoff
+uses the native installed-magazine/cell path. Native cocking and chamber rules
+remain in effect. An empty magazine can coexist with a retained chambered round.
+
+Contact eligibility is refreshed from a coherent main-thread scene publication,
+bound to reference/hand/weapon, consumed once, and rejected after50ms. Under a
+severe stall, handoff waits for a fresh contact. Native reload alignment and final
+insertion still decide whether the magazine is seated.
 Firing's spent-shell system is unchanged. Collision is a fitted box rather than
 a concave replica. Pickups retain TTR's usual contact offset and hand pose.
 Missing private models retain the normal donor appearance; keep your local cache.
 
-Public v1.4.5 is unchanged; this is the local 1.5 beta candidate.
+Public v1.4.5 is unchanged; this is the local 1.5.1 beta candidate.
 
 ## Building the original carrier
 
@@ -95,3 +115,28 @@ python tools/build_reload_carrier.py
 
 Generation writes the three original assets under `build/reload-parts/mod` and
 updates `reload_carrier_data.hpp`. No installed game or downloaded mod is read.
+## Recovered-magazine verification (1.5.1)
+
+Native runtime checks passed for:
+- Partial10mm magazine:5rounds plus the existing chambered round, native
+  reinsertion, second ejection and pouch return. Exact total ammunition retained.
+- Empty10mm magazine:source identity survives normal save/load; native insertion
+  adds no ammunition, retaining only the game's pre-existing chambered round.
+- Assault Carbine:23-round recovered magazine plus chamber; native insertion,
+  firing, and pouch return.
+- Plasma Defender:32-round cell, original gravity-glove pickup, native insertion,
+  firing with its normal two-cell use, and pouch return.
+
+The final packaged binary passed partial-pistol insertion/pouch and all three
+metadata maps returned to size0 after consumption. Independent native-contract
+and source reviews checked ownership, empty-count safety, disabled/menu guards,
+pose publication and metadata cleanup. Neither user save files nor global XR
+settings were edited. These are isolated native-runtime checks, not a new
+physical-headset comfort certification.
+
+New phone demo: `Filthy-Casual-Magazine-Recovery-Mobile.mp4`,1080x1920/30fps,
+silent H.264 with fast-start. Reviewed successful rifle and plasma sequences,
+normal speed, complete right eye, gameplay-only wipes and readable captions.
+Both-eye masters and source frame metadata remain private. Selected spans have
+zero repeated source frames. Fingers/body partly obscure the exact seating and
+pouch socket; the recording shows normal approach, reload and empty-hand return.

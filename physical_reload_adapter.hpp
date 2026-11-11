@@ -177,30 +177,82 @@ __declspec(naked) inline void ejectBStateEntry(){
   jmp dword ptr [ejectBContinue]
  }
 }
+
+// Recover only our real, normally grabbed world part into the original FULL
+// installed-magazine initializer. Original insertion/cocking remains native.
+using Recover=int(__cdecl*)(void* player,int hand);
+inline Recover recover=nullptr;
+inline void* recoverFallback=nullptr;inline void* recoverComplete=nullptr;
+inline unsigned recoveredParts=0,recoveredPouch=0;inline int recoveredRounds=-1,recoverStage=0;inline float recoverDistance=-1;
+inline int __cdecl onRecover(unsigned char* frame){
+ recoverStage=1;auto b=module;auto settings=build_adapter::liveReloadSettings();
+ if(!b||!recover||GetCurrentThreadId()!=ownerThread||!settings||settings[0x494]!=1)return -1;
+ recoverStage=2;
+ if(*reinterpret_cast<int*>(b+0x121F13C)!=4||*reinterpret_cast<int*>(b+0x121F260)||b[0x121F1AC]||b[0x121F000]||b[0x121F8FA])return -1;
+ recoverStage=3;if(!build_adapter::readPouchNode(*reinterpret_cast<void**>(b+0x121EF98)).readable)return -1;
+ int hand=reinterpret_cast<bool(__cdecl*)()>(b+0x25C610)()?1:0;
+ if(!frame[-0x1576])return -1;
+ int count=recover(*reinterpret_cast<void**>(frame-0x1600),hand);
+ if(count>=0){recoveredParts++;recoveredRounds=count;}return count;
+}
+__declspec(naked) inline void recoverEntry(){
+ __asm{
+  pushfd
+  pushad
+  mov eax,esp
+  sub esp,528
+  and esp,0FFFFFFF0h
+  mov [esp+512],eax
+  fxsave [esp]
+  fninit
+  push ebp
+  call onRecover
+  add esp,4
+  cmp eax,0
+  jl nativePath
+  mov edx,[esp+512]
+  mov [edx+4],eax
+  fxrstor [esp]
+  mov esp,[esp+512]
+  popad
+  popfd
+  jmp dword ptr [recoverComplete]
+ nativePath:
+  fxrstor [esp]
+  mov esp,[esp+512]
+  popad
+  popfd
+  jmp dword ptr [recoverFallback]
+ }
+}
+
 inline void* trampoline(unsigned char* p,unsigned n){
  auto code=static_cast<unsigned char*>(VirtualAlloc(nullptr,n+5,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!code)return nullptr;
  memcpy(code,p,n);code[n]=0xE9;*reinterpret_cast<int*>(code+n+1)=int((p+n)-(code+n+5));DWORD old;
  if(!VirtualProtect(code,n+5,PAGE_EXECUTE_READ,&old)){VirtualFree(code,0,MEM_RELEASE);return nullptr;}
  FlushInstructionCache(GetCurrentProcess(),code,n+5);return code;
 }
-inline const char* install(Commit callback){
+inline const char* install(Commit callback,Recover recovery){
  if(module)return "already installed";auto b=build_adapter::heldModule();if(!b)return "refused hash";
  auto cmp=[&](unsigned rva,unsigned global){auto p=b+rva;return p[0]==0x80&&p[1]==0x3D&&*reinterpret_cast<void**>(p+2)==b+global&&p[6]==0;};
  auto callSite=[&](unsigned rva){auto p=b+rva;return p[0]==0xE8&&p+5+*reinterpret_cast<int*>(p+1)==b+0x280450;};
  auto state=b+0x284032;
  if(!cmp(0x288B96,0x121F1AC)||!cmp(0x2868FD,0x121F1AC)||!cmp(0x258F90,0x121F000)||b[0x25905B]!=0xC3||!callSite(0x283C8D)||!callSite(0x284005)||state[0]!=0xC7||state[1]!=0x05||*reinterpret_cast<void**>(state+2)!=b+0x121F13C||*reinterpret_cast<int*>(state+6)!=5)return "refused release/ejection instructions";
+ const unsigned char recoveryCmp[]={0x80,0xBD,0x6E,0xEA,0xFF,0xFF,0};
+ if(memcmp(b+0x28A422,recoveryCmp,7)||b[0x28C491]!=0xE8||b+0x28C496+*reinterpret_cast<int*>(b+0x28C492)!=b+0x257AD0)return "refused recovery instructions";
  const unsigned char clonePrefix[]={0x55,0x8B,0xEC};if(memcmp(b+0x2580E0,clonePrefix,3))return "refused clone entry";
  fallback=trampoline(b+0x288B96,7);installedFallback=trampoline(b+0x2868FD,7);ejectOriginal=trampoline(b+0x258F90,7);
- if(!fallback||!installedFallback||!ejectOriginal)return "trampoline allocation failed";
+ recoverFallback=trampoline(b+0x28A422,7);
+ if(!fallback||!installedFallback||!ejectOriginal||!recoverFallback)return "trampoline allocation failed";
  struct Patch{unsigned rva,n;void* target;unsigned char op;DWORD protection;};
- Patch patches[]={{0x288B96,7,entry,0xE9,0},{0x2868FD,7,installedEntry,0xE9,0},{0x258F90,7,ejectEntry,0xE9,0},{0x283C8D,5,ejectAEntry,0xE8,0},{0x284005,5,ejectBEntry,0xE8,0},{0x284032,10,ejectBStateEntry,0xE9,0}};
+ Patch patches[]={{0x288B96,7,entry,0xE9,0},{0x2868FD,7,installedEntry,0xE9,0},{0x258F90,7,ejectEntry,0xE9,0},{0x283C8D,5,ejectAEntry,0xE8,0},{0x284005,5,ejectBEntry,0xE8,0},{0x284032,10,ejectBStateEntry,0xE9,0},{0x28A422,7,recoverEntry,0xE9,0}};
  // Protect all sites before changing any instruction. Restore permissions on
  // failure; never leave a partially installed set of state transitions.
  unsigned count=0;for(auto& p:patches){if(!VirtualProtect(b+p.rva,p.n,PAGE_EXECUTE_READWRITE,&p.protection)){for(int j=int(count)-1;j>=0;j--){DWORD ignored;auto& q=patches[j];VirtualProtect(b+q.rva,q.n,q.protection,&ignored);}return "site protection failed";}count++;}
- completed=b+0x288CA0;installedCompleted=b+0x286934;ejectBContinue=b+0x28403C;commit=callback;ownerThread=GetCurrentThreadId();module=b;
+ completed=b+0x288CA0;installedCompleted=b+0x286934;ejectBContinue=b+0x28403C;commit=callback;recover=recovery;recoverComplete=b+0x28C491;ownerThread=GetCurrentThreadId();module=b;
  for(auto& patch:patches){auto p=b+patch.rva;p[0]=patch.op;*reinterpret_cast<int*>(p+1)=int(reinterpret_cast<unsigned char*>(patch.target)-(p+5));for(unsigned j=5;j<patch.n;j++)p[j]=0x90;FlushInstructionCache(GetCurrentProcess(),p,patch.n);}
  // Several sites share a page. Restore in reverse acquisition order.
- for(int i=5;i>=0;i--){auto& p=patches[i];DWORD ignored;VirtualProtect(b+p.rva,p.n,p.protection,&ignored);}
+ for(int i=int(count)-1;i>=0;i--){auto& p=patches[i];DWORD ignored;VirtualProtect(b+p.rva,p.n,p.protection,&ignored);}
  return "guarded physical spare/installed/ejection transactions active";
 }
 // FNV 1.4.0.525: xNVSE GameAPI.cpp LookupFormByID / NiTPointerMap.
@@ -300,6 +352,44 @@ inline scene::Vec gripPoint(int hand){
   if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x56C530)(manager,hand!=0,false,&point,rotation);}
  return point;
 }
+
+// Native state2 uses the installed REST transform, not the currently held or
+// hidden magazine node. Same parent/rest composition as RVA285949..285969.
+inline bool installedRest(scene::Transform& result,scene::Vec* axis=nullptr){
+ auto b=build_adapter::heldModule();if(!b)return false;
+ auto node=*reinterpret_cast<void**>(b+0x121EF98);auto weapon=*reinterpret_cast<void**>(b+0x121EF8C);
+ if(!build_adapter::readPouchNode(node).readable||!build_adapter::readPouchNode(weapon).readable)return false;
+ auto w=scene::world(weapon);scene::Transform parent{};
+ if(!reinterpret_cast<bool(__cdecl*)(void*,const scene::Transform*,void*,scene::Transform*)>(b+0x26AD10)(weapon,&w,node,&parent))return false;
+ reinterpret_cast<scene::Transform*(__cdecl*)(scene::Transform*,const scene::Transform*,const scene::Vec*,const void*,float)>(b+0x257DE0)(&result,&parent,reinterpret_cast<scene::Vec*>(b+0x121EFE8),b+0x121EB5C,1.f);
+ for(unsigned i=0;i<13;i++)if(!std::isfinite(reinterpret_cast<float*>(&result)[i]))return false;
+ if(result.scale<=0||result.scale>100)return false;
+ if(axis){*axis=scene::rotate(parent,*reinterpret_cast<scene::Vec*>(b+0xDCE340));float length=scene::distance(*axis,{});if(!std::isfinite(length)||length<1e-5f)return false;*axis=*axis*(1.f/length);}
+ return true;
+}
+
+inline void trackingBasis(std::ostream& out,const scene::Transform& pose){
+ auto origin=trackingPoint(pose.p);out<<"[";
+ for(int i=0;i<3;i++){auto v=trackingPoint(pose.p+scene::Vec{pose.r[0][i],pose.r[1][i],pose.r[2][i]})-origin;float length=scene::distance(v,{});if(length>1e-5f)v=v*(1.f/length);if(i)out<<",";out<<"["<<v.x<<","<<v.y<<","<<v.z<<"]";}out<<"]";
+}
+inline void gloveDiagnostics(std::ostream& out){
+ auto b=build_adapter::heldModule();if(!b)return;auto settings=build_adapter::liveReloadSettings();out<<",\"gloves\":[";
+ for(int hand=0;hand<2;hand++){if(hand)out<<",";scene::Vec origin{},forward{};bool valid=reinterpret_cast<bool(__cdecl*)(bool,scene::Vec*,scene::Vec*)>(b+0x190B30)(hand!=0,&origin,&forward);auto p=trackingPoint(origin),f=trackingPoint(origin+forward)-p;float length=scene::distance(f,{});if(length>1e-5f)f=f*(1.f/length);
+  auto candidate=b+0x11144A0+hand*0x78;auto pull=b+0xDC53F8+hand*0x88;auto ref=*reinterpret_cast<void**>(candidate+4);auto pulling=*reinterpret_cast<void**>(pull+4);
+  out<<"{\"valid\":"<<valid<<",\"origin\":["<<p.x<<","<<p.y<<","<<p.z<<"],\"forward\":["<<f.x<<","<<f.y<<","<<f.z<<"],\"candidate\":"<<(candidate[0]&&ref?scene::field<unsigned>(ref,0xC):0)<<",\"armedAge\":"<<*reinterpret_cast<float*>(candidate+0xC)<<",\"pull\":"<<(pull[0]&&pulling?scene::field<unsigned>(pulling,0xC):0)<<",\"flickBack\":"<<(settings?*reinterpret_cast<float*>(settings+0x3FC):0)<<"}";
+ }out<<"]";
+ auto pouch=*reinterpret_cast<void**>(b+0x121F194);if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x121F260))pouch=*reinterpret_cast<void**>(b+0x121F180);
+ if(build_adapter::readPouchNode(pouch).readable){auto w=scene::world(pouch);auto p=trackingPoint(w.p+scene::rotate(w,*reinterpret_cast<scene::Vec*>(b+0x121F184))*w.scale);out<<",\"physicalPouchTracking\":["<<p.x<<","<<p.y<<","<<p.z<<"]";}
+}
+inline void insertionDiagnostics(std::ostream& out){
+ auto b=build_adapter::heldModule();scene::Transform rest{};scene::Vec axis{};bool valid=installedRest(rest,&axis);
+ out<<",\"insertion\":{\"valid\":"<<(valid?"true":"false");
+ if(valid){auto target=trackingPoint(rest.p),along=trackingPoint(rest.p+axis)-target;auto held=trackingPoint(scene::world(*reinterpret_cast<void**>(b+0x121EF98)).p);
+  out<<",\"target\":["<<target.x<<","<<target.y<<","<<target.z<<"],\"held\":["<<held.x<<","<<held.y<<","<<held.z<<"],\"axis\":["<<along.x<<","<<along.y<<","<<along.z<<"]";
+  out<<",\"restBasis\":";trackingBasis(out,rest);out<<",\"heldBasis\":";trackingBasis(out,scene::world(*reinterpret_cast<void**>(b+0x121EF98)));
+  out<<",\"armed\":"<<unsigned(b[0x121F27D])<<",\"snap\":"<<unsigned(b[0x121F28C])<<",\"axial\":"<<*reinterpret_cast<float*>(b+0x121F280)<<",\"radial\":"<<*reinterpret_cast<float*>(b+0x121F284)<<",\"alignment\":"<<*reinterpret_cast<float*>(b+0x121F288);
+ }out<<"}";
+}
 inline scene::Vec installedPoint(){
  auto b=build_adapter::heldModule();if(!b)return {};auto node=*reinterpret_cast<void**>(b+0x121EF98);auto weapon=*reinterpret_cast<void**>(b+0x121EF8C);
  if(!build_adapter::readPouchNode(node).readable||!build_adapter::readPouchNode(weapon).readable)return {};
@@ -333,5 +423,5 @@ inline void contactDiagnostics(std::ostream& out){
  auto t=trackingPoint(point);
  out<<",\"installedContact\":{\"hand\":"<<int(hand)<<",\"valid\":"<<(valid?1:0)<<",\"tracking\":["<<t.x<<","<<t.y<<","<<t.z<<"],\"looseRounds\":"<<int(b[0x121F000])<<",\"blocked\":"<<int(b[0x121F8FA])<<",\"simple\":"<<int(b[0x121F2A0])<<"}";
 }
-inline void diagnostics(std::ostream& out){contactDiagnostics(out);auto point=installedPoint();auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();out<<",\"nativeGrabReach\":"<<(settings?*reinterpret_cast<float*>(settings+0x28)**reinterpret_cast<float*>(settings+0x32C):0)<<",\"nativeReloadPriority\":"<<(b?unsigned(b[0x121F73A]):0)<<",\"nativeReloadActive\":"<<(b?unsigned(b[0x121EFB4]):0);out<<",\"installedPartTracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";out<<",\"physicalMags\":{\"active\":"<<(module?"true":"false")<<",\"attempts\":"<<attempts<<",\"successes\":"<<successes<<",\"calibration\":"<<calibration<<",\"pouchReturns\":"<<pouchReturns<<",\"failures\":"<<failures<<",\"distance\":"<<lastDistance<<",\"threshold\":"<<lastThreshold<<",\"installedDrops\":"<<installedDrops<<",\"ejectedDrops\":"<<ejectedDrops<<",\"emptyDrops\":"<<emptyDrops<<",\"lastRef\":"<<lastRefID<<"}";}
+inline void diagnostics(std::ostream& out){gloveDiagnostics(out);insertionDiagnostics(out);contactDiagnostics(out);auto point=installedPoint();auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();out<<",\"nativeGrabReach\":"<<(settings?*reinterpret_cast<float*>(settings+0x28)**reinterpret_cast<float*>(settings+0x32C):0)<<",\"nativeReloadPriority\":"<<(b?unsigned(b[0x121F73A]):0)<<",\"nativeReloadActive\":"<<(b?unsigned(b[0x121EFB4]):0);out<<",\"installedPartTracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";out<<",\"physicalMags\":{\"active\":"<<(module?"true":"false")<<",\"attempts\":"<<attempts<<",\"successes\":"<<successes<<",\"calibration\":"<<calibration<<",\"pouchReturns\":"<<pouchReturns<<",\"failures\":"<<failures<<",\"distance\":"<<lastDistance<<",\"threshold\":"<<lastThreshold<<",\"installedDrops\":"<<installedDrops<<",\"ejectedDrops\":"<<ejectedDrops<<",\"emptyDrops\":"<<emptyDrops<<",\"recovered\":"<<recoveredParts<<",\"recoveredPouch\":"<<recoveredPouch<<",\"recoveredRounds\":"<<recoveredRounds<<",\"recoverStage\":"<<recoverStage<<",\"recoverDistance\":"<<recoverDistance<<",\"lastRef\":"<<lastRefID<<"}";}
 }

@@ -2,9 +2,9 @@
 
 [Back to the controls and overview](../README.md)
 
-Revision 1.5 beta adds physical manual-reload parts while keeping the existing
+Revision 1.5.1 beta adds physical manual-reload parts while keeping the existing
 thumbrest selectors, Menu tap/hold controls and seated height. The phone video is
-`outputs/Filthy-Casual-Physical-Parts-Mobile.mp4`. See
+`outputs/Filthy-Casual-Magazine-Recovery-Mobile.mp4`. See
 [physical parts, tested coverage and limits](PHYSICAL_PARTS.md).
 ## Before installing
 
@@ -36,7 +36,7 @@ xNVSE, JIP LN NVSE, or game content.
 
 1. Close the game. Open the MO2 instance and profile you normally use for TTWVR.
 2. Choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.5.0-beta.zip` (or the supplied local-test ZIP).
+   `Filthy-Casual-TTR-1.5.1-beta.zip` (or the supplied local-test ZIP).
 3. Name the new mod **Filthy Casual TTR** and complete installation. The
    archive's data root contains `NVSE`; no enclosing mod folder needs to be selected.
 4. Enable the new mod in MO2's left pane. Place it below the enabled base TTWVR

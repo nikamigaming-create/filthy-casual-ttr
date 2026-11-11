@@ -15,3 +15,22 @@
   These only support isolated observation; gameplay input remains native.
 - Independent review found/fixed pending-placement and early-held object edges.
   Representative physics/inventory/video coverage documented in PHYSICAL_PARTS.md.
+2026-11-10 recovered manual magazines, same supported TTWVR hash:
+RVA28A422 original CMP [EBP-1592],0 is bridged with GPR/flags/FX preservation.
+Eligible actual world refs use native selected-slot release + Activate exactly
+once with verified inventory delta; original empty MISC carriers are consumed
+without manufacturing ammunition. Source weapon/ammo use JIP RefMapSetRef.
+ESI carries exact recovered count into FULL native initializer28C491..28C92A.
+Native states2/3/0 retain authored grip, alignment, insertion and chamber behavior.
+Zero-count never enters spare max(1,count) routes. No direct clip write.
+Installed rest geometry uses26AD10 +257DE0(restPosition121EFE8,rotation121EB5C).
+Spatial eligibility is qualified once per published scene, with ref/hand/weapon
+identity and50ms freshness, instead of mixing intermediate reload transforms.
+Pouch return requires intentional fresh grip release and active gameplay;
+feature-disabled appearance restoration cannot perform a return transaction.
+
+Consumed-part metadata cleanup: all three own RefMap keys are erased while
+the exact live ref exists, before native Activate. Failed transfer restores only
+if original ID still resolves the same nondeleted ref. No blanket validation of
+unloaded references. Final native smoke verified all3map sizes0 after recovery.
+Gameplay/focus gate explicitly applies to contact qualification and handoff.

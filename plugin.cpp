@@ -184,18 +184,27 @@ namespace {
 
  // First physical-magazine slice. World references retain engine collision;
  // only their visible geometry is replaced by a separately retained clone.
- struct PhysicalMag {unsigned refID=0;void* visual=nullptr;scene::Transform pose{};Vec center{},velocity{};ULONGLONG born=0;bool attached=false;std::string cache;scene::Transform relative{};bool restoring=false;bool fullModel=false,modelAssigned=false;bool metadataDirty=false;ULONGLONG retryAt=0,metadataAt=0;};
+ struct PhysicalMag {unsigned refID=0,weaponID=0,ammoID=0;bool wasHeld=false,wasNearPouch=false,identityDirty=false;int lastHeldHand=-1;ULONGLONG identityAt=0,contactAt=0;float contactDistance=-1;int contactHand=-1;unsigned contactWeapon=0;void* visual=nullptr;scene::Transform pose{};Vec center{},velocity{};ULONGLONG born=0;bool attached=false;std::string cache;scene::Transform relative{};bool restoring=false;bool fullModel=false,modelAssigned=false;bool metadataDirty=false;ULONGLONG retryAt=0,metadataAt=0;};
  std::vector<PhysicalMag> physicalMags;
- Script *partSet=nullptr,*partGet=nullptr,*partKeys=nullptr,*partErase=nullptr,*partModel=nullptr;ULONGLONG partDiscoverAt=0;
+ Script *partSet=nullptr,*partGet=nullptr,*partKeys=nullptr,*partErase=nullptr,*partModel=nullptr,*partIdentitySet=nullptr,*partIdentityGet=nullptr,*removeEmptyPart=nullptr;ULONGLONG partDiscoverAt=0;
  bool initPartMetadata(){
-  if(partSet&&partGet&&partKeys&&partErase&&partModel)return true;
+  if(partSet&&partGet&&partKeys&&partErase&&partModel&&partIdentitySet&&partIdentityGet&&removeEmptyPart)return true;
   static bool attempted=false;if(attempted)return false;attempted=true;
   partSet=compile("save part appearance","ref target\nstring_var value\nbegin function {target,value}\ntarget.RefMapSetStr \"_FC_PhysicalReload_v1\" \"$value\"\nSetFunctionValue 1\nend");
   partGet=compile("read part appearance","ref target\nbegin function {target}\nSetFunctionValue (target.RefMapGetStr \"_FC_PhysicalReload_v1\")\nend");
   partKeys=compile("part appearance keys","RefMapKeys \"_FC_PhysicalReload_v1\"",true);
-  partErase=compile("forget removed part appearance","ref target\nbegin function {target}\ntarget.RefMapErase \"_FC_PhysicalReload_v1\"\nSetFunctionValue 1\nend");
+  partErase=compile("forget removed part appearance","ref target\nbegin function {target}\ntarget.RefMapErase \"_FC_PhysicalReload_v1\"\ntarget.RefMapErase \"_FC_PhysicalReloadWeapon\"\ntarget.RefMapErase \"_FC_PhysicalReloadAmmo\"\nSetFunctionValue 1\nend");
   partModel=compile("physical part model","ref target\nstring_var value\nbegin function {target,value}\ntarget.SetRefrModelPath \"$value\"\nSetFunctionValue 1\nend");
-  return partSet&&partGet&&partKeys&&partErase&&partModel;
+  partIdentitySet=compile("part source identity","ref target\nstring_var key\nref source\nbegin function {target,key,source}\ntarget.RefMapSetRef \"$key\" source\nSetFunctionValue 1\nend");
+  partIdentityGet=compile("read part source identity","ref target\nstring_var key\nbegin function {target,key}\nSetFunctionValue (target.RefMapGetRef \"$key\")\nend");
+  removeEmptyPart=compile("consume original empty carrier","ref base\nbegin function {base}\nplayer.RemoveItem base 1 1\nSetFunctionValue 1\nend");
+  return partSet&&partGet&&partKeys&&partErase&&partModel&&partIdentitySet&&partIdentityGet&&removeEmptyPart;
+ }
+ unsigned partIdentity(Form* ref,const char* key){Element e;unsigned id=0;if(call(partIdentityGet,e,ref,key)&&e.type==2&&e.value.form)id=e.value.form->id;release(e);return id;}
+ void rememberIdentity(PhysicalMag& m,Form* ref){
+  m.identityDirty=false;m.identityAt=GetTickCount64();
+  const char* keys[]={"_FC_PhysicalReloadWeapon","_FC_PhysicalReloadAmmo"};unsigned ids[]={m.weaponID,m.ammoID};
+  for(int i=0;i<2;i++)if(auto source=static_cast<Form*>(physical_reload_adapter::lookup(ids[i]))){Element e;call(partIdentitySet,e,ref,keys[i],source);release(e);if(partIdentity(ref,keys[i])!=ids[i]){m.identityDirty=true;log("PHYSICAL MAG identity write failed ref=%08X key=%s",m.refID,keys[i]);}}
  }
  bool rememberPart(PhysicalMag& m){
   m.metadataDirty=true;m.metadataAt=GetTickCount64();
@@ -212,12 +221,13 @@ namespace {
   Element e;Form* base=nullptr;if(query&&call(query,e)&&e.type==2)base=e.value.form;release(e);return base&&base->type==31?base:nullptr;
  }
  bool __cdecl commitPhysicalMag(const physical_reload_adapter::Drop& d);
+ int __cdecl recoverPhysicalMag(void* player,int hand);
  const char* installPhysicalParts(){
   char flag[8]{};const bool test=GetEnvironmentVariableA("SC_TEST_PHYSICAL_MAGS",flag,sizeof(flag))&&strcmp(flag,"1")==0;
   if(!test&&!GetPrivateProfileIntA("Weapons","PhysicalReloadParts",1,settingsPath))return "disabled in INI (existing appearances still restored)";
   if(!ready||!initPartMetadata())return "disabled: required JIP metadata commands unavailable";
   if(!emptyReloadPart()||GetFileAttributesA((gameDirectory+"Data\\meshes\\FilthyCasual\\reload-carrier.nif").c_str())==INVALID_FILE_ATTRIBUTES||GetFileAttributesA((gameDirectory+"Data\\textures\\FilthyCasual\\reload-carrier.dds").c_str())==INVALID_FILE_ATTRIBUTES)return "disabled: enable Filthy Casual Reload Parts.esp and install its original carrier assets";
-  return physical_reload_adapter::install(commitPhysicalMag);
+  return physical_reload_adapter::install(commitPhysicalMag,recoverPhysicalMag);
  }
  void discoverParts(){
   if(!ready||!loaded||!initPartMetadata())return;Element e;
@@ -231,6 +241,7 @@ namespace {
    if(!(text>>m.center.x>>m.center.y>>m.center.z>>m.velocity.x>>m.velocity.y>>m.velocity.z))valid=false;
    if(!valid||!std::isfinite(m.center.x)||!std::isfinite(m.center.y)||!std::isfinite(m.center.z)||transform.scale<=0||transform.scale>100)continue;
    m.fullModel=version==2;m.refID=ref->id;m.cache="FilthyCasualLocal\\Reload\\"+digest+".nif";m.restoring=mode==2;m.born=GetTickCount64();
+   m.weaponID=partIdentity(ref,"_FC_PhysicalReloadWeapon");m.ammoID=partIdentity(ref,"_FC_PhysicalReloadAmmo");
    physicalMags.push_back(std::move(m));log("PHYSICAL MAG discovered appearance ref=%08X mode=%u",ref->id,mode);
   }for(auto& key:entries)release(key);}}
   release(e);
@@ -272,19 +283,100 @@ namespace {
   // Native RemoveItem owns the inventory transaction and creates the reference.
   // Position after 3D creation; MoveTo queues a relocation that can overwrite SetPos.
   PhysicalMag part{};part.refID=ref->id;part.pose=target;part.velocity=d.velocity;part.born=GetTickCount64();part.cache=cache;part.fullModel=true;physicalMags.push_back(std::move(part));
-  rememberPart(physicalMags.back());
+  auto& created=physicalMags.back();Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)created.weaponID=equipped.value.form->id;release(equipped);created.ammoID=d.ammo?static_cast<Form*>(d.ammo)->id:0;rememberIdentity(created,ref);
+  rememberPart(created);
   physical_reload_adapter::lastRefID=ref->id;
   log("PHYSICAL MAG ref=%08X ammo=%08X rounds=%d inventory=%.0f->%.0f",ref->id,d.ammo?static_cast<Form*>(d.ammo)->id:0,d.rounds,before,d.ammo?number(getCount,static_cast<Form*>(d.ammo)):0);
   return true;
+ }
+
+ bool takePhysicalPart(PhysicalMag& m,Form* ref,void* player,bool held){
+  auto base=scene::field<Form*>(ref,0x20);bool empty=base&&base==emptyReloadPart();
+  if(!base||(!empty&&(base->type!=41||base->id!=m.ammoID)))return false;
+  int count=empty?1:int(physical_reload_adapter::stackCount(ref));if(count<1||count>10000)return false;
+  double before=number(getCount,base);unsigned id=m.refID;
+  // Retire all associations while the exact reference is still alive. Native
+  // Activate may destroy it synchronously. A failed transfer restores metadata
+  // only if this same live reference remains; never dereference a freed ref.
+  auto restoreMetadata=[&](){auto live=static_cast<Form*>(physical_reload_adapter::lookup(id));if(live==ref&&!(live->flags&0x20)){rememberPart(m);rememberIdentity(m,live);}};
+  number(partErase,ref);
+  if(!string(partGet,ref).empty()||partIdentity(ref,"_FC_PhysicalReloadWeapon")||partIdentity(ref,"_FC_PhysicalReloadAmmo")){restoreMetadata();return false;}
+  if(held){if(!build_adapter::stowSelectedGrab(player,ref)){restoreMetadata();return false;}}
+  else reinterpret_cast<void(__thiscall*)(void*,void*,int,int,int)>(0x573170)(ref,player,0,0,1);
+  double after=number(getCount,base);
+  if(after-before!=count){log("PHYSICAL MAG recovery inventory mismatch ref=%08X %.0f->%.0f expected=%d",id,before,after,count);restoreMetadata();return false;}
+  if(empty){number(removeEmptyPart,base);if(number(getCount,base)!=before){log("PHYSICAL MAG empty carrier removal failed ref=%08X",id);return false;}}
+  m.wasHeld=false;m.wasNearPouch=false;m.refID=0;
+  log("PHYSICAL MAG recovered ref=%08X rounds=%d",id,empty?0:count);return true;
+ }
+ int __cdecl recoverPhysicalMag(void* player,int hand){
+  if(!ready||!loaded||!gestureGameplayAllowed||!player||!initPartMetadata())return -1;auto b=build_adapter::heldModule();
+  physical_reload_adapter::recoverStage=4;
+  auto first=b[0x1114215]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x11146D0)):nullptr;
+  auto second=b[0x11142E4]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x11142EC)):nullptr;
+  physical_reload_adapter::recoverStage=5;
+  auto ref=first?first:second;if(!ref||(first&&second&&first!=second))return -1;
+  physical_reload_adapter::recoverStage=6;
+  int heldHand=*reinterpret_cast<int*>(b+(first?0xDC53E8:0x11142E8));if(heldHand!=hand)return -1;
+  physical_reload_adapter::recoverStage=7;
+  auto it=std::find_if(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;});
+  if(it==physicalMags.end()||!it->weaponID||!it->ammoID)return -1;
+  physical_reload_adapter::recoverStage=8;
+  Element equipped;unsigned weapon=0;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)weapon=equipped.value.form->id;release(equipped);
+  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2521E0)(player));
+  physical_reload_adapter::recoverStage=9;
+  if(weapon!=it->weaponID||!ammo||ammo->id!=it->ammoID)return -1;
+  physical_reload_adapter::recoverStage=10;
+  auto base=scene::field<Form*>(ref,0x20);bool empty=base==emptyReloadPart();if(!empty&&base!=ammo)return -1;
+  physical_reload_adapter::recoverStage=11;
+  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x257AD0)();
+  if(count<0||count>capacity||capacity<1)return -1;
+  physical_reload_adapter::recoverStage=15;physical_reload_adapter::recoverDistance=it->contactDistance;
+  // Scene publication is sampled together by tickPhysicalMags. This callback
+  // runs inside TTR's reload update, when live node transforms are intermediate.
+  // Consume only the immediately preceding main-thread contact observation.
+  if(!it->contactAt||GetTickCount64()-it->contactAt>50||it->contactHand!=hand||it->contactWeapon!=weapon)return -1;
+  it->contactAt=0;
+  physical_reload_adapter::recoverStage=16;
+  if(!takePhysicalPart(*it,ref,player,true))return -1;
+  return count;
+ }
+ bool nearPhysicalPouch(void* ref){
+  auto b=physical_reload_adapter::module;auto reloadSettings=build_adapter::liveReloadSettings();if(!b||!reloadSettings||reloadSettings[0x494]!=1)return false;
+  auto pouch=*reinterpret_cast<void**>(b+0x121F194);auto root=scene::root(ref);
+  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x121F260))pouch=*reinterpret_cast<void**>(b+0x121F180);
+  if(!root||!build_adapter::readPouchNode(pouch).readable)return false;
+  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x121F184))*pose.scale;
+  auto bound=scene::field<float*>(root,0x20);if(!bound)return false;
+  float threshold=*reinterpret_cast<float*>(reloadSettings+0x4CC)**reinterpret_cast<float*>(reloadSettings+0x28);
+  float distance=scene::distance(center,{bound[0],bound[1],bound[2]});
+  return std::isfinite(threshold)&&threshold>0&&std::isfinite(distance)&&distance<threshold;
  }
  void tickPhysicalMags(){
   if(!build_adapter::heldModule())return;
   if(GetTickCount64()-partDiscoverAt>3000){partDiscoverAt=GetTickCount64();discoverParts();}
   for(auto it=physicalMags.begin();it!=physicalMags.end();){auto ref=static_cast<Form*>(physical_reload_adapter::lookup(it->refID));
-   if(ref&&(ref->flags&0x20)){if(partErase)number(partErase,ref);if(it->visual)scene::release(it->visual);it=physicalMags.erase(it);}else ++it;}
+   if(!it->refID||(ref&&(ref->flags&0x20))){if(partErase&&ref)number(partErase,ref);if(it->visual)scene::release(it->visual);it=physicalMags.erase(it);}else ++it;}
+  Input partInput;{std::lock_guard<std::mutex> lock(inputMutex);partInput=input;}
   for(auto& m:physicalMags){if(!m.refID)continue;
    auto ref=static_cast<Form*>(physical_reload_adapter::lookup(m.refID));if(!ref)continue;
    if(m.metadataDirty&&GetTickCount64()-m.metadataAt>1000)rememberPart(m);
+   if(m.identityDirty&&GetTickCount64()-m.identityAt>1000)rememberIdentity(m,ref);
+   bool held=physical_reload_adapter::isHeld(ref);bool nearPouch=nearPhysicalPouch(ref);
+   m.contactAt=0;m.contactDistance=-1;m.contactHand=-1;m.contactWeapon=0;
+   if(held&&gestureGameplayAllowed&&physical_reload_adapter::module){
+    auto root=scene::root(ref);scene::Transform rest{};auto reloadSettings=build_adapter::liveReloadSettings();
+    if(reloadSettings&&reloadSettings[0x494]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
+     auto bound=scene::field<float*>(root,0x20);float units=*reinterpret_cast<float*>(reloadSettings+0x28);
+     if(bound&&std::isfinite(units)&&units>1){m.contactDistance=scene::distance({bound[0],bound[1],bound[2]},rest.p)/units;if(std::isfinite(m.contactDistance)&&m.contactDistance<=.12f){
+      auto b=physical_reload_adapter::module;m.contactHand=(b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==ref)?*reinterpret_cast<int*>(b+0xDC53E8):build_adapter::grabbedHand();
+      Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)m.contactWeapon=equipped.value.form->id;release(equipped);m.contactAt=GetTickCount64();
+     }}
+    }
+   }
+   if(m.wasHeld&&!held&&m.wasNearPouch&&nearPouch&&m.weaponID&&m.ammoID&&m.lastHeldHand>=0&&partInput.h[m.lastHeldHand].active&&partInput.h[m.lastHeldHand].grip<.2f&&GetTickCount64()-partInput.time<100&&gestureGameplayAllowed){if(takePhysicalPart(m,ref,playerForm(),false)){physical_reload_adapter::recoveredPouch++;continue;}}
+   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==ref)?*reinterpret_cast<int*>(b+0xDC53E8):build_adapter::grabbedHand();}
+   m.wasHeld=held;m.wasNearPouch=held&&nearPouch;
    auto root=scene::root(ref);
    if(m.fullModel){
     // Once native pickup owns a pending ref, its current pose wins. Never apply
@@ -790,7 +882,7 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse){
  gameDirectory=nvse->runtimeDirectory();std::string path=gameDirectory+"SeatedControls.log";logfile=_fsopen(path.c_str(),"w",_SH_DENYNO);
  scripts=static_cast<Scripts*>(nvse->queryInterface(6));arrays=static_cast<Arrays*>(nvse->queryInterface(5));consoleApi=static_cast<Console*>(nvse->queryInterface(1));auto messaging=static_cast<Messaging*>(nvse->queryInterface(2));
  if(auto data=static_cast<DataInterface*>(nvse->queryInterface(7)))inventoryRef=reinterpret_cast<InventoryRef*(__cdecl*)(u32)>(data->function(2));
- log("SeatedControls 1.5.0-beta; runtime %08X; nvse %u",nvse->runtime,nvse->version);
+ log("SeatedControls 1.5.1-beta; runtime %08X; nvse %u",nvse->runtime,nvse->version);
  if(!scripts||!arrays||!messaging||!inventoryRef||!build_adapter::verifiedTTWVR(GetModuleHandleW(L"TTWVR.dll")))return false;
  if(!enableInputLayer()){log("Input layer missing; reinstall the complete addon archive");return false;}
  log("OpenXR input layer enabled for this process");
