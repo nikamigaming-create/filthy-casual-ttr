@@ -1,4 +1,4 @@
-# Physical reload parts - 1.5.1 beta
+# Physical reload parts - 1.5.1 beta.2
 
 Manual reload parts become native world objects. Drop a spare, eject a magazine,
 or use TTR's Save Ammo action and release it. Pick it up with the original grip
@@ -7,10 +7,21 @@ Bring a recovered compatible magazine/cell to its gun's empty well, keep grippin
 align it and insert using TTR's original manual-reload movement. The exact rounds
 remaining in that part are retained; an empty magazine stays empty.
 
-To return a recovered part to the ammo pouch, hold it inside the pouch and release
-grip. X Take also remains available. Gravity gloves use the original gesture:
-point at the part, hold grip, then flick back. No extra pickup, throw or reload
-button is introduced.
+To return a recovered part, bring it onto the floating ammo/magazine holder in
+front-left of your torso, then **release grip**. This is TTR's native ammo-pouch
+marker, not a separate bag. Default seated placement is 40 cm forward, 18 cm
+left and 45 cm below the eyes. Override `PouchForwardCm`, `PouchSideCm` and
+`PouchBelowEyesCm` in `[Weapons]` if needed; explicit existing values take priority.
+X Take remains available. Gravity gloves use the original gesture: point at the
+part, hold grip, then flick back. No extra pickup or throw button is introduced.
+
+The material fix restores texture coordinates discarded after GPU upload from
+an exactly matching installed source mesh. Geometry, normals, vertex colors and
+topology must match; authored UV wrapping and runtime texture choices are retained.
+World copies clear only the first-person shader bit and normalize texture paths.
+Older cached parts repair into a new content-addressed file when loaded; original
+cache files remain intact. Source game/TTR files are read locally, never modified
+or bundled. A source mismatch leaves the release on TTR's native path.
 
 Automatic reload and returning a spare to the pouch retain TTR's behavior.
 This addon does not introduce another throw button or change native grip poses.

@@ -39,7 +39,7 @@ namespace {
  std::atomic<unsigned> uiEpoch{0};bool controlDrain[2][6]{};
  char settingsPath[MAX_PATH]{};float desiredHeight=1.65f;bool automaticReload=true;
  bool reloadPreferenceApplied=false;
- bool seatedAmmoPouch=true,pouchApplied=false;float pouchForward=.25f,pouchSide=0,pouchBelow=.45f;
+ bool seatedAmmoPouch=true,pouchApplied=false;float pouchForward=.40f,pouchSide=-.18f,pouchBelow=.45f;
  bool wristEnabled=false,wristInserted=false,wristAttached=false;
  hold_controls::State holdState;
  std::atomic<ULONGLONG> controlsAt{0};
@@ -124,7 +124,7 @@ namespace {
   holdState.doubleTapMs=std::clamp(GetPrivateProfileIntA("Controls","DoubleTapMs",450,path),200u,700u);
   fingerGestures=GetPrivateProfileIntA("Hands","FingerGestures",1,path)!=0;
   auto pouchValue=[&](const char* key,float def,float lo,float hi){char text[40],fallback[40];sprintf_s(fallback,"%.1f",def);GetPrivateProfileStringA("Weapons",key,fallback,text,sizeof(text),path);float v=float(atof(text));return (std::isfinite(v)?std::clamp(v,lo,hi):def)*.01f;};
-  pouchForward=pouchValue("PouchForwardCm",25,10,70);pouchSide=pouchValue("PouchSideCm",0,-60,60);pouchBelow=pouchValue("PouchBelowEyesCm",45,20,120);
+  pouchForward=pouchValue("PouchForwardCm",40,10,70);pouchSide=pouchValue("PouchSideCm",-18,-60,60);pouchBelow=pouchValue("PouchBelowEyesCm",45,20,120);
   char tmp[40]{};GetPrivateProfileStringA("Seated","HeightOffsetCm","0",tmp,sizeof(tmp),path);heightOffset=std::clamp(float(atof(tmp))*.01f,-.5f,1.2f);
   GetPrivateProfileStringA("Seated","TargetEyeHeightCm","165",tmp,sizeof(tmp),path);desiredHeight=std::clamp(float(atof(tmp))*.01f,1.1f,2.1f);
  }
@@ -247,10 +247,18 @@ namespace {
   release(e);
  }
 
+ std::vector<std::string> partSourceModels(Form* weapon,Form* ammo=nullptr){
+  std::vector<std::string> paths;
+  auto add=[&](Form* form){if(!form)return;auto path=string(getModel,form);if(path.empty())return;path="meshes\\"+path;if(std::find(paths.begin(),paths.end(),path)==paths.end())paths.push_back(path);};
+  if(weapon&&weapon->type==40){for(unsigned offset=0x250;offset<0x270;offset+=4)add(scene::field<Form*>(weapon,offset));add(weapon);}add(ammo);return paths;
+ }
  bool __cdecl commitPhysicalMag(const physical_reload_adapter::Drop& d){
   if(!ready||!loaded||!initPartMetadata())return false;
   auto carrier=physical_reload_adapter::loadVisual("meshes\\FilthyCasual\\reload-carrier.nif");if(!carrier)return false;scene::retain(carrier);
   auto model=physical_reload_adapter::clone(d.visual);if(!model){scene::release(carrier);return false;}scene::retain(model);
+  Element sourceWeapon;Form* weapon=nullptr;if(call(getEquipped,sourceWeapon)&&sourceWeapon.type==2)weapon=sourceWeapon.value.form;
+  auto sources=partSourceModels(weapon,static_cast<Form*>(d.ammo));release(sourceWeapon);
+  if(!physical_reload_adapter::restoreAuthoredUV(model,sources)){log("PHYSICAL MAG authored UV restore failed (%u paths); left native",unsigned(sources.size()));for(auto& path:sources)log("PHYSICAL MAG UV source %s",path.c_str());scene::release(model);scene::release(carrier);return false;}
   physical_reload_adapter::stripControllers(model);
   scene::Transform identity{};identity.r[0][0]=identity.r[1][1]=identity.r[2][2]=1;identity.scale=1;
   scene::local(carrier)=identity;scene::local(model)=identity;scene::local(model).scale=d.pose.scale;scene::update(model);
@@ -389,8 +397,11 @@ namespace {
     if(!m.modelAssigned){
      if(physical_reload_adapter::isHeld(ref)||GetTickCount64()<m.retryAt)continue;m.retryAt=GetTickCount64()+3000;
      if(GetFileAttributesA((gameDirectory+"Data\\meshes\\"+m.cache).c_str())==INVALID_FILE_ATTRIBUTES)continue;
-     auto checked=physical_reload_adapter::loadVisual(("meshes\\"+m.cache).c_str());if(!checked)continue;scene::retain(checked);bool fitted=!scene::find(checked,"FCReloadCarrierVisual")&&strcmp(scene::name(checked),"FCReloadPart")==0;scene::release(checked);if(!fitted)continue;
-     if(number(partModel,ref,m.cache.c_str())!=1)continue;m.modelAssigned=true;m.retryAt=0;if(root)physical_reload_adapter::rebuildReference(ref);continue;
+     auto candidateCache=m.cache;if(!physical_reload_adapter::worldCache(gameDirectory+"Data\\meshes\\",candidateCache,partSourceModels(static_cast<Form*>(physical_reload_adapter::lookup(m.weaponID)),static_cast<Form*>(physical_reload_adapter::lookup(m.ammoID)))))continue;
+     auto checked=physical_reload_adapter::loadVisual(("meshes\\"+candidateCache).c_str());if(!checked)continue;scene::retain(checked);bool fitted=!scene::find(checked,"FCReloadCarrierVisual")&&strcmp(scene::name(checked),"FCReloadPart")==0;scene::release(checked);if(!fitted)continue;
+     if(number(partModel,ref,candidateCache.c_str())!=1)continue;
+     if(candidateCache!=m.cache){m.cache=candidateCache;rememberPart(m);log("PHYSICAL MAG migrated world shader ref=%08X",m.refID);}
+     m.modelAssigned=true;m.retryAt=0;if(root)physical_reload_adapter::rebuildReference(ref);continue;
     }
     if(!root||m.attached)continue;
     if(strcmp(scene::name(root),"FCReloadPart")||scene::find(root,"FCReloadCarrierVisual")){if(GetTickCount64()>m.retryAt){m.retryAt=GetTickCount64()+3000;physical_reload_adapter::rebuildReference(ref);}continue;}

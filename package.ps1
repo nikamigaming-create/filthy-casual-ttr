@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.5.1-beta.zip')
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.5.1-beta.2.zip')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -35,7 +35,7 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.5.1-beta'
+    version = '1.5.1-beta.2'
     architecture = 'x86'
     supportedTTWVR = 'C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB'
     sourceCommit = "$sourceCommit".Trim()

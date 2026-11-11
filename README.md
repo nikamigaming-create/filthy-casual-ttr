@@ -10,7 +10,7 @@ Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
 and set a comfortable seated eye height. An independent addon for an existing
 **Tale of Two Wastelands VR** installation.
 
-**Revision 1.5.1 beta (local candidate).** Modified thumbrest double taps open the
+**Revision 1.5.1 beta.2 (local candidate).** Modified thumbrest double taps open the
 selectors; left Menu tap/hold changes reload mode or opens seated settings.
 Empty hands have smooth thumb and index gestures. Physical-headset acceptance
 of the newest integration remains pending. The new phone video accompanies the
@@ -34,7 +34,7 @@ requirements. This addon supports one exact TTWVR build; check the
 [supported DLL and detailed installation guide](docs/INSTALL.md).
 
 1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.5.1-beta.zip`.
+   `Filthy-Casual-TTR-1.5.1-beta.2.zip`.
 2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
 3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
    file priority. Keep the base TTWVR mod enabled.

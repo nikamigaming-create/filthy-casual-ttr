@@ -2,6 +2,7 @@
 #include "reload_adapter.hpp"
 #include "scene_adapter.hpp"
 #include "reload_carrier_data.hpp"
+#include "reload_world_nif.hpp"
 // Exact-build release transaction. The callback must commit a real world object
 // before returning true; false resumes the untouched native release path.
 namespace physical_reload_adapter {
@@ -282,6 +283,52 @@ inline void* loadVisual(const char* path){
  auto model=reinterpret_cast<void*(__thiscall*)(void*,const char*,unsigned,bool,unsigned,bool,bool)>(0x447080)(loader,path,0,true,0,false,true);
  return model?clone(model):nullptr;
 }
+// Load the authored stream without ModelLoader's renderer upload/CPU UV purge.
+// BSStream constructor43CFD0 and vtable1016904 verified on FNV1.4.0.525.
+// Bethesda stream overrides are required for collision-bearing source files.
+// topObjects layout: JIP GameTasks.h / Ni_types.h.
+inline void* loadAuthored(const char* path){
+ const unsigned char signature[]={0xC7,0x00,0x04,0x69,0x01,0x01};if(memcmp(reinterpret_cast<const void*>(0x43D008),signature,sizeof(signature)))return nullptr;
+ alignas(16) unsigned char stream[0x5D4]{};reinterpret_cast<void(__thiscall*)(void*)>(0x43CFD0)(stream);
+ auto vt=*reinterpret_cast<void***>(stream);bool ok=reinterpret_cast<bool(__thiscall*)(void*,const char*)>(vt[3])(stream,path);
+ void* root=nullptr;auto count=scene::field<unsigned>(stream,0x228);auto entries=scene::field<void**>(stream,0x220);
+ if(ok&&entries&&count==1){root=entries[0];scene::retain(root);}
+ reinterpret_cast<void(__thiscall*)(void*,bool)>(vt[0])(stream,false);return root;
+}
+inline bool missingUV(void* node){std::vector<scene::Box> shapes;scene::boxes(node,shapes);for(auto& shape:shapes){auto data=scene::field<void*>(shape.node,0xB8);if(!scene::field<void*>(data,0x2C)||(scene::field<unsigned short>(data,0xC)&63)==0)return true;}return false;}
+// Replace only the private clone's data, only on exact vertex/normal identity.
+// Keep source UV seams and triangle topology; never synthesize texture mapping.
+inline bool sameTopology(void* a,void* b){
+ const auto type=scene::field<unsigned>(a,0);if(type!=scene::field<unsigned>(b,0))return false;
+ if(type==0x109D8AC){
+  auto n=scene::field<unsigned short>(a,0x44);if(!n||n!=scene::field<unsigned short>(b,0x44))return false;
+  auto al=scene::field<unsigned short*>(a,0x48),bl=scene::field<unsigned short*>(b,0x48);
+  if(!al||!bl||memcmp(al,bl,n*2))return false;unsigned total=0;for(unsigned i=0;i<n;i++)total+=al[i];
+  auto ai=scene::field<void*>(a,0x4C),bi=scene::field<void*>(b,0x4C);return total&&total<=1000000&&ai&&bi&&!memcmp(ai,bi,total*2);
+ }
+ if(type==0x109DAC4){auto n=scene::field<unsigned>(a,0x44);auto ai=scene::field<void*>(a,0x48),bi=scene::field<void*>(b,0x48);return n&&n<=1000000&&n==scene::field<unsigned>(b,0x44)&&ai&&bi&&!memcmp(ai,bi,n*2);}
+ return false;
+}
+inline bool restoreAuthoredUV(void* node,const std::vector<std::string>& paths){
+ if(!missingUV(node))return true;
+ std::vector<scene::Box> targets;scene::boxes(node,targets);
+ for(const auto& path:paths){auto source=loadAuthored(path.c_str());if(!source)continue;
+  std::vector<scene::Box> candidates;scene::boxes(source,candidates);
+  for(auto& shape:targets){auto data=scene::field<void*>(shape.node,0xB8);if(scene::field<void*>(data,0x2C)&&(scene::field<unsigned short>(data,0xC)&63))continue;
+   auto n=scene::field<unsigned short>(data,8);auto vertices=scene::field<void*>(data,0x20);auto normals=scene::field<void*>(data,0x24);
+   for(auto& candidate:candidates){auto donor=scene::field<void*>(candidate.node,0xB8);
+    if(scene::field<unsigned short>(donor,8)!=n||!scene::field<void*>(donor,0x2C)||!(scene::field<unsigned short>(donor,0xC)&63)||!vertices||!scene::field<void*>(donor,0x20))continue;
+    if(!sameTopology(data,donor)||memcmp(vertices,scene::field<void*>(donor,0x20),n*12))continue;
+    auto donorNormals=scene::field<void*>(donor,0x24);if(bool(normals)!=bool(donorNormals))continue;
+    auto colors=scene::field<void*>(data,0x28),donorColors=scene::field<void*>(donor,0x28);if(bool(colors)!=bool(donorColors)||(colors&&memcmp(colors,donorColors,n*16)))continue;
+    if(normals&&(!scene::field<void*>(donor,0x24)||memcmp(normals,scene::field<void*>(donor,0x24),n*12)))continue;
+    scene::retain(donor);scene::field<void*>(shape.node,0xB8)=donor;scene::release(data);break;
+   }
+  }
+  scene::release(source);if(!missingUV(node))return true;
+ }
+ return false;
+}
 // Patch only our serialized carrier's box and inertia. Never mutate a live or
 // shared Havok shape. Strict FNV NIF header and block layout checks fail closed.
 inline bool fitCarrierFile(const char* path,scene::Vec half){
@@ -306,6 +353,7 @@ inline bool fitCarrierFile(const char* path,scene::Vec half){
   put(box+4,std::min(.02f,std::min({h[0],h[1],h[2]})*.2f));for(int i=0;i<3;i++)put(box+16+i*4,h[i]);
   for(int i=0;i<12;i++)put(body+116+i*4,0);for(int i=0;i<3;i++)put(body+116+i*20,.15f*(h[(i+1)%3]*h[(i+1)%3]+h[(i+2)%3]*h[(i+2)%3])/3);
  }catch(...){return false;}
+ bool changed=false;if(!reload_world_nif::normalize(data,changed))return false;
  if(fopen_s(&f,path,"wb"))return false;ok=fwrite(data.data(),1,data.size(),f)==data.size();ok=fclose(f)==0&&ok;return ok;
 }
 inline void stripControllers(void* node,int depth=0){
@@ -332,6 +380,38 @@ inline std::string hashFile(const char* path){
  if(ferror(f))ok=false;fclose(f);if(ok)ok=BCryptFinishHash(hash,digest,32,0)>=0;
  if(hash)BCryptDestroyHash(hash);if(alg)BCryptCloseAlgorithmProvider(alg,0);if(!ok)return {};
  std::string result;for(auto b:digest){result.push_back("0123456789abcdef"[b>>4]);result.push_back("0123456789abcdef"[b&15]);}return result;
+}
+// Content-addressed migration: preserve old files/save references, publish a new
+// digest only after a fully validated transform. Caller updates its own metadata.
+inline bool worldCache(const std::string& meshRoot,std::string& cache,const std::vector<std::string>& sources){
+ static std::unordered_map<std::string,std::string> migrated;
+ auto found=migrated.find(cache);if(found!=migrated.end()){cache=found->second;return true;}
+ const auto source=meshRoot+cache;FILE* f=nullptr;if(fopen_s(&f,source.c_str(),"rb"))return false;
+ fseek(f,0,SEEK_END);auto size=ftell(f);rewind(f);if(size<128||size>16*1024*1024){fclose(f);return false;}
+ std::vector<unsigned char> data(size);bool ok=fread(data.data(),1,data.size(),f)==data.size();fclose(f);
+ bool changed=false,needsUV=false;if(!ok||!reload_world_nif::normalize(data,changed,&needsUV))return false;
+ if(!changed&&!needsUV){migrated[cache]=cache;return true;}
+ auto root=loadVisual(("meshes\\"+cache).c_str());scene::retain(root);if(!root)return false;
+ if(strcmp(scene::name(root),"FCReloadPart")||scene::find(root,"FCReloadCarrierVisual")){scene::release(root);return false;}
+
+ const auto folder=meshRoot+"FilthyCasualLocal\\Reload\\";
+ const auto temporary=folder+"world-"+std::to_string(GetCurrentProcessId())+".tmp";
+ if(needsUV){
+  ok=restoreAuthoredUV(root,sources);
+  if(ok){scene::update(root);std::vector<scene::Box> boxes;scene::boxes(root,boxes);scene::Vec extent{};if(boxes.empty())ok=false;else scene::boxCenter(boxes,&extent);
+   auto half=extent*.5f;half={std::max(.3f,half.x),std::max(.3f,half.y),std::max(.3f,half.z)};
+   if(ok)ok=exportVisual(root,temporary.c_str())&&fitCarrierFile(temporary.c_str(),half);
+  }
+ }else{
+  ok=fopen_s(&f,temporary.c_str(),"wb")==0;if(ok){ok=fwrite(data.data(),1,data.size(),f)==data.size();ok=fclose(f)==0&&ok;}
+ }
+ scene::release(root);
+ const auto digest=ok?hashFile(temporary.c_str()):std::string{};if(digest.empty()){DeleteFileA(temporary.c_str());return false;}
+ const auto destination=folder+digest+".nif";
+ if(GetFileAttributesA(destination.c_str())!=INVALID_FILE_ATTRIBUTES){ok=hashFile(destination.c_str())==digest;DeleteFileA(temporary.c_str());}
+ else ok=MoveFileA(temporary.c_str(),destination.c_str())!=0;
+ if(!ok){DeleteFileA(temporary.c_str());return false;}
+ auto replacement="FilthyCasualLocal\\Reload\\"+digest+".nif";migrated[cache]=replacement;cache=replacement;return true;
 }
 inline void* placeEmpty(void* player,void* base){return player&&base?reinterpret_cast<void*(__cdecl*)(void*,void*,unsigned,unsigned,unsigned,float)>(0x5C4B30)(player,base,1,0,0,1):nullptr;}
 inline void* dropAmmo(void* player,void* ammo,unsigned count){
