@@ -21,3 +21,6 @@ Prepare-Pool.ps1 reads the user's verified original installation to generate
 three local integration scripts. These local generated outputs are excluded
 from source and release archives. Animation tracks are newly authored against
 the locally read game bind rig; no retail skeleton or animation is included.
+
+Tutorial cards, highlight geometry and reload carrier assets are newly authored.
+TTR handling data is read from the user installation and is not distributed.

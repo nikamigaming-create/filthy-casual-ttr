@@ -1,3 +1,199 @@
+Seated Controls 1.1 adapter record — TTWVR PE32 timestamp 6AF014A8
+TTWVR SHA-256: C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB
+Selection-only addon SHA-256: 128723EFB7F2B8019E0B492DF5CE80D1BF13511D10748ED2B01C3841AB5A90B3
+
+Scope and evidence
+This replaces the stale address record for TTWVR timestamp 6AEEFDD8. TTWVR
+addresses below are RVAs for the supported hash only, as recorded in the current
+build adapter. Native entry-point calling conventions were established during
+the bounded local binary investigation and corroborated by the isolated native
+handoff tests. This documentation update is a source audit, not a fresh binary
+disassembly or a new physical-headset acceptance run.
+
+The prior native-handoff revision passed all 27 tests/acceptance.ps1 assertions,
+including the full two-slot release correction. The final selection-only binary
+above rebuilt successfully after save-handling removal; the prior 27-check run
+does not certify those subsequent lifecycle edits. See docs/STATUS.md for the
+current test/capture boundary.
+
+Hash guard and reload default
+The addon hashes the loaded TTWVR file and refuses every other hash. The reload
+adapter also checks PE32 architecture/timestamp and the exact default-table
+pointers/text. RVA 7443C8 is {section="Reload", key="bManual", value="1"}; its
+expected pointers are 745E08, 745E10, and 745064. Only value is replaced with a
+process-lifetime "0" string. No TTWVR disk patch is made. Prerequisites and
+message registration complete before publishing this pointer; no plugin-load
+failure return follows a successful patch.
+Runtime corroboration on this base hash: native pistol ammunition reaches empty,
+reloads to 12, then decreases to 11 on the next shot.
+
+Weapon draw
+Native holster-draw transition RVA 1ED055..1ED0A6 supplies the adapter contract.
+RVA 1E17B0 is cdecl(bool left, const char* reason). The adapter clears released
+weapon pointer 11EF6C8, records GetTickCount64 at 11EF6D0, sets pending hand at
+DC71B8, clears byte 11EF6A5, and zeros release timeout float 11EF6E0.
+Hand values: left 0, right 1. Either-hand wheel contact selects right hand.
+The game still performs EquipItemAlt/SetWeaponOut; separate holster/equip/draw
+frames prevent native weapon-change cleanup from canceling the draw request.
+
+Native ordinary aid
+xNVSE GetInvRefsForItem and DataInterface function 2 provide the owned inventory
+instance. InventoryRef layout is 0x30 bytes; extra data is at 08, container at
+0C, and removed at 2D, checked against public xNVSE InventoryRef.h.
+TESObjectREFR::RemoveItem virtual slot 17C, using the JIP LN GameObjects.h ABI,
+drops one actual instance and returns its world reference. The original extra
+data is passed through. The selector verifies inventory decreased by exactly
+one, marks the temporary inventory reference removed, positions the dropped
+reference, and requests the native grab. It does not clone a held aid mesh.
+RVA 19AE90: cdecl(player, world-head-position, right-hand-bool, required-ref).
+The required reference limits proximity picking to the selected actual item.
+Native primary state: active byte 1114215, reference 11146D0, hand DC53E8.
+Secondary state: active byte 11142E4, hand 11142E8, reference 11142EC.
+Explicit replacement uses cdecl release-all RVA 1930E0, which releases both
+slots and cancels pulls. Releasing only the primary slot left a stale secondary
+reference and caused a crash; that partial-release path is not used for stow.
+After release, captured distinct references use game Activate at VA 00573170,
+matching TTWVR's backpack call at RVA 19C4DD. Both hands can therefore be stowed
+by replacement. No custom eat/trigger consumption is introduced.
+
+Native Stimpak
+Form 00015169 takes the native live-Stim path: count helper RVA 7D3D, right-hand
+bone RVA 315680, model attachment RVA 315800, and successful neck-selection
+state transition corresponding to RVA 316641. Native state at DCE99C records
+right hand. Replacement clears live-Stim with cdecl RVA 315E40(player, reason).
+The selector chooses the native object; TTWVR retains trigger/body-stab use and
+consumption. Prior QA verified selection leaves five doses and one native stab
+leaves four, with native Stim hand reset to -1.
+
+Preview and input contract
+JIP InsertNode/AttachModel creates collisionless preview scene nodes. WorldPin
+retains their source/home/world-root references and restores them before detach.
+Previews use compact scales; the actual held world item uses authored scale.
+Tracked third-person rig positions and cached literal GetNifBlockTranslation
+queries drive touch tests, including palm and fingertip bounds.
+
+1.4.0 empty-hand finger extension (same exact TTWVR SHA-256 above):
+RVA1E01B8 call ->1C4870, cdecl(root,hand,float); EBX preserves outer argument
+frame, +10 byte posed-object and +14 object pointer. Five-argument assembly bridge
+captures both before C++ and always invokes the native pose first. Either context
+flag/pointer, either held slot1114215/11142E4, or stim hand DCE99C>=0 rejects edits.
+Native1DF020 cdecl(root,table,count,curls15) uses80-byte rows, group+72/joint+76;
+first6 rows at8F0BE0(left)/8F0730(right) target thumb/index only. Exact relocated
+name-pointer guards include Finger1 names at743388/743374. Native1CE5E0 smooths
+and publishes after this call. Full file hash and surrounding instructions guarded.
+Runtime PID22800 proves both hands' distinct poses and native weapon/aid veto.
+SeatedControls enables the packaged explicit OpenXR layer via process-local
+XR_API_LAYER_PATH and XR_ENABLE_API_LAYERS before TTWVR creates its XR instance.
+Raw controller values reach selector detection before input filtering. Height
+offsets remap reference spaces consistently for locate and frame submission.
+
+Native lifecycle ownership
+There is no addon SaveGame callback, AuxVar marker, save recovery, co-save
+registration, or AddItem fallback. PreLoad/exit only discard addon state and
+preview nodes; menu/focus loss and opening height controls do not stow native
+held aid. The game and TTWVR own native held-reference saving/loading. A lower
+inventory count while an actual item is in the world is not proof of item loss.
+
+Revision 1.2 neutral selection
+No new native addresses or calling conventions. Center selection reuses the
+verified clearStim, full stowGrab, and SetWeaponOut 0 paths above. Runtime checks
+confirmed weapon holstering, native grabbed aid returned without consumption,
+and live-Stim clearance with unchanged dose count. Caps001 resolved to 0000000F;
+GetModelPath supplies its locally owned mesh for a collisionless preview only.
+The cap is not dropped, activated, equipped, or removed from inventory.
+
+Revision 1.2.1 selected-weapon resume
+No new native addresses or calling conventions. Uses the existing verified
+requestHandDraw(1) and native SetWeaponOut 1, with the same equipped form ID.
+GetDialogueTarget, GetPlayerControlsDisabled combat flag, GetDead, and MenuMode
+guard the request. Only in-memory intent is retained, cleared on explicit empty
+selection, replacement, and pre-load/exit. Final weapon-resume.ps1 passed 10
+assertions, including native A reload, pause-menu return, combat-control guards,
+and cap clearing. Actual NPC conversation remains a physical acceptance check.
+
+Revision 1.2.2 aid menu retention and explicit Y use
+No new native offsets. The existing active-action grip latch is maintained
+before the gameplay/menu input gate; inactive XR actions are not forced active.
+The pre-fix pause transition changed nativeGrabRef from FF002D70 to zero. The
+fixed transition retained the identical reference and latch. Explicit grip
+release still drops normally. Y is owned only for selected ordinary aid, drained
+through release, and defers to height/selector panels. Native full stow returns
+held references; normal EquipItemAlt uses one aid with its engine effects.
+The count guard allows one or two matching native stow returns and verifies a
+single decrement from the post-stow count. No SaveGame, co-save, recovery,
+AddItem, or direct health/effect writes were added to the addon. QA-only test
+setup uses fixture inventory/health commands. A 17-assertion runtime pass
+covered retention, food healing/count, explicit release, Y/Pause separation,
+native Stimpak use, and full-stick IsRunning=1. The subsequent two-slot count
+guard fix was source-reviewed; dual-hand same-food runtime remains unverified.
+
+Simulator boundary
+Tests use the local bvr-xrsim32 development runtime and isolated QA saves.
+SC_TEST_NO_UPSCALER=1 enables a hash-guarded test-only default override at
+RVA 743EC4 for DLSS/bEnabled. It is not a headset setting. Final-eye captures
+must accompany visible-model claims; native IDs and scale alone do not prove
+visual correctness. Physical comfort/reach for the final revision remains a
+user headset acceptance item.
+
+2026-11-08 native Quest Menu binding audit (no new native hook):
+Exact TTWVR hash remains C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB.
+menu_click created at RVA53AB80/53AB85, backend action at+2AD8/+2ADC.
+Touch left menu path assigned53AE03, Touch suggestions53AE54/53AE5F.
+Polling54C692/54C698 publishes byte+22 at54C6A4. Y is separate+21.
+Menu's downstream gameplay effect unverified; 1.4.1 intentionally overrides
+left Menu in live gameplay for user-requested tap reload/hold settings.
+
+1.4.2 independent-hand correction (same verified base hash):
+Native caller passes shared weapon object to both pose dispatches1E852A/1E8570.
+Pure cdecl bool policy1DB4C0(hand,objectPresent) supplies per-hand posedObject.
+Pure cdecl bool18A630(hand): primary1114215+DC53E8, secondary11142E4+11142E8,
+additional per-hand active1114590+hand*98. StimpakDCE99C compared to hand.
+Thumb table row layout: name0, NiTransform4, bend axis56, degrees68,group72,joint76.
+Native Apply1DF020 reads curl[group*3+joint], left-multiplies parent-axis bend.
+Final added thumb lift uses root12degree limit and MCP extension in authored
+parent frames before native smoothing/publication. No hand/root/mesh scaling.
+2026-11-08 combined local presentation adapters (C9D047D4...9EB only):
+  World HUD manager+3040 descriptor is published to SubmitInfo+B50 by56EFE7.
+  Info108060 and loot111E20 call native target bounds1929B0 (cdecl3 args,
+  bool/plainret), world->tracking572320 (thiscall,ret8), world orientation
+  ->tracking572010 (thiscall,ret8,output quaternion pointer).
+  Calls:10846F/1133ED->25D1;108925/113854->218A5;
+        10894C/11387B->16FE;112273->123460.
+  Selection123460 is cdecl(List*,formID,int[2]); entry stride160. Native caller
+  publishes selected form/index/auxiliary identity after the adapter returns.
+  Top-level loot E7E318; detail mode E7D95B; visible top D8CD30; selected E7E32C.
+  Shared-page call installation writes all sites before reverse protection
+  restoration. tests/check-presentation.cmd covers this startup regression.
+  Dialogue56BE82->12FD->568BA0 is cdecl5args. Last float is DOWNWARD PITCH,
+  not yaw. Rotate horizontal input instead; keep pose and direction paired.
+  Scope3394AB E8 30 2E FF FF ->32C2E0 is cdecl9args; third is D3D9 device.
+  Scope buffer copy adapter is owned by local graphics in ordinary launches.
+
+
+2026-11-09 optional Filthy Casual Pool local build:
+  Exact TTR SHA256 C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB.
+  FNV1.4.0.525, xNVSE6.4.9. Public xNVSE events interface8 / scripts6 / arrays5.
+  ExtraPackage backup link reads: actor extra list48, extra type4,next8,packageC;
+  type19 is backup, not current script package. JIP GetCurrentStablePackage
+  identifies the current package. Only owned package802 is removed.
+  Native world-to-tracking uses already verified TTR manager101E0 / method572320.
+  Optional input wrappers observe xrCreateActionSpace/xrLocateSpace/DestroySpace
+  through original dispatch and height layer, preserving instance/session flow.
+  Tracking invalidation resets stroke history. No new camera/render/save hook.
+  Native dialogue INFO owns new topic; first greeting00104E7E augmented via
+  JohnnyGuitar DialogResponseAddRelatedTopic with duplicate guard. Link From
+  GREETING on own INFO; no original records overridden.
+  Bounded final tests: Sunny visual PID26204; repeat/practice PID31472.
+
+2026-11-09 tested local revision:
+Native dual-grab alias: RVA194E00 compares active references and context pointers;
+equal NULL contexts are valid. Native197479..1974A3 caches alias state, releases
+primary193130, swaps195D10, releases, swaps back, activates once00573170.
+Final PID48664 verifies one food consumed, native healing, X/A no duplication,
+and native grip mode excludes mouth use. Pool uses actual hand/cue world contact,
+read-only owned idle time, measured0.95rigscale and public GetDialogueTarget
+settle gate. PID40920 repeat challenge/player stroke/tracking-loss/B exit PASS;
+PID48664 complete final Sunny stroke PASS. Exact supported TTR hash unchanged.
 
 2026-11-10 physical reload parts (same supported TTWVR SHA256):
 - Guarded sites288B96,2868FD,258F90,283C8D,284005,284032; native success
@@ -34,3 +230,17 @@ the exact live ref exists, before native Activate. Failed transfer restores only
 if original ID still resolves the same nondeleted ref. No blanket validation of
 unloaded references. Final native smoke verified all3map sizes0 after recovery.
 Gameplay/focus gate explicitly applies to contact qualification and handoff.
+
+2026-11-10 world-part material correction:
+NiGeometryData UV+2C is purged in live carbine clone; serialized cache had zero
+UV sets. Winning TTW source ##Clip:0 matched276positions, normals and strip
+indices; source UV restored without clamp. Private clone geometryData replaced
+only after exact type/vertices/normals/colors/topology validation.
+World shader flags2 FirstPerson0x40 cleared; runtime Data\ texture prefix stripped.
+Raw NiStream cannot safely read collision-bearing sources; isolatedPID35148
+asserted. Final source loader uses verified BSStream ctor43CFD0 / vtable1016904 /
+size5D4 / virtualDestroy(false). Ctor/destructor verified from live isolated
+process bytes. Carrier migration uses native ModelLoader; no raw Havok load.
+PID36548 passed carbine old-cache save/load migration, reinsertion+pouch,
+plasma gravity/reinsertion+pouch and10mm reinsertion+pouch with exact counts.
+Final core078D84C82F3149FF34163A784B84BEB55007019DB76F5186677CF8F0C32948D4, PID43720 passed rifle migration+pouch / plasma+pouch /9mm+pouch. Normal profile installed; input and personal INI preserved.

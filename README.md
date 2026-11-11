@@ -2,6 +2,8 @@
 
 # Filthy Casual TTR
 
+[**All three mods: source and downloads**](docs/ALL-MODS.md)
+
 **We love A Tale of Two Realities. We're just filthy casuals.**
 
 Can't be bothered to reload? Tired of digging for snacks? Stay seated.
@@ -10,22 +12,24 @@ Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
 and set a comfortable seated eye height. An independent addon for an existing
 **Tale of Two Wastelands VR** installation.
 
-**Revision 1.5.1 beta.2 (local candidate).** Modified thumbrest double taps open the
-selectors; left Menu tap/hold changes reload mode or opens seated settings.
-Empty hands have smooth thumb and index gestures. Physical-headset acceptance
-of the newest integration remains pending. The new phone video accompanies the
-local beta package.
+**Revision 1.6.0-dev.1 (TTR 1.1 development candidate).** Optional in-world reload
+lessons teach the distinct mechanisms, using the installed weapon's own parts.
+Triple-tap left Menu to toggle the guide. It starts off each launch.
+Mechanism coverage and the outdoor tutorial video are still being verified;
+this is an incomplete-coverage development prerelease.
+[Development coverage and acceptance](docs/WEAPON-TUTORIAL.md).
+
 Recovered magazines and cells can return to the gun through native manual reload,
 or to the ammo pouch on grip release. [Controls and compatibility](docs/PHYSICAL_PARTS.md).
 Graphics tuning (DLSS, anti-aliasing, resolution, or reprojection) is separate
 from this addon and is not included in its package.
 
-[Current public release (1.4.5)](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.4.5) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+[TTR 1.1 development download](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.6.0-dev.1) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
 
 **Choose independently:** this seated addon does not need pool. Filthy Casual
 Pool needs only working TTR plus the separately downloaded original pool mod;
 it does not require this addon. If you use both, install version 1.4.5 or newer
-of Filthy Casual TTR. The original mods are linked, never bundled.
+of Filthy Casual TTR for legacy TTR, or the matching TTR 1.1 builds listed below. The original mods are linked, never bundled.
 
 ## Install through Mod Organizer 2
 
@@ -34,7 +38,7 @@ requirements. This addon supports one exact TTWVR build; check the
 [supported DLL and detailed installation guide](docs/INSTALL.md).
 
 1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.5.1-beta.2.zip`.
+   `Filthy-Casual-TTR-1.6.0-dev.1.zip`.
 2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
 3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
    file priority. Keep the base TTWVR mod enabled.
@@ -76,7 +80,7 @@ Loss of the opposite thumbrest contact and tracking/menu interruptions cancel
 an unfinished sequence. Resting both thumbs without tapping opens nothing. `[Controls] DoubleTapMs=450` sets
 the gap allowed between taps (200–700 ms). `HoldMs=1000` controls Menu only.
 
-A short left Menu press toggles reload **on release**. A full hold opens settings
+Development tutorial build: a short left Menu press toggles reload after a **450 ms** click window. Triple-tap toggles the optional weapon guide; a double tap cancels. A full hold opens settings
 and never also toggles reload. These actions are available during gameplay with
 our panels closed. **Left Menu already has a native TTR binding; this intentionally
 replaces it during gameplay.** It passes through in native menus. Y Pause and
@@ -156,7 +160,7 @@ open; B remains close/back.
 
 Manual mode uses TTR's reload system. The addon positions its native ammo pouch
 in seated reach, anchored to the torso rather than your gaze. Look down toward
-your lap. Defaults are 25 cm forward, centered, and 45 cm below eye height.
+your lap. Defaults are40cm forward,18cm left, and45cm below eye height.
 The native pouch controls visibility and magazine handling.
 
 In `NVSE/Plugins/SeatedControls.ini`, `[Weapons] AutomaticReload=0` starts in

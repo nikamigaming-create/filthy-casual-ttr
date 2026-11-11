@@ -42,12 +42,37 @@ int main(){
   bounce.update(combo,220,true,true);assert(bounce.update(combo,300,true,true)==None);
   State resumed;resumed.update(combo,0,true,true);resumed.update(modifier,100,true,true);resumed.update(combo,200,true,true);assert(resumed.update(combo,250,true,true)==None);
  }
- {State s;s.update(0,0,true,true);s.update(4,10,true,true);assert(s.menuOwned);assert(s.update(0,110,true,true)==Reload);assert(!s.menuOwned);}
+ {State s;s.update(0,0,true,true);s.update(4,10,true,true);assert(s.menuOwned);assert(s.update(0,110,true,true)==None);assert(!s.menuOwned);assert(s.update(0,560,true,true)==None);assert(s.update(0,561,true,true)==Reload);assert(s.update(0,900,true,true)==None);}
  {State s;s.update(0,0,true,true);s.update(4,10,true,true);assert(s.update(4,1009,true,true)==None);assert(s.update(4,1010,true,true)==Settings);assert(s.update(0,2000,true,true)==None);}
  {State s;s.update(0,0,true,true);s.update(4,10,true,true);s.update(4,1000,true,true);assert(s.update(0,1020,true,true)==Settings);}
  {State s;s.update(4,0,true,true);assert(s.update(4,2000,true,true)==None);assert(s.update(0,2100,true,true)==None);}
  {State s;s.delayMs=1500;s.update(0,0,true,true);s.update(4,10,true,true);assert(s.update(4,1010,true,true)==None);assert(s.update(4,1510,true,true)==Settings);}
  {State s;s.update(2,0,true,true);s.update(3,100,true,true);s.update(2,180,true,true);s.update(6,220,true,true);s.update(7,280,true,true);assert(s.update(7,330,true,true)==None);assert(s.update(7,1220,true,true)==Settings);}
  {State s;s.update(0,0,true,true);assert(s.update(3,100,true,true)==None);assert(s.update(3,5000,true,true)==None);assert(s.update(0,5100,true,true)==None);}
- puts("PASS: opposite-thumbrest double taps, old stick modifier rejected, debounce, timeout, cancellation, single-fire and Menu exclusion");
+ // Triple Menu must not emit ANY intervening reload, even while waiting.
+ {State s;s.update(0,0,true,true);
+  for(int n=0;n<3;n++){
+   assert(s.update(4,100+n*200,true,true)==None);
+   assert(s.update(0,180+n*200,true,true)==(n==2?Tutorial:None));
+  }
+  assert(s.update(0,1500,true,true)==None);
+ }
+ // Double tap is cancelled; hold after one/two taps opens only settings.
+ for(int clicks:{1,2}){
+  State s;s.update(0,0,true,true);
+  for(int n=0;n<clicks;n++){assert(s.update(4,100+n*200,true,true)==None);assert(s.update(0,180+n*200,true,true)==None);}
+  auto begin=100+clicks*200;
+  assert(s.update(4,begin,true,true)==None);
+  assert(s.update(4,begin+1000,true,true)==Settings);
+  assert(s.update(0,begin+1100,true,true)==None);
+  assert(s.update(0,begin+2000,true,true)==None);
+ }
+ {State s;s.update(0,0,true,true);s.update(4,100,true,true);s.update(0,180,true,true);s.update(4,300,true,true);s.update(0,380,true,true);assert(s.update(0,900,true,true)==None);}
+ // Losing gameplay/focus while a single tap is pending must cancel it.
+ for(bool focus:{false,true}){
+  State s;s.update(0,0,true,true);s.update(4,100,true,true);s.update(0,180,true,true);
+  assert(s.update(0,200,focus,!focus)==None);assert(s.update(0,1000,true,true)==None);
+ }
+ {State s;s.update(0,0,true,true);s.update(4,100,true,true);s.update(0,120,true,true);assert(s.update(0,1000,true,true)==None);}
+ puts("PASS: opposite-thumbrest double taps, old stick modifier rejected, debounce, timeout, cancellation, single-fire, triple Menu, delayed single tap, double cancellation and Menu exclusion");
 }

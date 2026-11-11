@@ -1,0 +1,167 @@
+{
+  "checkedAt": "2026-11-11T13:22:29.301955",
+  "userCriterion": "Coverage of every distinct native weapon/loading/operating behavior; do not block on a continuous walk-through review",
+  "metadataEntries": 583,
+  "metadataSignatures": {
+    "no reload parts": 294,
+    "handle": 8,
+    "mag": 94,
+    "mag+handle": 80,
+    "loader": 16,
+    "mag+handle+rounds+charger": 4,
+    "rounds": 35,
+    "handle+rounds": 23,
+    "mag+handle+rounds": 24,
+    "rounds+loader": 5
+  },
+  "important": "Metadata presence is not tested or demonstrated coverage. Entries include variants, non-player items, and weapons with no reload parts.",
+  "currentVideoChapters": [
+    "tutorial-activation",
+    "pistol-dry-reload",
+    "charging-handle-reload",
+    "bolt-close-hold",
+    "cylinder-native-probe",
+    "round-load-WeapNV357Revolver",
+    "round-load-WeapNVCaravanShotgun",
+    "round-load-WeapNVHuntingShotgun",
+    "energy-cell-reload",
+    "charger-clear-contact",
+    "lever-grip-probe",
+    "pouch-ammo-types",
+    "pouch-recovery"
+  ],
+  "openCoverage": [
+    {
+      "family": "Fat Man / mini-nuke loading",
+      "representative": "weapfatman",
+      "metadataPresent": true,
+      "parts": {
+        "handle": "##FMHandle",
+        "rounds": "loading point"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "Loading port and FMHandle exist; no dedicated Fat Man lesson or selected video chapter. Observe load, action/arming and usable shot."
+    },
+    {
+      "family": "Missile launcher",
+      "representative": "weapmissilelauncher",
+      "metadataPresent": true,
+      "parts": {
+        "rounds": "loading point"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "Loading port exists; tube-loading sequence and shot need explicit verification and demonstration."
+    },
+    {
+      "family": "Grenade rifle / break-action launcher",
+      "representative": "weapnvgrenaderifle",
+      "metadataPresent": true,
+      "parts": {
+        "rounds": "loading point"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "Prior separate native evidence exists; current edit substitutes a shotgun and omits the explosive launcher itself."
+    },
+    {
+      "family": "Repeating grenade launcher",
+      "representative": "weapnvgrenadelauncher",
+      "metadataPresent": true,
+      "parts": {
+        "handle": "##Stock",
+        "rounds": "loading point"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "Loading port and Stock handle exist; do not infer operation from the grenade rifle."
+    },
+    {
+      "family": "Minigun / grenade machine-gun ammunition pack",
+      "representative": "weapminigun",
+      "metadataPresent": true,
+      "parts": {
+        "mag": "##MinigunAmmo"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "MinigunAmmo part exists; pack removal, insertion and firing absent from current tutorial tests/edit."
+    },
+    {
+      "family": "Gatling laser power pack",
+      "representative": "weapgatlinglaser",
+      "metadataPresent": true,
+      "parts": {
+        "mag": "##MicroFusionCell"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "MicroFusionCell part exists; physical pack geometry and access differ from the demonstrated plasma rifle."
+    },
+    {
+      "family": "Tesla cannon",
+      "representative": "weapteslacannon",
+      "metadataPresent": true,
+      "parts": {
+        "mag": "##TCClip",
+        "handle": "##TCHandle"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "TCClip and TCHandle exist; exact handle/cell sequence lacks a dedicated demonstration."
+    },
+    {
+      "family": "Railway rifle",
+      "representative": "weaprailwayrifle",
+      "metadataPresent": true,
+      "parts": {
+        "rounds": "loading point"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "Loading point exists; verify native spike loading and operating sequence."
+    },
+    {
+      "family": "BB gun / handle-only weapons",
+      "representative": "weapbbgun",
+      "metadataPresent": true,
+      "parts": {
+        "handle": "##BBLever"
+      },
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "BBLever exists without magazine or loose-round marker; verify native ammunition and cycle behavior instead of inferring from Cowboy Repeater."
+    },
+    {
+      "family": "Flamer",
+      "representative": "weapflamer",
+      "metadataPresent": true,
+      "parts": {},
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "No reload parts in installed handling metadata; current manual tutorial falls back to unmapped. Native fuel/reload behavior needs investigation."
+    },
+    {
+      "family": "Recharger pistol/rifle",
+      "representative": "weapnvrechargerpistol",
+      "metadataPresent": true,
+      "parts": {},
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "No reload parts in handling metadata; current manual guide falls back to unmapped. Needs an accurate self-recharging/no-manual-reload explanation if confirmed native."
+    },
+    {
+      "family": "Thrown explosives, mines, melee/unarmed",
+      "representative": "weapgrenadefrag",
+      "metadataPresent": true,
+      "parts": {},
+      "videoCovered": false,
+      "coverage": "open",
+      "requiredEvidence": "No conventional reload metadata. Explicitly distinguish no-reload operation from unsupported guidance; determine tutorial scope without inventing a reload."
+    }
+  ],
+  "complete": false,
+  "nextPriority": "Fat Man, followed by missile and heavy ammunition-pack families",
+  "noGameLaunched": true
+}

@@ -12,7 +12,7 @@ Casual TTR and the Meta Link helper are NOT required.**
    downloaded from its author and installed separately.
 3. **Filthy Casual Pool** from this release.
 
-Optional: use **Filthy Casual TTR 1.4.5 or newer** alongside pool for seated
+Optional: use **the TTR 1.1 build of Filthy Casual TTR (1.6.0-dev.1)** alongside pool for seated
 height, selectors and gestures. Update that addon before combining them. Older
 versions are refused for pool because their input helpers can interfere.
 Standalone users do not need to install it at all. Use your existing working VR
@@ -23,13 +23,13 @@ Working TTR + its normal dependencies
   + Original Pool Tables Of The Mojave v4
     + Filthy Casual Pool
 
-Filthy Casual TTR 1.4.5+: optional companion, not a parent dependency
+Filthy Casual TTR 1.6.0-dev.1: optional companion, not a parent dependency
 ```
 
 ## Install in MO2
 
 1. Install the original pool mod separately and keep it enabled.
-2. Install `Filthy-Casual-Pool-0.1.0-beta.zip` as **Filthy Casual Pool**.
+2. Install `Filthy-Casual-Pool-0.2.0-beta.zip` as **Filthy Casual Pool**.
 3. Right-click our mod in MO2, choose **Open in Explorer**, and run
    `Prepare-Pool.cmd`. Select the ORIGINAL pool mod's folder (the one containing
    `Pool Table Minigame.esp`). Wait for the success message. Do this once per
@@ -62,8 +62,8 @@ interception or inventory recovery is added.
 
 ## Compatibility and current limits
 
-FNV 1.4.0.525, xNVSE 6.4.9 and TTR SHA256:
-`C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB`.
+This 0.2.0 beta targets TTR 1.1. FNV 1.4.0.525, xNVSE 6.4.9 and TTR SHA256:
+`E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB`.
 Other TTR builds are refused. Our pool-only input companion runs independently;
 with the current seated addon it delegates to the active matching input instance,
 avoiding duplicate input filtering. It adds no seated controls when used alone.
@@ -77,10 +77,6 @@ Credit: KUPOkinz (TTR), Luke2172 (original pool mod), Nikami (VR addon and new
 animation). Their mods remain separate downloads. Do not redistribute your locally
 generated integration scripts as an original pool-mod replacement.
 
-## Building our source
-
-Set `FNV_GAME_DIR` to your owned New Vegas directory and `POOL_ORIGINAL_MOD`
-to the separately installed original pool-mod folder. With Python, numpy and
-PyFFI 2.2.3 installed, run `python pool-vr/author_sunny_pose.py`, then
-`python pool-vr/prepare.py`, `pool-vr/build.cmd`, and `python pool-vr/package.py`.
-Retail bind data is read locally; no skeleton or upstream files belong in Git.
+TTR 1.1 checks include a combined physical stroke/exit and a captured Sunny/player
+turn sequence. A complete eight-ball match and fresh physical-headset acceptance
+are not certified. Pool-cue/chalk/rack pickup polish remains in development.

@@ -4,7 +4,7 @@ Retail skeleton/reference files stay in ignored work/. Output animations are
 newly generated joint keys, not copies of retail animation tracks.
 """
 from pathlib import Path
-import struct,zlib,time,os
+import struct,zlib,time
 import math
 import json
 from functools import lru_cache
@@ -14,7 +14,7 @@ time.clock=time.perf_counter
 from pyffi.formats.nif import NifFormat as N
 ROOT=Path(__file__).resolve().parents[1]
 WORK=ROOT/'work/pool-animation'
-WORK.mkdir(parents=True,exist_ok=True)
+WORK.mkdir(exist_ok=True)
 class BSA:
     def __init__(self,path):
         self.f=open(path,'rb')
@@ -35,7 +35,7 @@ class BSA:
         if bool(self.flags&4)^bool(size&0x40000000):
             length=struct.unpack_from('<I',data)[0];data=zlib.decompress(data[4:]);assert len(data)==length
         return data
-archive=BSA(Path(os.environ['FNV_GAME_DIR'])/'Data/Fallout - Meshes.bsa')
+archive=BSA(r'D:\SteamLibrary\steamapps\common\Fallout New Vegas\Data\Fallout - Meshes.bsa')
 path=WORK/'skeleton.nif'
 owned=archive.read(r'meshes\characters\_male\skeleton.nif')
 if not path.exists() or path.read_bytes()!=owned:path.write_bytes(owned)

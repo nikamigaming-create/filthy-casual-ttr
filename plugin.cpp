@@ -25,6 +25,9 @@
 #include "wrist_controls.hpp"
 #include "finger_adapter.hpp"
 #include "hold_controls.hpp"
+#include "reload_tutorial.hpp"
+#include "tutorial_adapter.hpp"
+#include "tutorial_visual.hpp"
 #include "sticky_food.hpp"
 #include "presentation_adapter.hpp"
 #include "layer_discovery.hpp"
@@ -45,6 +48,15 @@ namespace {
  std::atomic<ULONGLONG> controlsAt{0};
  std::atomic<bool> controlsActive{false},menuOwned{false};
  std::atomic<int> pendingControl{-1};
+ bool tutorialEnabled=false,tutorialDataLoaded=false,tutorialInserted=false,tutorialAttached=false;
+ ULONGLONG tutorialVisualRetry=0;
+ tutorial_data::Database tutorialWeapons;std::string tutorialError,tutorialEditor;
+ reload_tutorial::Step tutorialStep=reload_tutorial::Step::Hidden;
+ reload_tutorial::Mechanism tutorialMechanism=reload_tutorial::Mechanism::Generic;
+ bool tutorialAnchorValid=false;scene::Vec tutorialAnchor{},tutorialAnchorEye{};
+ tutorial_adapter::Snapshot tutorialNative;
+ const tutorial_data::Weapon* tutorialWeapon=nullptr;unsigned tutorialForm=0;
+ Script *tutorialEditorQuery=nullptr,*tutorialRoundsQuery=nullptr,*tutorialCapacityQuery=nullptr;
  bool fingerGestures=true;
  std::atomic<bool> gestureGameplayAllowed{false}; // Gameplay gate; native adapter checks each hand's occupancy.
  struct Gesture {bool active=false,thumb=false,index=false;ULONGLONG time=0,blendTime=0;float thumbCurl=0,indexCurl=0,lift=0;};
@@ -144,6 +156,9 @@ namespace {
   getPlayer=compile("player","player",true);getMenu=compile("menu","MenuMode",true);
   getCap=compile("center bottle cap","Caps001",true);
   rootScale=compile("tracked root scale","player.GetNifBlockScale \"Scene Root\" 1",true);
+  tutorialEditorQuery=compile("tutorial editor id","ref item\nbegin function {item}\nSetFunctionValue (GetEditorID item)\nend");
+  tutorialRoundsQuery=compile("tutorial rounds","player.GetCurrentAmmoRounds",true);
+  tutorialCapacityQuery=compile("tutorial capacity","ref item\nbegin function {item}\nSetFunctionValue (GetWeaponClipRounds item)\nend");
   getEquipped=compile("equipped","player.GetEquippedObject 5",true);
   weaponOut=compile("weapon out","player.IsWeaponOut",true);
   dialogueTarget=compile("dialogue target","GetDialogueTarget",true);
@@ -320,24 +335,24 @@ namespace {
  int __cdecl recoverPhysicalMag(void* player,int hand){
   if(!ready||!loaded||!gestureGameplayAllowed||!player||!initPartMetadata())return -1;auto b=build_adapter::heldModule();
   physical_reload_adapter::recoverStage=4;
-  auto first=b[0x1114215]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x11146D0)):nullptr;
-  auto second=b[0x11142E4]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x11142EC)):nullptr;
+  auto first=b[0x136CE35]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x136D2F0)):nullptr;
+  auto second=b[0x136CF04]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x136CF0C)):nullptr;
   physical_reload_adapter::recoverStage=5;
   auto ref=first?first:second;if(!ref||(first&&second&&first!=second))return -1;
   physical_reload_adapter::recoverStage=6;
-  int heldHand=*reinterpret_cast<int*>(b+(first?0xDC53E8:0x11142E8));if(heldHand!=hand)return -1;
+  int heldHand=*reinterpret_cast<int*>(b+(first?0xEC33E8:0x136CF08));if(heldHand!=hand)return -1;
   physical_reload_adapter::recoverStage=7;
   auto it=std::find_if(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;});
   if(it==physicalMags.end()||!it->weaponID||!it->ammoID)return -1;
   physical_reload_adapter::recoverStage=8;
   Element equipped;unsigned weapon=0;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)weapon=equipped.value.form->id;release(equipped);
-  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2521E0)(player));
+  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2DC9B0)(player));
   physical_reload_adapter::recoverStage=9;
   if(weapon!=it->weaponID||!ammo||ammo->id!=it->ammoID)return -1;
   physical_reload_adapter::recoverStage=10;
   auto base=scene::field<Form*>(ref,0x20);bool empty=base==emptyReloadPart();if(!empty&&base!=ammo)return -1;
   physical_reload_adapter::recoverStage=11;
-  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x257AD0)();
+  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x2E22A0)();
   if(count<0||count>capacity||capacity<1)return -1;
   physical_reload_adapter::recoverStage=15;physical_reload_adapter::recoverDistance=it->contactDistance;
   // Scene publication is sampled together by tickPhysicalMags. This callback
@@ -351,10 +366,10 @@ namespace {
  }
  bool nearPhysicalPouch(void* ref){
   auto b=physical_reload_adapter::module;auto reloadSettings=build_adapter::liveReloadSettings();if(!b||!reloadSettings||reloadSettings[0x494]!=1)return false;
-  auto pouch=*reinterpret_cast<void**>(b+0x121F194);auto root=scene::root(ref);
-  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x121F260))pouch=*reinterpret_cast<void**>(b+0x121F180);
+  auto pouch=*reinterpret_cast<void**>(b+0x17EE11C);auto root=scene::root(ref);
+  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x17EE1E8))pouch=*reinterpret_cast<void**>(b+0x17EE108);
   if(!root||!build_adapter::readPouchNode(pouch).readable)return false;
-  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x121F184))*pose.scale;
+  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x17EE10C))*pose.scale;
   auto bound=scene::field<float*>(root,0x20);if(!bound)return false;
   float threshold=*reinterpret_cast<float*>(reloadSettings+0x4CC)**reinterpret_cast<float*>(reloadSettings+0x28);
   float distance=scene::distance(center,{bound[0],bound[1],bound[2]});
@@ -377,13 +392,13 @@ namespace {
     if(reloadSettings&&reloadSettings[0x494]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
      auto bound=scene::field<float*>(root,0x20);float units=*reinterpret_cast<float*>(reloadSettings+0x28);
      if(bound&&std::isfinite(units)&&units>1){m.contactDistance=scene::distance({bound[0],bound[1],bound[2]},rest.p)/units;if(std::isfinite(m.contactDistance)&&m.contactDistance<=.12f){
-      auto b=physical_reload_adapter::module;m.contactHand=(b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==ref)?*reinterpret_cast<int*>(b+0xDC53E8):build_adapter::grabbedHand();
+      auto b=physical_reload_adapter::module;m.contactHand=(b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEC33E8):build_adapter::grabbedHand();
       Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)m.contactWeapon=equipped.value.form->id;release(equipped);m.contactAt=GetTickCount64();
      }}
     }
    }
    if(m.wasHeld&&!held&&m.wasNearPouch&&nearPouch&&m.weaponID&&m.ammoID&&m.lastHeldHand>=0&&partInput.h[m.lastHeldHand].active&&partInput.h[m.lastHeldHand].grip<.2f&&GetTickCount64()-partInput.time<100&&gestureGameplayAllowed){if(takePhysicalPart(m,ref,playerForm(),false)){physical_reload_adapter::recoveredPouch++;continue;}}
-   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==ref)?*reinterpret_cast<int*>(b+0xDC53E8):build_adapter::grabbedHand();}
+   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEC33E8):build_adapter::grabbedHand();}
    m.wasHeld=held;m.wasNearPouch=held&&nearPouch;
    auto root=scene::root(ref);
    if(m.fullModel){
@@ -482,9 +497,9 @@ namespace {
   // Clear native grab ownership before activation can delete its world ref.
   // Consume through the engine inventory-use path, retaining all normal effects.
   Item food=heldAid;double before=number(getCount,food.form);
-  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x1114215],*reinterpret_cast<void**>(b+0x11146D0),*reinterpret_cast<void**>(b+0x11146D4),*reinterpret_cast<int*>(b+0xDC53E8),b[0x11142E4],*reinterpret_cast<void**>(b+0x11142EC),*reinterpret_cast<void**>(b+0x11142F0),*reinterpret_cast<int*>(b+0x11142E8));
+  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<void**>(b+0x136D2F4),*reinterpret_cast<int*>(b+0xEC33E8),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<void**>(b+0x136CF10),*reinterpret_cast<int*>(b+0x136CF08));
   if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
-   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x1114215],*reinterpret_cast<void**>(b+0x11146D0),*reinterpret_cast<int*>(b+0xDC53E8),b[0x11142E4],*reinterpret_cast<void**>(b+0x11142EC),*reinterpret_cast<int*>(b+0x11142E8),b[0x195D10],b[0x195D11],b[0x195D12],b[0x195D13]);
+   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<int*>(b+0xEC33E8),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<int*>(b+0x136CF08),b[0x1A0710],b[0x1A0711],b[0x1A0712],b[0x1A0713]);
    mouthGate.reset();return;
   }
   forgetHeldAid();
@@ -617,15 +632,162 @@ namespace {
   }
   return wristTouch.update(wristFrame,now,!selectorOpen&&!heightMenu&&!weaponTransition);
  }
+ void clearTutorialVisual(){
+  tutorialAnchorValid=false;
+  tutorial_visual::clear();
+  if(tutorialAttached)number(detach,"FCTutorialMount|FilthyCasual\\tutorial.nif");
+  if(tutorialInserted)number(removeNode,"FCTutorialMount");
+  tutorialAttached=tutorialInserted=false;
+ }
+ bool ensureTutorialVisual(){
+  if(tutorial_visual::pin.node)return true;
+  auto now=GetTickCount64();if(now<tutorialVisualRetry)return false;tutorialVisualRetry=now+2000;
+  if(!tutorialInserted)tutorialInserted=number(insert,"FCTutorialMount")!=0;
+  if(tutorialInserted&&!tutorialAttached)tutorialAttached=number(attach,"FCTutorialMount|FilthyCasual\\tutorial.nif")!=0;
+  auto node=scene::find(scene::root(playerForm()),"FC_Tutorial");
+  bool ok=node&&tutorial_visual::bind(node);log("TUTORIAL visual insert=%d attach=%d bind=%d",tutorialInserted,tutorialAttached,ok);return ok;
+ }
+ void drawTutorial(){
+  if(tutorialStep==reload_tutorial::Step::Hidden||!tutorialNative.valid||!tutorialWeapon){tutorial_visual::hide();return;}
+  if(!ensureTutorialVisual())return;
+  tutorial_visual::begin();auto& r=tutorialNative.reload;auto frame=scene::world(r.weaponRoot);
+  auto point=[&](tutorial_data::Vec p){return tutorial_adapter::position(r.weaponRoot,p);};
+  if(tutorialWeapon->charger.present&&!tutorialWeapon->charger.values.empty()){
+   auto node=scene::find(r.weaponRoot,tutorialWeapon->charger.node.c_str());
+   if(node){auto axis=tutorialWeapon->charger.axis;
+    auto entry=scene::world(node).p+scene::rotate(frame,{axis.x,axis.y,axis.z})*(tutorialWeapon->charger.values[0]*frame.scale);
+    tutorial_visual::box(0,entry,2.f,frame);}
+  }
+  else if(tutorialWeapon->mag.present)tutorial_visual::box(0,point(tutorialWeapon->mag.face),std::clamp(tutorialWeapon->mag.spread*.65f,1.5f,3.5f),frame);
+  else if(tutorialWeapon->hasRounds)tutorial_visual::box(0,tutorial_adapter::loadingPoint(tutorialNative,*tutorialWeapon),2.0f,frame);
+  if(tutorialWeapon->handle.present)tutorial_visual::box(1,point(tutorialWeapon->handle.face),2.0f,frame);
+  else if(tutorialMechanism==reload_tutorial::Mechanism::Cylinder||tutorialMechanism==reload_tutorial::Mechanism::Gate){
+   std::vector<void*> parts;tutorial_adapter::namedParts(r.weaponRoot,parts);
+   const char* token=tutorialMechanism==reload_tutorial::Mechanism::Cylinder?"cylinder":"loadinggate";
+   for(auto node:parts){auto label=tutorial_data::key(scene::name(node));
+    if(label.find(token)==std::string::npos||label.find(":0")==std::string::npos)continue;
+    std::vector<scene::Box> mesh;scene::boxes(node,mesh);
+    if(!mesh.empty()){auto& box=mesh.front();auto t=scene::world(box.node);auto center=t.p+scene::rotate(t,(box.lo+box.hi)*.5f)*t.scale;
+     tutorial_visual::box(1,center,2.0f,t);}
+    break;
+   }
+  }
+  if(r.primary.readable&&r.primaryShown){auto pouch=scene::world(r.primaryNode);auto p=pouch.p;
+   if(r.spareCenterValid)p=p+scene::rotate(pouch,{r.spareLocalCenter[0],r.spareLocalCenter[1],r.spareLocalCenter[2]})*pouch.scale;
+   tutorial_visual::box(2,p,4.0f,pouch);
+  }
+  auto head=scene::find(scene::root(playerForm()),"Bip01 Head");if(!head)return;
+  const auto eye=scene::world(head).p;
+  // A reading card stays in its world zone; manipulating the gun must not
+  // pull it into the face or across the action. Only the part outlines follow.
+  float units=r.metresToUnits;
+  if(!std::isfinite(units)||units<1)return;
+  if(!tutorialAnchorValid||scene::distance(eye,tutorialAnchorEye)>.8f*units){
+   // Reuse the selector's established player-facing frame. A weapon may
+   // still be at the hip when drawn, so its direction cannot place the card.
+   auto body=scene::world(scene::root(playerForm()));
+   tutorialAnchor=eye+scene::rotate(body,{-.10f*units,.72f*units,0});tutorialAnchor.z+=.15f*units;
+   tutorialAnchorEye=eye;tutorialAnchorValid=true;
+  }
+  tutorial_visual::card(reload_tutorial::card(tutorialStep,tutorialMechanism),tutorialAnchor,tutorialAnchorEye);
+  scene::update(tutorial_visual::pin.node); // Recompute aggregate bounds after moving children.
+ }
+ void setTutorial(bool want){
+  if(want&&!tutorialDataLoaded){
+   std::ifstream pack(gameDirectory+"Data\\NVSE\\Plugins\\TTWVR\\TTWVR.dat",std::ios::binary);
+   tutorialDataLoaded=tutorial_data::readPack(pack,tutorialWeapons,tutorialError);
+   log("TUTORIAL metadata %s: weapons=%u %s",tutorialDataLoaded?"loaded":"unavailable",unsigned(tutorialWeapons.size()),tutorialError.c_str());
+  }
+  if(!want)clearTutorialVisual();
+  tutorialEnabled=want&&tutorialDataLoaded&&tutorialEditorQuery&&tutorialRoundsQuery&&tutorialCapacityQuery;
+  tutorialStep=reload_tutorial::Step::Hidden;tutorialForm=0;tutorialWeapon=nullptr;tutorialEditor.clear();
+  tell(tutorialEnabled?"Weapon tutorial ON\nTriple-tap left Menu to turn it off":want?"Tutorial metadata unavailable; native controls unchanged":"Weapon tutorial OFF",true);
+ }
+ void tickTutorial(){
+  tutorialNative={};
+  bool visible=tutorialEnabled&&enabled&&!selectorOpen&&!heightMenu&&!weaponTransition;
+  if(!visible){tutorialStep=reload_tutorial::Step::Hidden;tutorial_visual::hide();return;}
+  Element e;Form* weapon=nullptr;if(call(getEquipped,e)&&e.type==2)weapon=e.value.form;release(e);
+  if(!number(weaponOut))weapon=nullptr;
+  if(tutorialForm!=(weapon?weapon->id:0)){
+   tutorialAnchorValid=false;tutorialStep=reload_tutorial::Step::Hidden;
+   tutorialForm=weapon?weapon->id:0;tutorialEditor=weapon?tutorial_data::key(string(tutorialEditorQuery,weapon)):"";
+   auto i=tutorialWeapons.find(tutorialEditor);tutorialWeapon=i==tutorialWeapons.end()?nullptr:&i->second;
+   log("TUTORIAL weapon=%08X editor=%s mapped=%d",tutorialForm,tutorialEditor.c_str(),tutorialWeapon!=nullptr);
+  }
+  tutorialNative=tutorial_adapter::read();auto& r=tutorialNative.reload;
+  reload_tutorial::State state;state.visible=visible;state.weapon=weapon!=nullptr;
+  build_adapter::readManualReload(state.manual);
+  state.chamberKnown=tutorialNative.chamberKnown;state.chambered=tutorialNative.chambered;
+  state.rounds=weapon?int(number(tutorialRoundsQuery)):0;state.capacity=weapon?int(number(tutorialCapacityQuery,weapon)):0;
+  state.installed=tutorialNative.valid?r.installedMode:-1;state.installedRounds=r.installedRounds;state.held=r.nativeMode;
+  auto facts=tutorial_adapter::facts(weapon);state.weaponType=facts.type;state.reloadAnimation=facts.reload;
+  tutorialMechanism=reload_tutorial::mechanism(tutorialWeapon,state);
+  auto next=reload_tutorial::choose(tutorialWeapon,state);
+  Input tutorialInput;{std::lock_guard<std::mutex> lock(inputMutex);tutorialInput=input;}
+  const bool cyclingControls=tutorialInput.h[0].trigger>.55f||tutorialInput.h[1].trigger>.55f||
+   ((tutorialInput.h[0].primary||tutorialInput.h[1].primary)&&(tutorialInput.h[0].grip>.55f||tutorialInput.h[1].grip>.55f));
+  next=reload_tutorial::settle(tutorialStep,next,cyclingControls);
+  if(next!=tutorialStep)log("TUTORIAL step=%s rounds=%d installed=%d held=%d chamber=%d",reload_tutorial::name(next),state.rounds,state.installed,state.held,state.chambered);
+  tutorialStep=next;drawTutorial();
+ }
+ void tutorialDiagnostics(std::ostream& out){
+  auto anchor=physical_reload_adapter::trackingPoint(tutorialAnchor);
+  out<<",\"tutorialCardWorld\":["<<tutorialAnchor.x<<","<<tutorialAnchor.y<<","<<tutorialAnchor.z<<"]";
+  out<<",\"tutorialCardAnchor\":["<<anchor.x<<","<<anchor.y<<","<<anchor.z<<"]";
+
+  out<<",\"tutorial\":{\"enabled\":"<<(tutorialEnabled?"true":"false")<<",\"visualElements\":"<<tutorial_visual::shown<<",\"metadataCount\":"<<tutorialWeapons.size()
+     <<",\"weapon\":"<<tutorialForm<<",\"editor\":"<<std::quoted(tutorialEditor)<<",\"step\":\""<<reload_tutorial::name(tutorialStep)
+     <<"\",\"card\":"<<std::quoted(reload_tutorial::card(tutorialStep,tutorialMechanism))<<",\"valid\":"<<(tutorialNative.valid?"true":"false")<<",\"chamberKnown\":"<<(tutorialNative.chamberKnown?"true":"false")
+     <<",\"chambered\":"<<(tutorialNative.chambered?"true":"false")<<",\"parts\":[";
+  if(tutorialNative.valid&&tutorialWeapon){
+   const tutorial_data::Part* parts[]={&tutorialWeapon->mag,&tutorialWeapon->handle,&tutorialWeapon->loader};
+   bool first=true;for(auto p:parts)if(p->present){
+    if(!first)out<<",";first=false;auto node=scene::find(tutorialNative.reload.weaponRoot,p->node.c_str());
+    auto partPosition=tutorial_adapter::position(tutorialNative.reload.weaponRoot,p->face);
+    auto track=physical_reload_adapter::trackingPoint(partPosition);
+    auto pullPoint=tutorial_adapter::position(tutorialNative.reload.weaponRoot,{p->face.x-p->axis.x*10.f,p->face.y-p->axis.y*10.f,p->face.z-p->axis.z*10.f});
+    auto pullTrack=physical_reload_adapter::trackingPoint(pullPoint);
+    auto nodeTrack=node?physical_reload_adapter::trackingPoint(scene::world(node).p):Vec{};
+    out<<"{\"node\":"<<std::quoted(p->node)<<",\"found\":"<<(node?"true":"false")<<",\"tracking\":["<<track.x<<","<<track.y<<","<<track.z<<"],\"pullTracking\":["<<pullTrack.x<<","<<pullTrack.y<<","<<pullTrack.z<<"],\"nodeTracking\":["<<nodeTrack.x<<","<<nodeTrack.y<<","<<nodeTrack.z<<"]}";
+   }
+  }
+  if(tutorialNative.valid&&tutorialWeapon&&tutorialWeapon->hasRounds){
+   auto track=physical_reload_adapter::trackingPoint(tutorial_adapter::loadingPoint(tutorialNative,*tutorialWeapon));
+   if(tutorialWeapon->mag.present||tutorialWeapon->handle.present||tutorialWeapon->loader.present)out<<",";
+   out<<"{\"node\":\"loading-port\",\"found\":true,\"tracking\":["<<track.x<<","<<track.y<<","<<track.z<<"]}";
+  }
+  Element equipped;Form* weapon=nullptr;if(call(getEquipped,equipped)&&equipped.type==2)weapon=equipped.value.form;release(equipped);
+  auto facts=tutorial_adapter::facts(weapon);
+  out<<"],\"weaponType\":"<<facts.type<<",\"reloadAnimation\":"<<facts.reload<<",\"namedParts\":[";
+  std::vector<void*> named;if(tutorialNative.valid)tutorial_adapter::namedParts(tutorialNative.reload.weaponRoot,named);
+  for(size_t i=0;i<named.size();i++){
+   if(i)out<<",";auto node=named[i];auto p=physical_reload_adapter::trackingPoint(scene::world(node).p);
+   out<<"{\"node\":"<<std::quoted(scene::name(node))<<",\"tracking\":["<<p.x<<","<<p.y<<","<<p.z<<"],\"basis\":[";
+   auto t=scene::world(node);
+   for(int c=0;c<3;c++){if(c)out<<",";Vec axis{};if(c==0)axis.x=70;else if(c==1)axis.y=70;else axis.z=70;
+    auto end=physical_reload_adapter::trackingPoint(t.p+scene::rotate(t,axis));auto v=tutorial_visual::unit(end-p);
+    out<<"["<<v.x<<","<<v.y<<","<<v.z<<"]";}
+   out<<"]}";
+  }
+  out<<"],\"pointer\":[";
+  auto rig=scene::root(playerForm());const char* names[]={"Bip01 L Finger1","Bip01 L Finger12"};
+  for(int i=0;i<2;i++){
+   if(i)out<<",";auto node=scene::find(rig,names[i]);auto p=node?physical_reload_adapter::trackingPoint(scene::world(node).p):Vec{};
+   out<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";
+  }
+  out<<"]}";
+ }
  void tick(){
   if(!ready||!loaded){enabled=false;gestureGameplayAllowed=false;return;}auto now=GetTickCount64();if(now-lastLoop<10)return;lastLoop=now;
   if(presentation_adapter::base){
    unsigned id=0;Vec namePoint{};
-   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xB3E8)()==0x3F1){
+   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xD094)()==0x3F1){
     Element e;if(call(dialoguePartner,e)&&e.type==2&&e.value.form){
      auto actorRoot=scene::root(e.value.form);auto head=scene::find(actorRoot,"Bip01 Head");
-     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0x8F7B)();
-      namePoint.z+=.22f*(*reinterpret_cast<float*>(nativeSettings+0x28));id=e.value.form->id;}
+     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0xA641)();
+      // Head joint is inside the skull: allow crown height plus a visible air gap.
+      namePoint.z+=.32f*(*reinterpret_cast<float*>(nativeSettings+0x28));id=e.value.form->id;}
     }release(e);
    }
    presentation_adapter::setSpeaker(id,namePoint);
@@ -650,6 +812,7 @@ namespace {
    if(wristAction==wrist_controls::Weapons)open(1);
    else if(wristAction==wrist_controls::Consumables)open(0);
    else if(wristAction==wrist_controls::Reload)toggleReload();
+   else if(wristAction==hold_controls::Tutorial)setTutorial(!tutorialEnabled);
    else if(wristAction==wrist_controls::Settings){heightMenu=true;uiEpoch++;heightText();}
    previous=current;return;
   }
@@ -776,9 +939,9 @@ namespace {
     auto script=compile("target probe",expression.c_str(),true);Element e;
     auto b=build_adapter::heldModule();Vec centre{},tracking{};float extent=0;
     bool ok=call(script,e)&&e.type==2&&e.value.form&&b;
-    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1929B0)(e.value.form,&centre,&extent);
-    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)();
-     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x572320)(manager,&tracking,&centre);}
+    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x19D3B0)(e.value.form,&centre,&extent);
+    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
+     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x64B0B0)(manager,&tracking,&centre);}
     std::ofstream probe(std::string(dir)+"\\target-probe.json");
     probe<<"{\"ok\":"<<(ok?"true":"false")<<",\"tracking\":["<<tracking.x<<","<<tracking.y<<","<<tracking.z<<"],\"extent\":"<<extent<<"}";
     release(e);continue;
@@ -789,7 +952,7 @@ namespace {
     std::ofstream state(std::string(dir)+"\\addon-state.json");auto rig=scene::root(playerForm());
     state<<"{\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
     state<<",\"dialoguePlacements\":"<<presentation_adapter::placements.load()<<",\"dialogueTargetDistance\":"<<presentation_adapter::lastDistance.load()<<",\"dialogueSideDegrees\":"<<presentation_adapter::lastAngle.load();
-    presentation_adapter::diagnostics(state);reload_trace_adapter::diagnostics(state);physical_reload_adapter::diagnostics(state);
+    tutorialDiagnostics(state);presentation_adapter::diagnostics(state);reload_trace_adapter::diagnostics(state);physical_reload_adapter::diagnostics(state);
     {DialogueAnchor anchor{};bool valid=presentation_adapter::readSpeaker(anchor);state<<",\"speakerSourceId\":"<<presentation_adapter::speakerId<<",\"speakerFrameUpdates\":"<<presentation_adapter::speakerFrameUpdates.load()<<",\"speakerNameActive\":"<<(valid?"true":"false")<<",\"speakerNameTracking\":["<<anchor.position[0]<<","<<anchor.position[1]<<","<<anchor.position[2]<<"]";
      using Debug=void(__cdecl*)(char*,unsigned);auto layer=GetModuleHandleW(L"SeatedInput.dll");auto debug=layer?reinterpret_cast<Debug>(GetProcAddress(layer,"SC_LabelDebug")):nullptr;
      if(debug){char json[512]{};debug(json,sizeof(json));state<<",\"speakerNameCrop\":"<<json;}}
@@ -811,6 +974,11 @@ namespace {
      state<<",\"pouch\":{\"spareEnabled\":"<<(pouch.spareEnabled?"true":"false")<<",\"anchor\":"<<(pouch.torsoAnchor?"true":"false")<<",\"shown\":"<<(pouch.primaryShown?"true":"false")<<",\"mode\":"<<pouch.nativeMode<<",\"unitsPerMetre\":"<<pouch.metresToUnits<<",\"primary\":";node(pouch.primary);state<<",\"copy\":";node(pouch.copy);
      state<<",\"heldRounds\":"<<pouch.heldRounds<<",\"detachedMode\":"<<pouch.detachedMode<<",\"detachedRounds\":"<<pouch.detachedRounds<<",\"installedMode\":"<<pouch.installedMode<<",\"installedRounds\":"<<pouch.installedRounds<<",\"discardAmmo\":"<<(pouch.discardAmmo?"true":"false")<<",\"flightAge\":"<<pouch.flightAge;
      if(pouch.primary.readable){auto t=scene::world(pouch.primaryNode);auto center=t.p;if(pouch.spareCenterValid)center=center+scene::rotate(t,{pouch.spareLocalCenter[0],pouch.spareLocalCenter[1],pouch.spareLocalCenter[2]})*t.scale;state<<",\"center\":["<<center.x<<","<<center.y<<","<<center.z<<"]";}
+     state<<",\"roundFlags\":[";for(int i=0;i<5;i++){if(i)state<<",";state<<unsigned(pouch.roundFlags[i]);}state<<"]";
+     state<<",\"roundTargetValid\":"<<(pouch.roundTargetValid?"true":"false");
+     if(pouch.roundTargetValid){auto q=physical_reload_adapter::trackingPoint(tutorial_adapter::position(pouch.weaponRoot,{pouch.roundTargetLocal[0],pouch.roundTargetLocal[1],pouch.roundTargetLocal[2]}));state<<",\"roundTargetTracking\":["<<q.x<<","<<q.y<<","<<q.z<<"]";}
+     state<<",\"heldBoundValid\":"<<(pouch.primary.boundValid?"true":"false");
+     if(pouch.primary.boundValid){auto q=physical_reload_adapter::trackingPoint({pouch.primary.bound[0],pouch.primary.bound[1],pouch.primary.bound[2]});state<<",\"heldBoundTracking\":["<<q.x<<","<<q.y<<","<<q.z<<"]";}
      state<<"}";
     }
     auto vec=[&](Vec p){state<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";};
@@ -846,8 +1014,8 @@ namespace {
   if(m->type==NewGame){clearPhysicalMags();clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
   // Native TTWVR owns held-item save/load and teardown. Only discard addon
   // pointers here; never activate/stow a native object during lifecycle events.
-  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearPhysicalMags();clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
-  if(m->type==MainLoop){testMailbox();tick();if(loaded)tickPhysicalMags();}
+  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearTutorialVisual();tutorialStep=reload_tutorial::Step::Hidden;tutorialForm=0;tutorialWeapon=nullptr;clearPhysicalMags();clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
+  if(m->type==MainLoop){testMailbox();tick();if(loaded){tickPhysicalMags();tickTutorial();}}
  }
 }
 extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,int kind,float x,float y){
@@ -893,7 +1061,7 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse){
  gameDirectory=nvse->runtimeDirectory();std::string path=gameDirectory+"SeatedControls.log";logfile=_fsopen(path.c_str(),"w",_SH_DENYNO);
  scripts=static_cast<Scripts*>(nvse->queryInterface(6));arrays=static_cast<Arrays*>(nvse->queryInterface(5));consoleApi=static_cast<Console*>(nvse->queryInterface(1));auto messaging=static_cast<Messaging*>(nvse->queryInterface(2));
  if(auto data=static_cast<DataInterface*>(nvse->queryInterface(7)))inventoryRef=reinterpret_cast<InventoryRef*(__cdecl*)(u32)>(data->function(2));
- log("SeatedControls 1.5.1-beta; runtime %08X; nvse %u",nvse->runtime,nvse->version);
+ log("SeatedControls 1.6.0-dev.1; runtime %08X; nvse %u",nvse->runtime,nvse->version);
  if(!scripts||!arrays||!messaging||!inventoryRef||!build_adapter::verifiedTTWVR(GetModuleHandleW(L"TTWVR.dll")))return false;
  if(!enableInputLayer()){log("Input layer missing; reinstall the complete addon archive");return false;}
  log("OpenXR input layer enabled for this process");

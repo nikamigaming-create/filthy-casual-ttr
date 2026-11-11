@@ -34,10 +34,10 @@ inline void setSpeaker(unsigned id,Vec world){
 }
 inline Vec* __fastcall publishSpeaker(void* manager,void*,Vec* out,const Vec* world){
  ++speakerFrameUpdates;
- auto convert=reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x572320);
+ auto convert=reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x64B0B0);
  auto result=convert(manager,out,world);
  std::lock_guard<std::mutex> lock(speakerMutex);
- if(speakerId&&reinterpret_cast<int(__cdecl*)()>(base+0xB3E8)()==0x3F1){
+ if(speakerId&&reinterpret_cast<int(__cdecl*)()>(base+0xD094)()==0x3F1){
   Vec point{};convert(manager,&point,&speakerWorld);
   const auto eye=*reinterpret_cast<Vec*>(static_cast<unsigned char*>(manager)+0x1C);
   speakerAnchor={speakerEpoch,{point.x,point.y,point.z},{eye.x,eye.y,eye.z}};
@@ -51,19 +51,19 @@ inline bool readSpeaker(DialogueAnchor& out){
  out=speakerAnchor;return true;
 }
 inline bool __fastcall inspectLens(Vec* center,void*){
- auto result=reinterpret_cast<bool(__thiscall*)(const Vec*)>(base+0x556D0)(center);
- auto manager=reinterpret_cast<void*(__cdecl*)()>(base+0x101E0)();
- if(result)reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x572320)(manager,&lensTracking,center);
+ auto result=reinterpret_cast<bool(__thiscall*)(const Vec*)>(base+0x5D600)(center);
+ auto manager=reinterpret_cast<void*(__cdecl*)()>(base+0x12BC5)();
+ if(result)reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x64B0B0)(manager,&lensTracking,center);
  ++lensSamples;return result;
 }
 // Read-only diagnostics for the private test mailbox. Exact-build globals:
 // 2A7070 returns DCE548; 32C71C increments 122F068 on scope render.
 inline void diagnostics(std::ostream& out){
  auto b=build_adapter::heldModule();if(!b)return;
- auto s=b+0xDCE548;
- out<<",\"nativeScopeActive\":"<<unsigned(*s)<<",\"nativeScopeFrames\":"<<*reinterpret_cast<unsigned*>(b+0x122F068);
- out<<",\"nativeTopMenu\":"<<reinterpret_cast<int(__cdecl*)()>(b+0xB3E8)();
- auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(b+0x8F7B)();
+ auto s=b+0xECCD68;
+ out<<",\"nativeScopeActive\":"<<unsigned(*s)<<",\"nativeScopeFrames\":"<<*reinterpret_cast<unsigned*>(b+0x17FE728);
+ out<<",\"nativeTopMenu\":"<<reinterpret_cast<int(__cdecl*)()>(b+0xD094)();
+ auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(b+0xA641)();
  out<<",\"nativeScopeInFrame\":"<<unsigned(settings[0x531]);
  out<<",\"scopeSurfaceAttempts\":"<<scope_surface_adapter::attempts.load()
     <<",\"scopeSurfaceRestored\":"<<scope_surface_adapter::restored.load()
@@ -72,15 +72,15 @@ inline void diagnostics(std::ostream& out){
     <<",\"scopeSurfaceSize\":["<<scope_surface_adapter::width.load()<<","<<scope_surface_adapter::height.load()<<"]"
     <<",\"scopeSurfaceSamples\":"<<scope_surface_adapter::samples.load();
  out<<",\"lensSamples\":"<<lensSamples<<",\"lensTracking\":["<<lensTracking.x<<","<<lensTracking.y<<","<<lensTracking.z<<"]";
- auto manager=static_cast<unsigned char*>(reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)());
+ auto manager=static_cast<unsigned char*>(reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)());
  auto backend=*reinterpret_cast<unsigned char**>(manager);
- if(backend&&*reinterpret_cast<void**>(backend)==b+0x922F68){
-  out<<",\"scopeTextureReady\":"<<unsigned(backend[0x2E98])<<",\"scopeLayerGates\":["<<unsigned(backend[0x2C4C])<<","<<unsigned(backend[0x2C4D])<<","<<unsigned(backend[0x2C4E])<<"]";
+ if(backend&&*reinterpret_cast<void**>(backend)==b+0xA17AD0){
+  out<<",\"scopeTextureReady\":"<<unsigned(backend[0x2E80])<<",\"scopeLayerGates\":["<<unsigned(backend[0x2C2C])<<","<<unsigned(backend[0x2C2D])<<","<<unsigned(backend[0x2C2E])<<"]";
   out<<",\"nativeAuxPanels\":[";
   for(unsigned n=0;n<2;++n){
-   auto d=backend+0x3774+n*0x60;auto p=reinterpret_cast<Vec*>(d+4);
+   auto d=backend+0x3754+n*0x58;auto p=reinterpret_cast<Vec*>(d+4);
    if(n)out<<",";
-   out<<"{\"active\":"<<unsigned(d[0])<<",\"ready\":"<<unsigned(d[0x5C])
+   out<<"{\"active\":"<<unsigned(d[0])<<",\"ready\":"<<unsigned(d[0x54])
       <<",\"position\":["<<p->x<<","<<p->y<<","<<p->z<<"],\"size\":["
       <<*reinterpret_cast<float*>(d+0x20)<<","<<*reinterpret_cast<float*>(d+0x24)<<"]}";
   }
@@ -89,10 +89,10 @@ inline void diagnostics(std::ostream& out){
  out<<",\"speakerTracking\":["<<speakerTracking.x<<","<<speakerTracking.y<<","<<speakerTracking.z<<"]";
  auto head=reinterpret_cast<Vec*>(manager+0x1C);
  out<<",\"nativeHeadTracking\":["<<head->x<<","<<head->y<<","<<head->z<<"]";
- out<<",\"nativePanelAnchored\":"<<unsigned(manager[0xBA8])<<",\"nativePopupMode\":"<<*reinterpret_cast<unsigned*>(b+0xE7D998);
- out<<",\"worldHud\":{\"active\":"<<unsigned(manager[0x3040])<<",\"target\":"<<*reinterpret_cast<unsigned*>(b+0xE7E318)
-    <<",\"pages\":"<<floating_hud_adapter::pages.load()<<",\"selected\":"<<*reinterpret_cast<int*>(b+0xE7E32C)
-    <<",\"top\":"<<*reinterpret_cast<int*>(b+0xD8CD30)<<",\"paths\":[";
+ out<<",\"nativePanelAnchored\":"<<unsigned(manager[0xBA8])<<",\"nativePopupMode\":"<<*reinterpret_cast<unsigned*>(b+0x10D65B8);
+ out<<",\"worldHud\":{\"active\":"<<unsigned(manager[0x3040])<<",\"target\":"<<*reinterpret_cast<unsigned*>(b+0x10D6F38)
+    <<",\"pages\":"<<floating_hud_adapter::pages.load()<<",\"selected\":"<<*reinterpret_cast<int*>(b+0x10D6F4C)
+    <<",\"top\":"<<*reinterpret_cast<int*>(b+0xE8AD30)<<",\"paths\":[";
  for(unsigned i=0;i<2;++i){if(i)out<<",";const auto p=floating_hud_adapter::lastWorld[i];
   out<<"{\"samples\":"<<floating_hud_adapter::samples[i].load()<<",\"relocations\":"<<floating_hud_adapter::relocations[i].load()
      <<",\"world\":["<<p.x<<","<<p.y<<","<<p.z<<"]}";
@@ -101,10 +101,10 @@ inline void diagnostics(std::ostream& out){
 inline void testScopeSchedule(bool inFrame){
  // Caller is the simulator-only game-thread mailbox. Never changes disk INIs.
  auto b=build_adapter::heldModule();if(!b)return;
- auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(b+0x8F7B)();settings[0x531]=inFrame?1:0;
+ auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(b+0xA641)();settings[0x531]=inFrame?1:0;
 }
 inline Vec* __fastcall targetToTracking(void* manager,void*,Vec* out,const Vec* world){
- auto result=reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x572320)(manager,out,world);
+ auto result=reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(base+0x64B0B0)(manager,out,world);
  const auto head=*reinterpret_cast<Vec*>(static_cast<unsigned char*>(manager)+0x1C);
  targetDistance=scene::distance(*result,head);
  speakerTracking=*result;
@@ -113,9 +113,9 @@ inline Vec* __fastcall targetToTracking(void* manager,void*,Vec* out,const Vec* 
 inline bool __cdecl besideSpeaker(const Pose* head,const Vec* toward,Pose* out,Vec* direction,float nativeDegrees){
  Vec offset=*toward;
  // Only Dialogue (3F1). Other target panels keep their native placement.
- int menu=reinterpret_cast<int(__cdecl*)()>(base+0xB3E8)();
+ int menu=reinterpret_cast<int(__cdecl*)()>(base+0xD094)();
  if(menu==0x3F1&&std::isfinite(targetDistance)&&targetDistance>0.01f){
-  const auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(base+0x8F7B)();
+  const auto settings=reinterpret_cast<unsigned char*(__cdecl*)()>(base+0xA641)();
   float distance=*reinterpret_cast<float*>(settings+0x5D8);
   float width=*reinterpret_cast<float*>(settings+0x5D4);
   if(std::isfinite(distance)&&distance>=0.75f&&std::isfinite(width)&&width>0){
@@ -134,7 +134,7 @@ inline bool __cdecl besideSpeaker(const Pose* head,const Vec* toward,Pose* out,V
   }
  }
  targetDistance=0;
- return reinterpret_cast<bool(__cdecl*)(const Pose*,const Vec*,Pose*,Vec*,float)>(base+0x568BA0)(head,&offset,out,direction,nativeDegrees);
+ return reinterpret_cast<bool(__cdecl*)(const Pose*,const Vec*,Pose*,Vec*,float)>(base+0x641930)(head,&offset,out,direction,nativeDegrees);
 }
 inline bool callMatches(unsigned char* at,unsigned char* to){
  int rel{};memcpy(&rel,at+1,4);return at[0]==0xE8&&at+5+rel==to;
@@ -146,29 +146,29 @@ inline const char* install(bool configured=false){
  auto b=build_adapter::heldModule();if(!b)return "refused unsupported build";
  const unsigned char conversion[]={0x83,0xEC,0x60,0x56,0x8B,0xF1,0x57};
  const unsigned char helper[]={0x55,0x8B,0xEC,0x83,0xE4,0xF8,0x83,0xEC,0x5C};
- if(!callMatches(b+0x56BDB4,b+0x218A5)||!callMatches(b+0x56BE82,b+0x12FD)||memcmp(b+0x572320,conversion,sizeof(conversion))||memcmp(b+0x568BA0,helper,sizeof(helper)))return "refused dialogue call guards";
- if(!callMatches(b+0x571210,b+0x218A5))return "refused speaker publication guard";
+ if(!callMatches(b+0x644B44,b+0x273FE)||!callMatches(b+0x644C12,b+0x1375)||memcmp(b+0x64B0B0,conversion,sizeof(conversion))||memcmp(b+0x641930,helper,sizeof(helper)))return "refused dialogue call guards";
+ if(!callMatches(b+0x649FA0,b+0x273FE))return "refused speaker publication guard";
  // Reserve both sites before changing either; install only at DeferredInit.
  DWORD old1{},old2{};
- if(!VirtualProtect(b+0x56BDB4,5,PAGE_EXECUTE_READWRITE,&old1))return "refused target protection";
- if(!VirtualProtect(b+0x56BE82,5,PAGE_EXECUTE_READWRITE,&old2)){DWORD ignored;VirtualProtect(b+0x56BDB4,5,old1,&ignored);return "refused pose protection";}
+ if(!VirtualProtect(b+0x644B44,5,PAGE_EXECUTE_READWRITE,&old1))return "refused target protection";
+ if(!VirtualProtect(b+0x644C12,5,PAGE_EXECUTE_READWRITE,&old2)){DWORD ignored;VirtualProtect(b+0x644B44,5,old1,&ignored);return "refused pose protection";}
  base=b;
  // Read-only lens probe, only in this explicitly enabled diagnostic route.
- if(privateTest&&callMatches(b+0x2A937E,b+0x1C03)){
-  DWORD old{};if(VirtualProtect(b+0x2A937E,5,PAGE_EXECUTE_READWRITE,&old)){
-   int rel=int(reinterpret_cast<unsigned char*>(&inspectLens)-(b+0x2A9383));memcpy(b+0x2A937F,&rel,4);
-   FlushInstructionCache(GetCurrentProcess(),b+0x2A937E,5);DWORD ignored;VirtualProtect(b+0x2A937E,5,old,&ignored);
+ if(privateTest&&callMatches(b+0x33368E,b+0x1E65)){
+  DWORD old{};if(VirtualProtect(b+0x33368E,5,PAGE_EXECUTE_READWRITE,&old)){
+   int rel=int(reinterpret_cast<unsigned char*>(&inspectLens)-(b+0x333693));memcpy(b+0x33368F,&rel,4);
+   FlushInstructionCache(GetCurrentProcess(),b+0x33368E,5);DWORD ignored;VirtualProtect(b+0x33368E,5,old,&ignored);
   }
  }
- int first=int(reinterpret_cast<unsigned char*>(&targetToTracking)-(b+0x56BDB9));
- int second=int(reinterpret_cast<unsigned char*>(&besideSpeaker)-(b+0x56BE87));
- memcpy(b+0x56BDB5,&first,4);memcpy(b+0x56BE83,&second,4);
- FlushInstructionCache(GetCurrentProcess(),b+0x56BDB4,5);FlushInstructionCache(GetCurrentProcess(),b+0x56BE82,5);
- DWORD ignored;VirtualProtect(b+0x56BE82,5,old2,&ignored);VirtualProtect(b+0x56BDB4,5,old1,&ignored);
+ int first=int(reinterpret_cast<unsigned char*>(&targetToTracking)-(b+0x644B49));
+ int second=int(reinterpret_cast<unsigned char*>(&besideSpeaker)-(b+0x644C17));
+ memcpy(b+0x644B45,&first,4);memcpy(b+0x644C13,&second,4);
+ FlushInstructionCache(GetCurrentProcess(),b+0x644B44,5);FlushInstructionCache(GetCurrentProcess(),b+0x644C12,5);
+ DWORD ignored;VirtualProtect(b+0x644C12,5,old2,&ignored);VirtualProtect(b+0x644B44,5,old1,&ignored);
  DWORD oldSpeaker{};
- if(VirtualProtect(b+0x571210,5,PAGE_EXECUTE_READWRITE,&oldSpeaker)){
-  int rel=int(reinterpret_cast<unsigned char*>(&publishSpeaker)-(b+0x571215));memcpy(b+0x571211,&rel,4);
-  FlushInstructionCache(GetCurrentProcess(),b+0x571210,5);VirtualProtect(b+0x571210,5,oldSpeaker,&ignored);
+ if(VirtualProtect(b+0x649FA0,5,PAGE_EXECUTE_READWRITE,&oldSpeaker)){
+  int rel=int(reinterpret_cast<unsigned char*>(&publishSpeaker)-(b+0x649FA5));memcpy(b+0x649FA1,&rel,4);
+  FlushInstructionCache(GetCurrentProcess(),b+0x649FA0,5);VirtualProtect(b+0x649FA0,5,oldSpeaker,&ignored);
  }
  // In normal play LocalMetaLink owns the graphics fix. The addon only owns
  // world panel positioning and input. The private test also exercises scope.

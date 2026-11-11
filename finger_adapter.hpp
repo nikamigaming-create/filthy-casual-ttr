@@ -37,17 +37,17 @@ inline void blendRotation(scene::Transform& target,const scene::Transform& nativ
  target.p=native.p;target.scale=native.scale;
 }
 inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,void* object,float approachWeight){
- reinterpret_cast<Pose>(module+0x1C4870)(root,hand,amount);
+ reinterpret_cast<Pose>(module+0x1CF1F0)(root,hand,amount);
  if(!root||hand<0||hand>1||!query||(posedObject&255))return;
  float freeWeight=std::isfinite(approachWeight)?std::clamp(approachWeight,0.f,1.f):0.f;
  freePoseWeight[hand]=freeWeight;
  // The object argument is shared by BOTH hands. Ask TTR which hand actually
  // owns a weapon/support pose, and retain its per-hand item/transition checks.
- if(object&&reinterpret_cast<bool(__cdecl*)(int,bool)>(module+0x1DB4C0)(hand,true))return;
- if(reinterpret_cast<bool(__cdecl*)(int)>(module+0x18A630)(hand)||*reinterpret_cast<int*>(module+0xDCE99C)==hand)return;
+ if(object&&reinterpret_cast<bool(__cdecl*)(int,bool)>(module+0x1E5E40)(hand,true))return;
+ if(reinterpret_cast<bool(__cdecl*)(int)>(module+0x195030)(hand)||*reinterpret_cast<int*>(module+0xECD1BC)==hand)return;
  if(freeWeight<=.0001f)return;
  void* joints[15]{};scene::Transform nativePose[15]{};
- auto nativeTable=module+(hand?0x8F0730:0x8F0BE0);
+ auto nativeTable=module+(hand?0x9D7CA0:0x9D8150);
  for(int n=0;n<15;n++){joints[n]=scene::find(root,*reinterpret_cast<const char**>(nativeTable+n*80));if(joints[n])nativePose[n]=scene::local(joints[n]);}
  float thumb=0,index=0,lift=0,freeGrip=-1;if(!query(hand,thumb,index,lift,freeGrip))return;
  if(!std::isfinite(thumb)||!std::isfinite(index)||!std::isfinite(lift))return;
@@ -61,14 +61,14 @@ inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,v
  // runs after per-hand occupancy checks and never reaches gameplay input.
  bool maskedGrip=std::isfinite(freeGrip)&&freeGrip>=0;
  if(maskedGrip)for(int j=6;j<15;j++)curls[j]=std::clamp(freeGrip,0.f,1.f);
- reinterpret_cast<Apply>(module+0x1DF020)(root,module+(hand?0x8F0730:0x8F0BE0),maskedGrip?15:6,curls);
+ reinterpret_cast<Apply>(module+0x1E99A0)(root,module+(hand?0x9D7CA0:0x9D8150),maskedGrip?15:6,curls);
  // Opposition moves the thumb toward the inside of the curled index/middle
  // fingers. Flexion alone bends it sideways past the fist. Blend from the
  // relaxed pose; preserve every joint position, length, and native held pose.
  float tuck=std::clamp((thumb-.20f)/.80f,0.f,1.f);tuck=tuck*tuck*(3-2*tuck);
  if(tuck>.0001f){
   const char* names[2][3]={{"Bip01 L Thumb1","Bip01 L Thumb11","Bip01 L Thumb12"},{"Bip01 R Thumb1","Bip01 R Thumb11","Bip01 R Thumb12"}};
-  auto table=module+(hand?0x8F0730:0x8F0BE0);
+  auto table=module+(hand?0x9D7CA0:0x9D8150);
   for(int j=0;j<3;j++)if(auto node=scene::find(root,names[hand][j])){
    auto axis=j?*reinterpret_cast<scene::Vec*>(table+j*80+56):thumbTuckAxis[hand];
    float angle=j?(j==1?.43633231f:.08726646f):thumbTuckAngle[hand];
@@ -110,21 +110,21 @@ inline const char* install(Query fn){
  const unsigned char context[]={0xF3,0x0F,0x11,0x04,0x24,0xFF,0x73,0x0C,0x56,0xE8,0xB3,0x46,0xFE,0xFF,0x6A,0x00,0xFF,0x73,0x0C,0x56,0xE8,0x18,0xE4,0xFE,0xFF};
  const unsigned char apply[]={0x83,0xEC,0x58,0x8B,0x4C,0x24,0x5C,0x55,0x8B,0x6C,0x24,0x68,0x89,0x4C,0x24,0x10,0x57,0x8B};
  const unsigned char original[]={0x55,0x8B,0xEC,0x83,0xE4,0xF8,0x81,0xEC,0x1C,0x01,0x00,0x00,0x53,0x8B,0x5D,0x08};
- if(memcmp(b+0x1E01AF,context,sizeof(context))||memcmp(b+0x1DF020,apply,sizeof(apply))||memcmp(b+0x1C4870,original,sizeof(original)))return "refused: pose instruction guard";
+ if(memcmp(b+0x1EAB2F,context,sizeof(context))||memcmp(b+0x1E99A0,apply,sizeof(apply))||memcmp(b+0x1CF1F0,original,sizeof(original)))return "refused: pose instruction guard";
  const unsigned char distanceInit[]={0xF3,0x0F,0x11,0x85,0xB8,0xFE,0xFF,0xFF};
  const unsigned char distanceEnd[]={0xF3,0x0F,0x11,0x95,0xB8,0xFE,0xFF,0xFF};
- if(memcmp(b+0x1E0043,distanceInit,sizeof(distanceInit))||memcmp(b+0x1E0183,distanceEnd,sizeof(distanceEnd)))return "refused: native approach blend guard";
+ if(memcmp(b+0x1EA9C3,distanceInit,sizeof(distanceInit))||memcmp(b+0x1EAB03,distanceEnd,sizeof(distanceEnd)))return "refused: native approach blend guard";
  const unsigned char policy[]={0x80,0x7C,0x24,0x08,0x00,0x74,0x24,0x8B,0x4C,0x24,0x04,0x51,0xE8,0x7F,0xDD,0xFF,0xFF,0x83,0xC4,0x04,0x84,0xC0,0x75,0x10};
  const unsigned char held[]={0x8B,0x44,0x24,0x04,0x74,0x08,0x39,0x05};
- if(memcmp(b+0x1DB4C0,policy,sizeof(policy))||b[0x18A630]!=0x80||b[0x18A631]!=0x3D||*reinterpret_cast<unsigned char**>(b+0x18A632)!=b+0x1114215||memcmp(b+0x18A637,held,sizeof(held)))return "refused: per-hand native policy guard";
+ if(memcmp(b+0x1E5E40,policy,sizeof(policy))||b[0x195030]!=0x80||b[0x195031]!=0x3D||*reinterpret_cast<unsigned char**>(b+0x195032)!=b+0x136CE35||memcmp(b+0x195037,held,sizeof(held)))return "refused: per-hand native policy guard";
  const char* names[2][6]={{"Bip01 L Thumb1","Bip01 L Thumb11","Bip01 L Thumb12","Bip01 L Finger1","Bip01 L Finger11","Bip01 L Finger12"},{"Bip01 R Thumb1","Bip01 R Thumb11","Bip01 R Thumb12","Bip01 R Finger1","Bip01 R Finger11","Bip01 R Finger12"}};
- const unsigned nameRva[2][6]={{0x8F13E8,0x8F13FC,0x8F1410,0x743388,0x8F1424,0x8F1438},{0x8F12D0,0x8F12E4,0x8F12F8,0x743374,0x8F130C,0x8F1320}};
+ const unsigned nameRva[2][6]={{0x9D8958,0x9D896C,0x9D8980,0x82A4E8,0x9D8994,0x9D89A8},{0x9D8840,0x9D8854,0x9D8868,0x82A4D4,0x9D887C,0x9D8890}};
  for(int h=0;h<2;h++)for(int n=0;n<6;n++){
-  auto row=b+(h?0x8F0730:0x8F0BE0)+n*80;auto name=*reinterpret_cast<const char**>(row);
+  auto row=b+(h?0x9D7CA0:0x9D8150)+n*80;auto name=*reinterpret_cast<const char**>(row);
   if(name!=reinterpret_cast<char*>(b+nameRva[h][n])||strcmp(name,names[h][n])||*reinterpret_cast<int*>(row+72)!=n/3||*reinterpret_cast<int*>(row+76)!=n%3)return "refused: native joint table guard";
  }
  for(int h=0;h<2;h++){
-  auto table=b+(h?0x8F0730:0x8F0BE0);
+  auto table=b+(h?0x9D7CA0:0x9D8150);
   for(int n=6;n<15;n++){
    auto row=table+n*80;char expected[40];int finger=n/3,joint=n%3;
    if(joint)sprintf_s(expected,"Bip01 %c Finger%d%d",h?'R':'L',finger,joint);
@@ -171,7 +171,7 @@ inline const char* install(Query fn){
   thumbLiftAxis[h][1]=unit(scene::cross(outer,target));thumbLiftAngle[h][1]=std::acos(dot);
   for(int joint=0;joint<2;joint++)if(!std::isfinite(thumbLiftAngle[h][joint])||scene::distance(thumbLiftAxis[h][joint],{})<.9f)return "refused: thumb anatomical frame";
  }
- auto site=b+0x1E01B8;DWORD old=0;if(!VirtualProtect(site,5,PAGE_EXECUTE_READWRITE,&old))return "failed: pose site protection";
+ auto site=b+0x1EAB38;DWORD old=0;if(!VirtualProtect(site,5,PAGE_EXECUTE_READWRITE,&old))return "failed: pose site protection";
  module=b;query=fn;int relative=int(reinterpret_cast<unsigned char*>(&bridge)-(site+5));memcpy(site+1,&relative,4);
  FlushInstructionCache(GetCurrentProcess(),site,5);DWORD unused=0;VirtualProtect(site,5,old,&unused);installed=true;
  return "installed: native empty-hand thumb/index pose extension";

@@ -15,15 +15,16 @@ inline XrRect2Di requestRect{},nameRect{};
 inline unsigned epoch=0,attempts=0;
 inline int bodyTop=0;
 inline bool ready=false;
+inline ULONGLONG nextInspect=0;
 inline bool anchor(DialogueAnchor& value){
  using Query=bool(__cdecl*)(DialogueAnchor*);
  auto module=GetModuleHandleW(L"SeatedControls.dll");
  auto fn=module?reinterpret_cast<Query>(GetProcAddress(module,"SC_DialogueAnchor")):nullptr;
  return fn&&fn(&value);
 }
-inline void reset(){std::lock_guard<std::mutex> lock(mutex);acquired.clear();requested=XR_NULL_HANDLE;ready=false;epoch=0;attempts=0;}
+inline void reset(){std::lock_guard<std::mutex> lock(mutex);acquired.clear();requested=XR_NULL_HANDLE;ready=false;epoch=0;attempts=0;nextInspect=0;}
 inline XrResult XRAPI_CALL onDestroy(XrSwapchain chain){
- auto result=destroy(chain);if(XR_SUCCEEDED(result)){std::lock_guard<std::mutex> lock(mutex);acquired.erase(chain);if(chain==requested){requested=XR_NULL_HANDLE;ready=false;attempts=0;}}
+ auto result=destroy(chain);if(XR_SUCCEEDED(result)){std::lock_guard<std::mutex> lock(mutex);acquired.erase(chain);if(chain==requested){requested=XR_NULL_HANDLE;ready=false;attempts=0;nextInspect=0;}}
  return result;
 }
 inline XrResult XRAPI_CALL onDestroySession(XrSession session){reset();return overlay::onDestroySession(session);}
@@ -34,7 +35,7 @@ inline XrResult XRAPI_CALL onAcquire(XrSwapchain chain,const XrSwapchainImageAcq
 }
 inline void inspect(XrSwapchain chain,unsigned index){
  if(!overlay::device||!overlay::context||!overlay::enumerateImages)return;
- ++attempts;
+ ++attempts;nextInspect=GetTickCount64()+250;
  uint32_t count=0;if(XR_FAILED(overlay::enumerateImages(chain,0,&count,nullptr))||index>=count)return;
  std::vector<XrSwapchainImageD3D11KHR> images(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
  if(XR_FAILED(overlay::enumerateImages(chain,count,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data()))))return;
@@ -83,7 +84,7 @@ inline XrResult XRAPI_CALL onRelease(XrSwapchain chain,const XrSwapchainImageRel
   std::lock_guard<std::mutex> lock(mutex);
   auto it=acquired.find(chain);
   // Read pixels while the application still OWNS the image, before release.
-  if(chain==requested&&!ready&&attempts<3&&it!=acquired.end())inspect(chain,it->second);
+  if(chain==requested&&!ready&&GetTickCount64()>=nextInspect&&it!=acquired.end())inspect(chain,it->second);
   if(it!=acquired.end())acquired.erase(it);
  }
  return release(chain,info);
@@ -110,17 +111,20 @@ inline XrResult XRAPI_CALL submit(XrSession session,const XrFrameEndInfo* info){
  {
   std::lock_guard<std::mutex> lock(mutex);
   if(requested!=original.subImage.swapchain||epoch!=target.epoch||memcmp(&requestRect,&original.subImage.imageRect,sizeof(requestRect))){
-   requested=original.subImage.swapchain;requestRect=original.subImage.imageRect;epoch=target.epoch;ready=false;attempts=0;
+   requested=original.subImage.swapchain;requestRect=original.subImage.imageRect;epoch=target.epoch;ready=false;attempts=0;nextInspect=0;
   }
   split=ready;crop=nameRect;cut=bodyTop;
  }
- if(!split)return overlay::onEndFrame(session,info);
+ if(!split||!height_layer::lastBase)return overlay::onEndFrame(session,info);
  auto body=original,name=original;
  const float removed=float(cut)/original.subImage.imageRect.extent.height;
  body.subImage.imageRect.offset.y+=cut;body.subImage.imageRect.extent.height-=cut;
  body.size.height*=1-removed;
  const auto shift=rotate(body.pose.orientation,{0,-original.size.height*removed*.5f,0});
  body.pose.position.x+=shift.x;body.pose.position.y+=shift.y;body.pose.position.z+=shift.z;
+ // Speaker tracking coordinates belong to the world-view reference space,
+ // not necessarily the native dialogue quad's space.
+ name.space=height_layer::resolve(height_layer::lastBase);
  name.subImage.imageRect=crop;
  name.pose.position={target.position[0],target.position[1],target.position[2]};
  const float yaw=std::atan2(target.head[0]-target.position[0],target.head[2]-target.position[2]);

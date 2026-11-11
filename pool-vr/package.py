@@ -18,12 +18,13 @@ for name in ['Start.template','Tick.template','CandidateInsertion.txt','recipe.j
 files['LICENSE']=R/'LICENSE'
 for name in ['Apache-2.0.txt','MIT.txt']:files['licenses/OpenXR-'+name]=R/'third_party/openxr/LICENSES'/name
 assert all(p.is_file() for p in files.values())
-manifest={'addon':'Filthy Casual Pool','version':'0.1.0-beta','standalone':True,
+manifest={'addon':'Filthy Casual Pool','version':'0.2.0-beta','standalone':True,
+ 'supportedTTWVR':'E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB',
  'requires':['Working supported TTR setup','Pool Tables Of The Mojave v4'],
  'optional':['Filthy Casual TTR >=1.4.5'],
  'generatedLocally':['Start.txt','Tick.txt','PlanCandidate.txt'],
  'files':[{'path':n,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for n,p in sorted(files.items())]}
-output=R/'outputs/Filthy-Casual-Pool-0.1.0-beta.zip';output.parent.mkdir(exist_ok=True)
+output=R/'outputs/Filthy-Casual-Pool-0.2.0-beta.zip';output.parent.mkdir(exist_ok=True)
 with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
  for n in sorted([*files,'manifest.json']):
   b=json.dumps(manifest,indent=2).encode() if n=='manifest.json' else files[n].read_bytes()

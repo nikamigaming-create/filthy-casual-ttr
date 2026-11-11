@@ -14,23 +14,23 @@ inline unsigned attempts=0,successes=0,calibration=0,pouchReturns=0,failures=0;
 inline float lastDistance=0,lastThreshold=0;inline unsigned lastRefID=0;
 inline bool __cdecl onRelease(unsigned char* frame){
  auto b=module;if(!b||GetCurrentThreadId()!=ownerThread||!commit)return false;
- if(b[0x121F1AC]){calibration++;return false;}
+ if(b[0x17EE134]){calibration++;return false;}
  auto settings=build_adapter::liveReloadSettings();if(!settings||settings[0x494]!=1||!settings[0x495])return false;
  // The primary mesh follows the hand. Use the visible pouch COPY for the
  // actual return zone; a distance measured to the held mesh is always tiny.
- auto visual=*reinterpret_cast<void**>(b+0x121F180);
- auto pouch=*reinterpret_cast<void**>(b+0x121F194);
+ auto visual=*reinterpret_cast<void**>(b+0x17EE108);
+ auto pouch=*reinterpret_cast<void**>(b+0x17EE11C);
  if(!build_adapter::readPouchNode(visual).readable||!build_adapter::readPouchNode(pouch).readable)return false;
- const auto localCenter=*reinterpret_cast<scene::Vec*>(b+0x121F184);
+ const auto localCenter=*reinterpret_cast<scene::Vec*>(b+0x17EE10C);
  const auto heldPose=scene::world(visual),pouchPose=scene::world(pouch);
  lastDistance=scene::distance(heldPose.p+scene::rotate(heldPose,localCenter)*heldPose.scale,pouchPose.p+scene::rotate(pouchPose,localCenter)*pouchPose.scale);
  lastThreshold=*reinterpret_cast<float*>(settings+0x4CC)* *reinterpret_cast<float*>(frame-0x15DC);
  if(!std::isfinite(lastDistance)||!std::isfinite(lastThreshold)||lastDistance<lastThreshold){pouchReturns++;return false;}
  Drop d{};d.player=*reinterpret_cast<void**>(frame-0x1600);d.ammo=*reinterpret_cast<void**>(frame-0x1628);
- d.visual=*reinterpret_cast<void**>(b+0x121F180);d.rounds=*reinterpret_cast<int*>(b+0x121F264);
+ d.visual=*reinterpret_cast<void**>(b+0x17EE108);d.rounds=*reinterpret_cast<int*>(b+0x17EE1EC);
  if(!d.player||!d.ammo||!d.visual||d.rounds<1||d.rounds>10000)return false;
  auto n=build_adapter::readPouchNode(d.visual);if(!n.readable)return false;d.pose=scene::world(d.visual);d.center=localCenter;
- if(b[0x121F001]&&b[0x121F003]){d.velocity=*reinterpret_cast<scene::Vec*>(b+0x121F064);if(!std::isfinite(d.velocity.x)||!std::isfinite(d.velocity.y)||!std::isfinite(d.velocity.z)||scene::distance(d.velocity,{})>6000)d.velocity={};}
+ if(b[0x17EDF89]&&b[0x17EDF8B]){d.velocity=*reinterpret_cast<scene::Vec*>(b+0x17EDFEC);if(!std::isfinite(d.velocity.x)||!std::isfinite(d.velocity.y)||!std::isfinite(d.velocity.z)||scene::distance(d.velocity,{})>6000)d.velocity={};}
  attempts++;if(!commit(d)){failures++;return false;}
  successes++;return true;
 }
@@ -72,7 +72,7 @@ inline bool installedSnapshot(void* player,void* ammo,int rounds){
  auto b=module;auto settings=build_adapter::liveReloadSettings();
  if(!b||GetCurrentThreadId()!=ownerThread||!commit||!settings||settings[0x494]!=1)return false;
  if(rounds<0||rounds>10000||(rounds>0&&!settings[0x495]))return false;
- Drop d{};d.player=player;d.ammo=ammo;d.rounds=rounds;d.visual=*reinterpret_cast<void**>(b+0x121EF98);
+ Drop d{};d.player=player;d.ammo=ammo;d.rounds=rounds;d.visual=*reinterpret_cast<void**>(b+0x17EDF20);
  if(!d.player||!d.visual||(rounds>0&&!d.ammo))return false;
  if(!build_adapter::readPouchNode(d.visual).readable)return false;
  d.pose=scene::world(d.visual);auto bound=scene::field<float*>(d.visual,0x20);
@@ -83,8 +83,8 @@ inline bool installedSnapshot(void* player,void* ammo,int rounds){
  attempts++;if(!commit(d)){failures++;return false;}successes++;if(!rounds)emptyDrops++;return true;
 }
 inline bool __cdecl onInstalled(unsigned char* frame,unsigned originalEax){
- if(!module||module[0x121F1AC]||(originalEax&255))return false;
- if(!installedSnapshot(*reinterpret_cast<void**>(frame-0x1600),*reinterpret_cast<void**>(frame-0x1628),*reinterpret_cast<int*>(module+0x121F140)))return false;
+ if(!module||module[0x17EE134]||(originalEax&255))return false;
+ if(!installedSnapshot(*reinterpret_cast<void**>(frame-0x1600),*reinterpret_cast<void**>(frame-0x1628),*reinterpret_cast<int*>(module+0x17EE0C8)))return false;
  installedDrops++;return true;
 }
 __declspec(naked) inline void installedEntry(){
@@ -124,15 +124,15 @@ inline void __cdecl onEject(unsigned* args,int route){
  if(route==0){
   using Fn=void(__cdecl*)(void*,void*,int,unsigned);
   auto original=reinterpret_cast<Fn>(ejectOriginal);
-  bool eligible=b[0x121F000]&&!b[0x121F001]&&!*reinterpret_cast<int*>(b+0x121F13C);
+  bool eligible=b[0x17EDF88]&&!b[0x17EDF89]&&!*reinterpret_cast<int*>(b+0x17EE0C4);
   bool ok=eligible&&installedSnapshot(player,ammo,std::max(0,count));
   original(player,ammo,ok?0:count,args[3]);
-  if(ok){*reinterpret_cast<int*>(b+0x121F13C)=4;ejectedDrops++;}
+  if(ok){*reinterpret_cast<int*>(b+0x17EE0C4)=4;ejectedDrops++;}
  }else{
   bool ok=installedSnapshot(player,ammo,std::max(0,count));
   if(route==2)ejectBCommitted=ok;
-  if(ok){if(route==1)*reinterpret_cast<int*>(b+0x121F13C)=4;ejectedDrops++;}
-  else reinterpret_cast<void(__cdecl*)(void*,void*,int)>(b+0x280450)(player,ammo,count);
+  if(ok){if(route==1)*reinterpret_cast<int*>(b+0x17EE0C4)=4;ejectedDrops++;}
+  else reinterpret_cast<void(__cdecl*)(void*,void*,int)>(b+0x30AC20)(player,ammo,count);
  }
 }
 #define FC_EJECT_ENTRY(name,route) \
@@ -167,11 +167,11 @@ __declspec(naked) inline void ejectBStateEntry(){
   mov eax,module
   cmp byte ptr [ejectBCommitted],0
   je nativePath
-  mov dword ptr [eax+121F13Ch],4
+  mov dword ptr [eax+17EE0C4h],4
   mov byte ptr [ejectBCommitted],0
   jmp done
  nativePath:
-  mov dword ptr [eax+121F13Ch],5
+  mov dword ptr [eax+17EE0C4h],5
  done:
   pop eax
   popfd
@@ -189,9 +189,9 @@ inline int __cdecl onRecover(unsigned char* frame){
  recoverStage=1;auto b=module;auto settings=build_adapter::liveReloadSettings();
  if(!b||!recover||GetCurrentThreadId()!=ownerThread||!settings||settings[0x494]!=1)return -1;
  recoverStage=2;
- if(*reinterpret_cast<int*>(b+0x121F13C)!=4||*reinterpret_cast<int*>(b+0x121F260)||b[0x121F1AC]||b[0x121F000]||b[0x121F8FA])return -1;
- recoverStage=3;if(!build_adapter::readPouchNode(*reinterpret_cast<void**>(b+0x121EF98)).readable)return -1;
- int hand=reinterpret_cast<bool(__cdecl*)()>(b+0x25C610)()?1:0;
+ if(*reinterpret_cast<int*>(b+0x17EE0C4)!=4||*reinterpret_cast<int*>(b+0x17EE1E8)||b[0x17EE134]||b[0x17EDF88]||b[0x17EE882])return -1;
+ recoverStage=3;if(!build_adapter::readPouchNode(*reinterpret_cast<void**>(b+0x17EDF20)).readable)return -1;
+ int hand=reinterpret_cast<bool(__cdecl*)()>(b+0x2E6DE0)()?1:0;
  if(!frame[-0x1576])return -1;
  int count=recover(*reinterpret_cast<void**>(frame-0x1600),hand);
  if(count>=0){recoveredParts++;recoveredRounds=count;}return count;
@@ -236,21 +236,21 @@ inline void* trampoline(unsigned char* p,unsigned n){
 inline const char* install(Commit callback,Recover recovery){
  if(module)return "already installed";auto b=build_adapter::heldModule();if(!b)return "refused hash";
  auto cmp=[&](unsigned rva,unsigned global){auto p=b+rva;return p[0]==0x80&&p[1]==0x3D&&*reinterpret_cast<void**>(p+2)==b+global&&p[6]==0;};
- auto callSite=[&](unsigned rva){auto p=b+rva;return p[0]==0xE8&&p+5+*reinterpret_cast<int*>(p+1)==b+0x280450;};
- auto state=b+0x284032;
- if(!cmp(0x288B96,0x121F1AC)||!cmp(0x2868FD,0x121F1AC)||!cmp(0x258F90,0x121F000)||b[0x25905B]!=0xC3||!callSite(0x283C8D)||!callSite(0x284005)||state[0]!=0xC7||state[1]!=0x05||*reinterpret_cast<void**>(state+2)!=b+0x121F13C||*reinterpret_cast<int*>(state+6)!=5)return "refused release/ejection instructions";
+ auto callSite=[&](unsigned rva){auto p=b+rva;return p[0]==0xE8&&p+5+*reinterpret_cast<int*>(p+1)==b+0x30AC20;};
+ auto state=b+0x30E802;
+ if(!cmp(0x313366,0x17EE134)||!cmp(0x3110CD,0x17EE134)||!cmp(0x2E3760,0x17EDF88)||b[0x2E382B]!=0xC3||!callSite(0x30E45D)||!callSite(0x30E7D5)||state[0]!=0xC7||state[1]!=0x05||*reinterpret_cast<void**>(state+2)!=b+0x17EE0C4||*reinterpret_cast<int*>(state+6)!=5)return "refused release/ejection instructions";
  const unsigned char recoveryCmp[]={0x80,0xBD,0x6E,0xEA,0xFF,0xFF,0};
- if(memcmp(b+0x28A422,recoveryCmp,7)||b[0x28C491]!=0xE8||b+0x28C496+*reinterpret_cast<int*>(b+0x28C492)!=b+0x257AD0)return "refused recovery instructions";
- const unsigned char clonePrefix[]={0x55,0x8B,0xEC};if(memcmp(b+0x2580E0,clonePrefix,3))return "refused clone entry";
- fallback=trampoline(b+0x288B96,7);installedFallback=trampoline(b+0x2868FD,7);ejectOriginal=trampoline(b+0x258F90,7);
- recoverFallback=trampoline(b+0x28A422,7);
+ if(memcmp(b+0x314BF2,recoveryCmp,7)||b[0x316C61]!=0xE8||b+0x316C66+*reinterpret_cast<int*>(b+0x316C62)!=b+0x2E22A0)return "refused recovery instructions";
+ const unsigned char clonePrefix[]={0x55,0x8B,0xEC};if(memcmp(b+0x2E28B0,clonePrefix,3))return "refused clone entry";
+ fallback=trampoline(b+0x313366,7);installedFallback=trampoline(b+0x3110CD,7);ejectOriginal=trampoline(b+0x2E3760,7);
+ recoverFallback=trampoline(b+0x314BF2,7);
  if(!fallback||!installedFallback||!ejectOriginal||!recoverFallback)return "trampoline allocation failed";
  struct Patch{unsigned rva,n;void* target;unsigned char op;DWORD protection;};
- Patch patches[]={{0x288B96,7,entry,0xE9,0},{0x2868FD,7,installedEntry,0xE9,0},{0x258F90,7,ejectEntry,0xE9,0},{0x283C8D,5,ejectAEntry,0xE8,0},{0x284005,5,ejectBEntry,0xE8,0},{0x284032,10,ejectBStateEntry,0xE9,0},{0x28A422,7,recoverEntry,0xE9,0}};
+ Patch patches[]={{0x313366,7,entry,0xE9,0},{0x3110CD,7,installedEntry,0xE9,0},{0x2E3760,7,ejectEntry,0xE9,0},{0x30E45D,5,ejectAEntry,0xE8,0},{0x30E7D5,5,ejectBEntry,0xE8,0},{0x30E802,10,ejectBStateEntry,0xE9,0},{0x314BF2,7,recoverEntry,0xE9,0}};
  // Protect all sites before changing any instruction. Restore permissions on
  // failure; never leave a partially installed set of state transitions.
  unsigned count=0;for(auto& p:patches){if(!VirtualProtect(b+p.rva,p.n,PAGE_EXECUTE_READWRITE,&p.protection)){for(int j=int(count)-1;j>=0;j--){DWORD ignored;auto& q=patches[j];VirtualProtect(b+q.rva,q.n,q.protection,&ignored);}return "site protection failed";}count++;}
- completed=b+0x288CA0;installedCompleted=b+0x286934;ejectBContinue=b+0x28403C;commit=callback;recover=recovery;recoverComplete=b+0x28C491;ownerThread=GetCurrentThreadId();module=b;
+ completed=b+0x313470;installedCompleted=b+0x311104;ejectBContinue=b+0x30E80C;commit=callback;recover=recovery;recoverComplete=b+0x316C61;ownerThread=GetCurrentThreadId();module=b;
  for(auto& patch:patches){auto p=b+patch.rva;p[0]=patch.op;*reinterpret_cast<int*>(p+1)=int(reinterpret_cast<unsigned char*>(patch.target)-(p+5));for(unsigned j=5;j<patch.n;j++)p[j]=0x90;FlushInstructionCache(GetCurrentProcess(),p,patch.n);}
  // Several sites share a page. Restore in reverse acquisition order.
  for(int i=int(count)-1;i>=0;i--){auto& p=patches[i];DWORD ignored;VirtualProtect(b+p.rva,p.n,p.protection,&ignored);}
@@ -266,8 +266,8 @@ inline void* lookup(unsigned id){
  unsigned guard=0;for(auto e=map->table[id%map->buckets];e&&guard++<100000;e=e->next)if(e->key==id)return e->data;
  return nullptr;
 }
-inline void* clone(void* node){auto b=build_adapter::heldModule();return b&&node?reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2580E0)(node):nullptr;}
-inline bool momentum(void* node,scene::Vec linear){auto b=build_adapter::heldModule();scene::Vec angular{};return b&&node&&reinterpret_cast<bool(__cdecl*)(void*,const scene::Vec*,const scene::Vec*,scene::Vec*)>(b+0x194C80)(node,&linear,&angular,nullptr);}
+inline void* clone(void* node){auto b=build_adapter::heldModule();return b&&node?reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2E28B0)(node):nullptr;}
+inline bool momentum(void* node,scene::Vec linear){auto b=build_adapter::heldModule();scene::Vec angular{};return b&&node&&reinterpret_cast<bool(__cdecl*)(void*,const scene::Vec*,const scene::Vec*,scene::Vec*)>(b+0x19F680)(node,&linear,&angular,nullptr);}
 
 // FNV/JIP NiAVObject::ExportToFile sequence and ModelLoader::LoadModel ABI.
 // Only privately derived visual nodes are cached; collision remains native.
@@ -362,7 +362,7 @@ inline void stripControllers(void* node,int depth=0){
  auto count=scene::field<unsigned short>(node,0xA6);auto children=scene::field<void**>(node,0xA0);if(!children||count>4096)return;
  for(unsigned i=0;i<count;i++)stripControllers(children[i],depth+1);
 }
-inline bool isHeld(void* ref){auto b=build_adapter::heldModule();return b&&ref&&((b[0x1114215]&&*reinterpret_cast<void**>(b+0x11146D0)==ref)||(b[0x11142E4]&&*reinterpret_cast<void**>(b+0x11142EC)==ref));}
+inline bool isHeld(void* ref){auto b=build_adapter::heldModule();return b&&ref&&((b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)||(b[0x136CF04]&&*reinterpret_cast<void**>(b+0x136CF0C)==ref));}
 inline void rebuildReference(void* ref){
  if(!ref||isHeld(ref)||!scene::root(ref))return;
  reinterpret_cast<void(__thiscall*)(void*,void*,bool)>(0x5702E0)(ref,nullptr,true);
@@ -422,14 +422,14 @@ inline void* dropAmmo(void* player,void* ammo,unsigned count){
 inline unsigned stackCount(void* ref){if(!ref)return 0;auto p=scene::field<void*>(ref,0x48);unsigned guard=0;while(p&&guard++<256){if(scene::field<unsigned char>(p,4)==0x24)return unsigned(std::max(0,int(scene::field<short>(p,0xC))));p=scene::field<void*>(p,8);}return 1;}
 inline scene::Vec trackingPoint(scene::Vec point){
  auto b=build_adapter::heldModule();scene::Vec result{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)();
-  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x572320)(manager,&result,&point);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
+  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x64B0B0)(manager,&result,&point);}
  return result;
 }
 inline scene::Vec gripPoint(int hand){
  auto b=build_adapter::heldModule();scene::Vec point{};float rotation[9]{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)();
-  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x56C530)(manager,hand!=0,false,&point,rotation);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
+  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x6452C0)(manager,hand!=0,false,&point,rotation);}
  return point;
 }
 
@@ -437,14 +437,14 @@ inline scene::Vec gripPoint(int hand){
 // hidden magazine node. Same parent/rest composition as RVA285949..285969.
 inline bool installedRest(scene::Transform& result,scene::Vec* axis=nullptr){
  auto b=build_adapter::heldModule();if(!b)return false;
- auto node=*reinterpret_cast<void**>(b+0x121EF98);auto weapon=*reinterpret_cast<void**>(b+0x121EF8C);
+ auto node=*reinterpret_cast<void**>(b+0x17EDF20);auto weapon=*reinterpret_cast<void**>(b+0x17EDF14);
  if(!build_adapter::readPouchNode(node).readable||!build_adapter::readPouchNode(weapon).readable)return false;
  auto w=scene::world(weapon);scene::Transform parent{};
- if(!reinterpret_cast<bool(__cdecl*)(void*,const scene::Transform*,void*,scene::Transform*)>(b+0x26AD10)(weapon,&w,node,&parent))return false;
- reinterpret_cast<scene::Transform*(__cdecl*)(scene::Transform*,const scene::Transform*,const scene::Vec*,const void*,float)>(b+0x257DE0)(&result,&parent,reinterpret_cast<scene::Vec*>(b+0x121EFE8),b+0x121EB5C,1.f);
+ if(!reinterpret_cast<bool(__cdecl*)(void*,const scene::Transform*,void*,scene::Transform*)>(b+0x2F54E0)(weapon,&w,node,&parent))return false;
+ reinterpret_cast<scene::Transform*(__cdecl*)(scene::Transform*,const scene::Transform*,const scene::Vec*,const void*,float)>(b+0x2E25B0)(&result,&parent,reinterpret_cast<scene::Vec*>(b+0x17EDF70),b+0x17EDAE4,1.f);
  for(unsigned i=0;i<13;i++)if(!std::isfinite(reinterpret_cast<float*>(&result)[i]))return false;
  if(result.scale<=0||result.scale>100)return false;
- if(axis){*axis=scene::rotate(parent,*reinterpret_cast<scene::Vec*>(b+0xDCE340));float length=scene::distance(*axis,{});if(!std::isfinite(length)||length<1e-5f)return false;*axis=*axis*(1.f/length);}
+ if(axis){*axis=scene::rotate(parent,*reinterpret_cast<scene::Vec*>(b+0xECCB60));float length=scene::distance(*axis,{});if(!std::isfinite(length)||length<1e-5f)return false;*axis=*axis*(1.f/length);}
  return true;
 }
 
@@ -454,39 +454,39 @@ inline void trackingBasis(std::ostream& out,const scene::Transform& pose){
 }
 inline void gloveDiagnostics(std::ostream& out){
  auto b=build_adapter::heldModule();if(!b)return;auto settings=build_adapter::liveReloadSettings();out<<",\"gloves\":[";
- for(int hand=0;hand<2;hand++){if(hand)out<<",";scene::Vec origin{},forward{};bool valid=reinterpret_cast<bool(__cdecl*)(bool,scene::Vec*,scene::Vec*)>(b+0x190B30)(hand!=0,&origin,&forward);auto p=trackingPoint(origin),f=trackingPoint(origin+forward)-p;float length=scene::distance(f,{});if(length>1e-5f)f=f*(1.f/length);
-  auto candidate=b+0x11144A0+hand*0x78;auto pull=b+0xDC53F8+hand*0x88;auto ref=*reinterpret_cast<void**>(candidate+4);auto pulling=*reinterpret_cast<void**>(pull+4);
+ for(int hand=0;hand<2;hand++){if(hand)out<<",";scene::Vec origin{},forward{};bool valid=reinterpret_cast<bool(__cdecl*)(bool,scene::Vec*,scene::Vec*)>(b+0x19B530)(hand!=0,&origin,&forward);auto p=trackingPoint(origin),f=trackingPoint(origin+forward)-p;float length=scene::distance(f,{});if(length>1e-5f)f=f*(1.f/length);
+  auto candidate=b+0x136D0C0+hand*0x78;auto pull=b+0xEC33F8+hand*0x88;auto ref=*reinterpret_cast<void**>(candidate+4);auto pulling=*reinterpret_cast<void**>(pull+4);
   out<<"{\"valid\":"<<valid<<",\"origin\":["<<p.x<<","<<p.y<<","<<p.z<<"],\"forward\":["<<f.x<<","<<f.y<<","<<f.z<<"],\"candidate\":"<<(candidate[0]&&ref?scene::field<unsigned>(ref,0xC):0)<<",\"armedAge\":"<<*reinterpret_cast<float*>(candidate+0xC)<<",\"pull\":"<<(pull[0]&&pulling?scene::field<unsigned>(pulling,0xC):0)<<",\"flickBack\":"<<(settings?*reinterpret_cast<float*>(settings+0x3FC):0)<<"}";
  }out<<"]";
- auto pouch=*reinterpret_cast<void**>(b+0x121F194);if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x121F260))pouch=*reinterpret_cast<void**>(b+0x121F180);
- if(build_adapter::readPouchNode(pouch).readable){auto w=scene::world(pouch);auto p=trackingPoint(w.p+scene::rotate(w,*reinterpret_cast<scene::Vec*>(b+0x121F184))*w.scale);out<<",\"physicalPouchTracking\":["<<p.x<<","<<p.y<<","<<p.z<<"]";}
+ auto pouch=*reinterpret_cast<void**>(b+0x17EE11C);if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x17EE1E8))pouch=*reinterpret_cast<void**>(b+0x17EE108);
+ if(build_adapter::readPouchNode(pouch).readable){auto w=scene::world(pouch);auto p=trackingPoint(w.p+scene::rotate(w,*reinterpret_cast<scene::Vec*>(b+0x17EE10C))*w.scale);out<<",\"physicalPouchTracking\":["<<p.x<<","<<p.y<<","<<p.z<<"]";}
 }
 inline void insertionDiagnostics(std::ostream& out){
  auto b=build_adapter::heldModule();scene::Transform rest{};scene::Vec axis{};bool valid=installedRest(rest,&axis);
  out<<",\"insertion\":{\"valid\":"<<(valid?"true":"false");
- if(valid){auto target=trackingPoint(rest.p),along=trackingPoint(rest.p+axis)-target;auto held=trackingPoint(scene::world(*reinterpret_cast<void**>(b+0x121EF98)).p);
+ if(valid){auto target=trackingPoint(rest.p),along=trackingPoint(rest.p+axis)-target;auto held=trackingPoint(scene::world(*reinterpret_cast<void**>(b+0x17EDF20)).p);
   out<<",\"target\":["<<target.x<<","<<target.y<<","<<target.z<<"],\"held\":["<<held.x<<","<<held.y<<","<<held.z<<"],\"axis\":["<<along.x<<","<<along.y<<","<<along.z<<"]";
-  out<<",\"restBasis\":";trackingBasis(out,rest);out<<",\"heldBasis\":";trackingBasis(out,scene::world(*reinterpret_cast<void**>(b+0x121EF98)));
-  out<<",\"armed\":"<<unsigned(b[0x121F27D])<<",\"snap\":"<<unsigned(b[0x121F28C])<<",\"axial\":"<<*reinterpret_cast<float*>(b+0x121F280)<<",\"radial\":"<<*reinterpret_cast<float*>(b+0x121F284)<<",\"alignment\":"<<*reinterpret_cast<float*>(b+0x121F288);
+  out<<",\"restBasis\":";trackingBasis(out,rest);out<<",\"heldBasis\":";trackingBasis(out,scene::world(*reinterpret_cast<void**>(b+0x17EDF20)));
+  out<<",\"armed\":"<<unsigned(b[0x17EE205])<<",\"snap\":"<<unsigned(b[0x17EE214])<<",\"axial\":"<<*reinterpret_cast<float*>(b+0x17EE208)<<",\"radial\":"<<*reinterpret_cast<float*>(b+0x17EE20C)<<",\"alignment\":"<<*reinterpret_cast<float*>(b+0x17EE210);
  }out<<"}";
 }
 inline scene::Vec installedPoint(){
- auto b=build_adapter::heldModule();if(!b)return {};auto node=*reinterpret_cast<void**>(b+0x121EF98);auto weapon=*reinterpret_cast<void**>(b+0x121EF8C);
+ auto b=build_adapter::heldModule();if(!b)return {};auto node=*reinterpret_cast<void**>(b+0x17EDF20);auto weapon=*reinterpret_cast<void**>(b+0x17EDF14);
  if(!build_adapter::readPouchNode(node).readable||!build_adapter::readPouchNode(weapon).readable)return {};
  auto bound=scene::field<float*>(node,0x20);if(!bound)return {};auto w=scene::world(weapon);scene::Transform parent{};
  scene::Vec axis{w.r[0][1],w.r[1][1],w.r[2][1]};
- if(reinterpret_cast<bool(__cdecl*)(void*,const scene::Transform*,void*,scene::Transform*)>(b+0x26AD10)(weapon,&w,node,&parent))axis=scene::rotate(parent,*reinterpret_cast<scene::Vec*>(b+0xDCE340));
+ if(reinterpret_cast<bool(__cdecl*)(void*,const scene::Transform*,void*,scene::Transform*)>(b+0x2F54E0)(weapon,&w,node,&parent))axis=scene::rotate(parent,*reinterpret_cast<scene::Vec*>(b+0xECCB60));
  auto len=scene::distance(axis,{});if(len>1e-5f)axis=axis*(1.f/len);
- auto offset=b[0x121F107]?w.scale**reinterpret_cast<float*>(b+0x121F11C):-.95f*bound[3];
+ auto offset=b[0x17EE08F]?w.scale**reinterpret_cast<float*>(b+0x17EE0A4):-.95f*bound[3];
  return trackingPoint(scene::Vec{bound[0],bound[1],bound[2]}+axis*offset);
 }
 inline void meshDiagnostics(std::ostream& out,void* root){
  auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();if(!b||!settings||!root)return;
  auto point=gripPoint(0);float reach=*reinterpret_cast<float*>(settings+0x28) * *reinterpret_cast<float*>(settings+0x32C);
  alignas(16) unsigned char context[0xD0]{};char why[300]{};int count=0;
- reinterpret_cast<void*(__thiscall*)(void*)>(b+0x136E40)(context);
- bool meshHit=reinterpret_cast<bool(__thiscall*)(void*,void*,const scene::Vec*,float,int*,char*,unsigned)>(b+0x1A92C0)(context,root,&point,reach,&count,why,sizeof(why));
- reinterpret_cast<void(__thiscall*)(void*)>(b+0x138220)(context);
+ reinterpret_cast<void*(__thiscall*)(void*)>(b+0x141840)(context);
+ bool meshHit=reinterpret_cast<bool(__thiscall*)(void*,void*,const scene::Vec*,float,int*,char*,unsigned)>(b+0x1B3CC0)(context,root,&point,reach,&count,why,sizeof(why));
+ reinterpret_cast<void(__thiscall*)(void*)>(b+0x142C20)(context);
  for(auto& ch:why){if(!ch)break;if(ch=='\\')ch='/';if(ch=='\"')ch='\'';if(ch<32)ch=' ';}
  why[sizeof(why)-1]=0;out<<",\"nativeMeshNear\":"<<(meshHit?1:0)<<",\"nativeMeshCount\":"<<count<<",\"nativeMeshReason\":\""<<why<<"\"";
 }
@@ -498,10 +498,10 @@ inline void physicsDiagnostics(std::ostream& out,void* root){
 }
 inline void contactDiagnostics(std::ostream& out){
  auto b=build_adapter::heldModule();if(!b)return;
- bool hand=reinterpret_cast<bool(__cdecl*)()>(b+0x25C610)();scene::Vec point{},direction{};
- bool valid=reinterpret_cast<bool(__cdecl*)(bool,scene::Vec*,scene::Vec*)>(b+0x1DBAF0)(hand,&point,&direction);
+ bool hand=reinterpret_cast<bool(__cdecl*)()>(b+0x2E6DE0)();scene::Vec point{},direction{};
+ bool valid=reinterpret_cast<bool(__cdecl*)(bool,scene::Vec*,scene::Vec*)>(b+0x1E6470)(hand,&point,&direction);
  auto t=trackingPoint(point);
- out<<",\"installedContact\":{\"hand\":"<<int(hand)<<",\"valid\":"<<(valid?1:0)<<",\"tracking\":["<<t.x<<","<<t.y<<","<<t.z<<"],\"looseRounds\":"<<int(b[0x121F000])<<",\"blocked\":"<<int(b[0x121F8FA])<<",\"simple\":"<<int(b[0x121F2A0])<<"}";
+ out<<",\"installedContact\":{\"hand\":"<<int(hand)<<",\"valid\":"<<(valid?1:0)<<",\"tracking\":["<<t.x<<","<<t.y<<","<<t.z<<"],\"looseRounds\":"<<int(b[0x17EDF88])<<",\"blocked\":"<<int(b[0x17EE882])<<",\"simple\":"<<int(b[0x17EE228])<<"}";
 }
-inline void diagnostics(std::ostream& out){gloveDiagnostics(out);insertionDiagnostics(out);contactDiagnostics(out);auto point=installedPoint();auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();out<<",\"nativeGrabReach\":"<<(settings?*reinterpret_cast<float*>(settings+0x28)**reinterpret_cast<float*>(settings+0x32C):0)<<",\"nativeReloadPriority\":"<<(b?unsigned(b[0x121F73A]):0)<<",\"nativeReloadActive\":"<<(b?unsigned(b[0x121EFB4]):0);out<<",\"installedPartTracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";out<<",\"physicalMags\":{\"active\":"<<(module?"true":"false")<<",\"attempts\":"<<attempts<<",\"successes\":"<<successes<<",\"calibration\":"<<calibration<<",\"pouchReturns\":"<<pouchReturns<<",\"failures\":"<<failures<<",\"distance\":"<<lastDistance<<",\"threshold\":"<<lastThreshold<<",\"installedDrops\":"<<installedDrops<<",\"ejectedDrops\":"<<ejectedDrops<<",\"emptyDrops\":"<<emptyDrops<<",\"recovered\":"<<recoveredParts<<",\"recoveredPouch\":"<<recoveredPouch<<",\"recoveredRounds\":"<<recoveredRounds<<",\"recoverStage\":"<<recoverStage<<",\"recoverDistance\":"<<recoverDistance<<",\"lastRef\":"<<lastRefID<<"}";}
+inline void diagnostics(std::ostream& out){gloveDiagnostics(out);insertionDiagnostics(out);contactDiagnostics(out);auto point=installedPoint();auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();out<<",\"nativeGrabReach\":"<<(settings?*reinterpret_cast<float*>(settings+0x28)**reinterpret_cast<float*>(settings+0x32C):0)<<",\"nativeReloadPriority\":"<<(b?unsigned(b[0x17EE6C2]):0)<<",\"nativeReloadActive\":"<<(b?unsigned(b[0x17EDF3C]):0);out<<",\"installedPartTracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";out<<",\"physicalMags\":{\"active\":"<<(module?"true":"false")<<",\"attempts\":"<<attempts<<",\"successes\":"<<successes<<",\"calibration\":"<<calibration<<",\"pouchReturns\":"<<pouchReturns<<",\"failures\":"<<failures<<",\"distance\":"<<lastDistance<<",\"threshold\":"<<lastThreshold<<",\"installedDrops\":"<<installedDrops<<",\"ejectedDrops\":"<<ejectedDrops<<",\"emptyDrops\":"<<emptyDrops<<",\"recovered\":"<<recoveredParts<<",\"recoveredPouch\":"<<recoveredPouch<<",\"recoveredRounds\":"<<recoveredRounds<<",\"recoverStage\":"<<recoverStage<<",\"recoverDistance\":"<<recoverDistance<<",\"lastRef\":"<<lastRefID<<"}";}
 }

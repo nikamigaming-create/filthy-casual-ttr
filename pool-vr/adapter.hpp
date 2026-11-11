@@ -14,9 +14,9 @@ inline Form* backupPackage(Form* actor){
 }
 inline scene::Vec tracking(scene::Vec world){
  auto b=reinterpret_cast<unsigned char*>(GetModuleHandleW(L"TTWVR.dll"));
- auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x101E0)();
+ auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
  scene::Vec out{};
- reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x572320)(manager,&out,&world);
+ reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x64B0B0)(manager,&out,&world);
  return out;
 }
 // Agreed xNVSE/JIP prefix; GetAnimTime in kNVSE compares +3C to text keys.

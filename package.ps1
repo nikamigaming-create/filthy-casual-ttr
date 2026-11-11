@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.5.1-beta.2.zip')
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.6.0-dev.1.zip')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -22,6 +22,18 @@ $files = [ordered]@{
     'third_party/openxr/LICENSES/Apache-2.0.txt' = 'third_party/openxr/LICENSES/Apache-2.0.txt'
     'third_party/openxr/LICENSES/MIT.txt' = 'third_party/openxr/LICENSES/MIT.txt'
 }
+# Original tutorial assets only: derive the explicit card names from the model,
+# never recurse over the game installation or a development staging directory.
+$header=[IO.File]::ReadAllText((Join-Path $repo 'reload_tutorial.hpp'))
+$section=[regex]::Match($header,'cardNames\[\]=\{([^}]+)\}').Groups[1].Value
+$cards=@([regex]::Matches($section,'"([a-z-]+)"')|ForEach-Object {$_.Groups[1].Value})
+if($cards.Count -lt 10 -or $cards.Count -gt 64 -or ($cards|Sort-Object -Unique).Count -ne $cards.Count){throw 'Invalid tutorial card allowlist'}
+$files['meshes/FilthyCasual/tutorial.nif']='build/tutorial-assets/meshes/FilthyCasual/tutorial.nif'
+foreach($card in @($cards)+@('line','flat_n')){
+ $name='textures/FilthyCasual/Tutorial/'+$card+'.dds'
+ $files[$name]='build/tutorial-assets/'+$name
+}
+$files['docs/WEAPON-TUTORIAL.md']='docs/WEAPON-TUTORIAL.md'
 $names = @($files.Keys | Sort-Object)
 foreach ($name in $names) {
     $source = Join-Path $repo $files[$name]
@@ -35,9 +47,12 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.5.1-beta.2'
+    version = '1.6.0-dev.1'
     architecture = 'x86'
-    supportedTTWVR = 'C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB'
+    channel = 'development'
+    tutorialDefault = 'off'
+    tutorialCards = $cards.Count
+    supportedTTWVR = 'E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB'
     sourceCommit = "$sourceCommit".Trim()
     sourceDirty = ($sourceChanges.Count -gt 0)
     files = @($names | ForEach-Object {

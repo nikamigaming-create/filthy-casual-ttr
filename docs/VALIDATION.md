@@ -1,26 +1,24 @@
-# November 9 beta validation
+# Current TTR 1.1 snapshot validation
 
-Standalone pool: the game loaded with SeatedControls.dll and SeatedInput.dll
-absent and the dedicated pool input companion present. Physical forward stroke,
-no shot on tracking loss/reacquisition, B exit and native tracked camera passed.
+This is a prerelease checkpoint, not complete weapon-tutorial coverage.
 
-Combined pool + Filthy Casual TTR: physical stroke and exit passed; seated height
-and reload preference were preserved. Both wheels opened with the current
-thumbrest gestures. All five fingers on both hands changed through open/closed
-poses without grabbing or drawing a weapon. Weapon selection, reload toggling
-and height settings still worked after pool. Both game sessions closed normally.
+- Public seated, input, pool and Meta source builds compile.
+- Four seated tutorial/control suites passed. Pool cue unit tests passed.
+- Meta API/FOV/scope/shadow guards passed against the exact installed TTR 1.1
+  mapped image, without executing game code. Unknown hashes remain refused.
+- Seated release DLLs are the exact installed/captured binaries: core
+  DF7721089E0915D099B90C2E824E52C19977B00F400C013D20A8084834E5605C;
+  input 52481E040D1A91127BF7B843AD194AEE1AC726916F493741E7ECE7DA528E4DD1.
+  The public compile check is separate; byte-identical reproduction is not claimed.
+- Pool and Meta rebuilt code sections match their local compatibility builds.
+- Local TTR 1.1 simulator checks exercised selectors/fingers, aid handoff,
+  reload mode/height controls, recovered-magazine reinsertion and pouch return,
+  dialogue placement, scope surface restoration, and pool stroke/exit.
+- The tutorial video covers ten weapon examples plus activation, ammo types
+  and recovery. Fat Man, missile/heavy weapon and other special lessons remain
+  open. See WEAPON-TUTORIAL.md and TUTORIAL-COVERAGE.json.
+- Native hand poses can obscure final clip contact. Loot-target acquisition,
+  a full pool match and new physical Meta headset acceptance are not certified.
 
-Core food: one sticky-held food consumed through native use with normal healing;
-A/X stow without duplication; native hold mode does not auto-consume at the mouth.
-Saved height persisted across process launches. Current video includes actual
-submitted game-eye footage with choreographed XR input at real time; the unchanged
-gesture take is reused. Source/capture metadata is preserved privately.
-
-Pool setup generates byte-identical tested scripts from four hash-verified
-upstream files. Unknown upstream inputs fail before output. No upstream files,
-retail assets, personal saves or development runtime are in release packages.
-
-Limits: latest physical-headset acceptance, full eight-ball match completion and
-save/restart during an active match are not certified. One earlier native worker
-crash near dialogue cleanup was observed; a settled dialogue handoff passed later
-first/repeat runs, without proving the cause of that crash. This remains a beta.
+No saves, original TTR/game/pool files, private runtime or personal graphics
+presets are included in the downloads. Original dependencies are linked.

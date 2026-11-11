@@ -2,9 +2,10 @@
 
 [Back to the controls and overview](../README.md)
 
-Revision 1.5.1 beta.2 fixes the textures on dropped magazines and moves the
-native ammo holder clear of the torso for seated use. Existing controls remain
-unchanged. See [physical parts and tested coverage](PHYSICAL_PARTS.md).
+Revision 1.6.0-dev.1 is the TTR 1.1 tutorial development candidate. It includes
+an optional in-world reload guide, off by default. Final mechanism/video review
+is still in progress; this is not a release-ready recommendation. Preserve your
+personal INI when updating. See [tutorial coverage](WEAPON-TUTORIAL.md).
 
 ## Before installing
 
@@ -15,10 +16,10 @@ its required xNVSE and JIP LN NVSE dependencies.
 The addon accepts only the following **TTWVR.dll SHA-256**:
 
 ```text
-C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB
+E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB
 ```
 
-The associated PE timestamp is `6AF014A8`. The DLL hash is the compatibility
+The associated PE timestamp is `6AF40B94`. The DLL hash is the compatibility
 check; matching a filename or archive label is insufficient. Integration with
 other TTWVR builds is refused.
 
@@ -36,7 +37,7 @@ xNVSE, JIP LN NVSE, or game content.
 
 1. Close the game. Open the MO2 instance and profile you normally use for TTWVR.
 2. Choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.5.1-beta.2.zip` (or the supplied local-test ZIP).
+   `Filthy-Casual-TTR-1.6.0-dev.1.zip` (or the supplied local-test ZIP).
 3. Name the new mod **Filthy Casual TTR** and complete installation. The
    archive's data root contains `NVSE`; no enclosing mod folder needs to be selected.
 4. Enable the new mod in MO2's left pane. Place it below the enabled base TTWVR
@@ -56,6 +57,8 @@ The runtime files installed under the mod's data root are:
 ```text
 Filthy Casual Reload Parts.esp
 meshes/FilthyCasual/reload-carrier.nif
+meshes/FilthyCasual/tutorial.nif
+textures/FilthyCasual/Tutorial/
 textures/FilthyCasual/reload-carrier.dds
 NVSE/
   Plugins/
