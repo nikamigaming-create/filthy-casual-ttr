@@ -16,6 +16,7 @@ files['NVSE/Plugins/FilthyCasualPool/FilthyCasualPoolInput.json']=P/'FilthyCasua
 for name in ['README.md','Prepare-Pool.ps1','Prepare-Pool.cmd','meta.ini']:files[name]=P/name
 for name in ['Start.template','Tick.template','CandidateInsertion.txt','recipe.json']:files['setup/'+name]=P/'setup'/name
 files['LICENSE']=R/'LICENSE'
+files['docs/VALIDATION.md']=R/'docs/VALIDATION.md'
 for name in ['Apache-2.0.txt','MIT.txt']:files['licenses/OpenXR-'+name]=R/'third_party/openxr/LICENSES'/name
 assert all(p.is_file() for p in files.values())
 commit=subprocess.check_output(['git','-C',str(R),'rev-parse','HEAD'],text=True).strip()
