@@ -74,7 +74,7 @@ inline bool setSeatedPouch(bool enabled, float forward = 0.28f,
     // snapshot so an original bSpare=false cannot prevent initialization, and
     // the user's parsed native placement remains available for restoration.
     if (b[0x17EE138] > 1) return false;
-    if (!b[0x17EE138]) reinterpret_cast<void(__cdecl*)()>(b + 0x2EE700)();
+    if (!b[0x17EE138]) reinterpret_cast<void(__cdecl*)()>(b + 0x2EC710)();
     if (b[0x17EE138] != 1 || b[0x17EE139] > 1 || b[0x17EE14C] > 1 ||
         settings[0x4B4] > 1) return false;
     const float placement[4] = {forward, side, height, belowEye};

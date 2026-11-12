@@ -340,19 +340,19 @@ namespace {
   physical_reload_adapter::recoverStage=5;
   auto ref=first?first:second;if(!ref||(first&&second&&first!=second))return -1;
   physical_reload_adapter::recoverStage=6;
-  int heldHand=*reinterpret_cast<int*>(b+(first?0xEC33E8:0x136CF08));if(heldHand!=hand)return -1;
+  int heldHand=*reinterpret_cast<int*>(b+(first?0xEB5A88:0x136CF08));if(heldHand!=hand)return -1;
   physical_reload_adapter::recoverStage=7;
   auto it=std::find_if(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;});
   if(it==physicalMags.end()||!it->weaponID||!it->ammoID)return -1;
   physical_reload_adapter::recoverStage=8;
   Element equipped;unsigned weapon=0;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)weapon=equipped.value.form->id;release(equipped);
-  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2DC9B0)(player));
+  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2DC7C0)(player));
   physical_reload_adapter::recoverStage=9;
   if(weapon!=it->weaponID||!ammo||ammo->id!=it->ammoID)return -1;
   physical_reload_adapter::recoverStage=10;
   auto base=scene::field<Form*>(ref,0x20);bool empty=base==emptyReloadPart();if(!empty&&base!=ammo)return -1;
   physical_reload_adapter::recoverStage=11;
-  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x2E22A0)();
+  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x2D00F0)();
   if(count<0||count>capacity||capacity<1)return -1;
   physical_reload_adapter::recoverStage=15;physical_reload_adapter::recoverDistance=it->contactDistance;
   // Scene publication is sampled together by tickPhysicalMags. This callback
@@ -392,13 +392,13 @@ namespace {
     if(reloadSettings&&reloadSettings[0x494]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
      auto bound=scene::field<float*>(root,0x20);float units=*reinterpret_cast<float*>(reloadSettings+0x28);
      if(bound&&std::isfinite(units)&&units>1){m.contactDistance=scene::distance({bound[0],bound[1],bound[2]},rest.p)/units;if(std::isfinite(m.contactDistance)&&m.contactDistance<=.12f){
-      auto b=physical_reload_adapter::module;m.contactHand=(b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEC33E8):build_adapter::grabbedHand();
+      auto b=physical_reload_adapter::module;m.contactHand=(b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEB5A88):build_adapter::grabbedHand();
       Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)m.contactWeapon=equipped.value.form->id;release(equipped);m.contactAt=GetTickCount64();
      }}
     }
    }
    if(m.wasHeld&&!held&&m.wasNearPouch&&nearPouch&&m.weaponID&&m.ammoID&&m.lastHeldHand>=0&&partInput.h[m.lastHeldHand].active&&partInput.h[m.lastHeldHand].grip<.2f&&GetTickCount64()-partInput.time<100&&gestureGameplayAllowed){if(takePhysicalPart(m,ref,playerForm(),false)){physical_reload_adapter::recoveredPouch++;continue;}}
-   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEC33E8):build_adapter::grabbedHand();}
+   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEB5A88):build_adapter::grabbedHand();}
    m.wasHeld=held;m.wasNearPouch=held&&nearPouch;
    auto root=scene::root(ref);
    if(m.fullModel){
@@ -497,9 +497,9 @@ namespace {
   // Clear native grab ownership before activation can delete its world ref.
   // Consume through the engine inventory-use path, retaining all normal effects.
   Item food=heldAid;double before=number(getCount,food.form);
-  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<void**>(b+0x136D2F4),*reinterpret_cast<int*>(b+0xEC33E8),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<void**>(b+0x136CF10),*reinterpret_cast<int*>(b+0x136CF08));
+  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<void**>(b+0x136D2F4),*reinterpret_cast<int*>(b+0xEB5A88),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<void**>(b+0x136CF10),*reinterpret_cast<int*>(b+0x136CF08));
   if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
-   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<int*>(b+0xEC33E8),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<int*>(b+0x136CF08),b[0x1A0710],b[0x1A0711],b[0x1A0712],b[0x1A0713]);
+   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<int*>(b+0xEB5A88),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<int*>(b+0x136CF08),b[0x24ADE0],b[0x24ADE1],b[0x24ADE2],b[0x24ADE3]);
    mouthGate.reset();return;
   }
   forgetHeldAid();
@@ -939,7 +939,7 @@ namespace {
     auto script=compile("target probe",expression.c_str(),true);Element e;
     auto b=build_adapter::heldModule();Vec centre{},tracking{};float extent=0;
     bool ok=call(script,e)&&e.type==2&&e.value.form&&b;
-    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x19D3B0)(e.value.form,&centre,&extent);
+    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1966C0)(e.value.form,&centre,&extent);
     if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
      reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x64B0B0)(manager,&tracking,&centre);}
     std::ofstream probe(std::string(dir)+"\\target-probe.json");

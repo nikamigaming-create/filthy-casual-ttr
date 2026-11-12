@@ -1,7 +1,7 @@
 # In-world weapon tutorial
 
 The optional guide highlights reload parts on your equipped weapon and shows
-instructions in the world. It uses the installed TTR 1.1 handling data; it does
+instructions in the world. It uses the installed TTR 1.1.2 handling data; it does
 not replace native firing, grabbing, or reloading.
 
 ## Turn it on
@@ -72,7 +72,7 @@ only after their behavior is confirmed equivalent. See
 
 ## Compatibility
 
-This development candidate targets the exact TTR 1.1 build listed in
+This development candidate targets the exact TTR 1.1.2 build listed in
 [installation instructions](INSTALL.md). It reads your installed handling data;
 no original game or TTR models, textures, or data are included. A supported
 metadata entry is not a guarantee that every individual weapon variant has

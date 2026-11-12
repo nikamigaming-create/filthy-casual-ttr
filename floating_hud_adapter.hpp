@@ -63,7 +63,7 @@ inline bool horizontalInput(float x,bool active){
 }
 inline Vec lastWorld[2]{};
 template<int Kind> bool __cdecl target(void* ref,Vec* centre,float* extent){
- bool ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(base+0x19D3B0)(ref,centre,extent);
+ bool ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(base+0x1966C0)(ref,centre,extent);
  targets[Kind]={};
  if(ok&&ref){targets[Kind]={reinterpret_cast<uintptr_t>(ref),*reinterpret_cast<unsigned*>(static_cast<char*>(ref)+0xC),*centre};}
  return ok;

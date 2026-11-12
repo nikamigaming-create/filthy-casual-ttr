@@ -12,7 +12,7 @@ Casual TTR and the Meta Link helper are NOT required.**
    downloaded from its author and installed separately.
 3. **Filthy Casual Pool** from this release.
 
-Optional: use **the TTR 1.1 build of Filthy Casual TTR (1.6.0-dev.1)** alongside pool for seated
+Optional: use **the TTR 1.1.2 build of Filthy Casual TTR (1.6.0-dev.2)** alongside pool for seated
 height, selectors and gestures. Update that addon before combining them. Older
 versions are refused for pool because their input helpers can interfere.
 Standalone users do not need to install it at all. Use your existing working VR
@@ -23,13 +23,13 @@ Working TTR + its normal dependencies
   + Original Pool Tables Of The Mojave v4
     + Filthy Casual Pool
 
-Filthy Casual TTR 1.6.0-dev.1: optional companion, not a parent dependency
+Filthy Casual TTR 1.6.0-dev.2: optional companion, not a parent dependency
 ```
 
 ## Install in MO2
 
 1. Install the original pool mod separately and keep it enabled.
-2. Install `Filthy-Casual-Pool-0.2.0-beta.zip` as **Filthy Casual Pool**.
+2. Install `Filthy-Casual-Pool-0.2.1-beta.zip` as **Filthy Casual Pool**.
 3. Right-click our mod in MO2, choose **Open in Explorer**, and run
    `Prepare-Pool.cmd`. Select the ORIGINAL pool mod's folder (the one containing
    `Pool Table Minigame.esp`). Wait for the success message. Do this once per
@@ -62,8 +62,8 @@ interception or inventory recovery is added.
 
 ## Compatibility and current limits
 
-This 0.2.0 beta targets TTR 1.1. FNV 1.4.0.525, xNVSE 6.4.9 and TTR SHA256:
-`E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB`.
+This 0.2.1 beta targets TTR 1.1.2. FNV 1.4.0.525, xNVSE 6.4.9 and TTR SHA256:
+`C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73`.
 Other TTR builds are refused. Our pool-only input companion runs independently;
 with the current seated addon it delegates to the active matching input instance,
 avoiding duplicate input filtering. It adds no seated controls when used alone.
@@ -77,6 +77,6 @@ Credit: KUPOkinz (TTR), Luke2172 (original pool mod), Nikami (VR addon and new
 animation). Their mods remain separate downloads. Do not redistribute your locally
 generated integration scripts as an original pool-mod replacement.
 
-TTR 1.1 checks include a combined physical stroke/exit and a captured Sunny/player
+TTR 1.1.2 checks include a combined physical stroke/exit and a captured Sunny/player
 turn sequence. A complete eight-ball match and fresh physical-headset acceptance
 are not certified. Pool-cue/chalk/rack pickup polish remains in development.

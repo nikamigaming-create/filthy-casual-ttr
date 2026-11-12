@@ -12,7 +12,7 @@ Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
 and set a comfortable seated eye height. An independent addon for an existing
 **Tale of Two Wastelands VR** installation.
 
-**Revision 1.6.0-dev.1 (TTR 1.1 development candidate).** Optional in-world reload
+**Revision 1.6.0-dev.2 (TTR 1.1.2 development candidate).** Optional in-world reload
 lessons teach the distinct mechanisms, using the installed weapon's own parts.
 Triple-tap left Menu to toggle the guide. It starts off each launch.
 Mechanism coverage and the outdoor tutorial video are still being verified;
@@ -24,12 +24,12 @@ or to the ammo pouch on grip release. [Controls and compatibility](docs/PHYSICAL
 Graphics tuning (DLSS, anti-aliasing, resolution, or reprojection) is separate
 from this addon and is not included in its package.
 
-[TTR 1.1 development download](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.6.0-dev.1) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+[TTR 1.1.2 development download](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.6.0-dev.2) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
 
 **Choose independently:** this seated addon does not need pool. Filthy Casual
 Pool needs only working TTR plus the separately downloaded original pool mod;
 it does not require this addon. If you use both, install version 1.4.5 or newer
-of Filthy Casual TTR for legacy TTR, or the matching TTR 1.1 builds listed below. The original mods are linked, never bundled.
+of Filthy Casual TTR for legacy TTR, or the matching TTR 1.1.2 builds listed below. The original mods are linked, never bundled.
 
 ## Install through Mod Organizer 2
 
@@ -38,7 +38,7 @@ requirements. This addon supports one exact TTWVR build; check the
 [supported DLL and detailed installation guide](docs/INSTALL.md).
 
 1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.6.0-dev.1.zip`.
+   `Filthy-Casual-TTR-1.6.0-dev.2.zip`.
 2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
 3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
    file priority. Keep the base TTWVR mod enabled.

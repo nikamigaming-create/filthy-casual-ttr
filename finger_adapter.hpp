@@ -44,7 +44,7 @@ inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,v
  // The object argument is shared by BOTH hands. Ask TTR which hand actually
  // owns a weapon/support pose, and retain its per-hand item/transition checks.
  if(object&&reinterpret_cast<bool(__cdecl*)(int,bool)>(module+0x1E5E40)(hand,true))return;
- if(reinterpret_cast<bool(__cdecl*)(int)>(module+0x195030)(hand)||*reinterpret_cast<int*>(module+0xECD1BC)==hand)return;
+ if(reinterpret_cast<bool(__cdecl*)(int)>(module+0x195350)(hand)||*reinterpret_cast<int*>(module+0xECD1BC)==hand)return;
  if(freeWeight<=.0001f)return;
  void* joints[15]{};scene::Transform nativePose[15]{};
  auto nativeTable=module+(hand?0x9D7CA0:0x9D8150);
@@ -116,7 +116,7 @@ inline const char* install(Query fn){
  if(memcmp(b+0x1EA9C3,distanceInit,sizeof(distanceInit))||memcmp(b+0x1EAB03,distanceEnd,sizeof(distanceEnd)))return "refused: native approach blend guard";
  const unsigned char policy[]={0x80,0x7C,0x24,0x08,0x00,0x74,0x24,0x8B,0x4C,0x24,0x04,0x51,0xE8,0x7F,0xDD,0xFF,0xFF,0x83,0xC4,0x04,0x84,0xC0,0x75,0x10};
  const unsigned char held[]={0x8B,0x44,0x24,0x04,0x74,0x08,0x39,0x05};
- if(memcmp(b+0x1E5E40,policy,sizeof(policy))||b[0x195030]!=0x80||b[0x195031]!=0x3D||*reinterpret_cast<unsigned char**>(b+0x195032)!=b+0x136CE35||memcmp(b+0x195037,held,sizeof(held)))return "refused: per-hand native policy guard";
+ if(memcmp(b+0x1E5E40,policy,sizeof(policy))||b[0x195350]!=0x80||b[0x195351]!=0x3D||*reinterpret_cast<unsigned char**>(b+0x195352)!=b+0x136CE35||memcmp(b+0x195357,held,sizeof(held)))return "refused: per-hand native policy guard";
  const char* names[2][6]={{"Bip01 L Thumb1","Bip01 L Thumb11","Bip01 L Thumb12","Bip01 L Finger1","Bip01 L Finger11","Bip01 L Finger12"},{"Bip01 R Thumb1","Bip01 R Thumb11","Bip01 R Thumb12","Bip01 R Finger1","Bip01 R Finger11","Bip01 R Finger12"}};
  const unsigned nameRva[2][6]={{0x9D8958,0x9D896C,0x9D8980,0x82A4E8,0x9D8994,0x9D89A8},{0x9D8840,0x9D8854,0x9D8868,0x82A4D4,0x9D887C,0x9D8890}};
  for(int h=0;h<2;h++)for(int n=0;n<6;n++){

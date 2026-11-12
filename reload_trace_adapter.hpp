@@ -21,7 +21,7 @@ inline const char* install(){
  char flag[8]{};if(!GetEnvironmentVariableA("SC_TEST_RELOAD_EVENTS",flag,sizeof(flag))||strcmp(flag,"1"))return "not requested";
  if(module)return "already installed";
  auto b=build_adapter::heldModule();if(!b)return "refused hash";
- const unsigned sites[]={0x2E4BC8,0x31278D,0x312A92,0x312DCD,0x313039,0x313470,0x2E0BC7,0x2E15AB};
+ const unsigned sites[]={0x588778,0x7D999D,0x7D9CA2,0x7D9FDD,0x7DA249,0x7DA680,0x476ED7,0x2E067B};
  void* hooks[]={entry0,entry1,entry2,entry3,entry4,entry5,entry6,entry7};
  // Preflight every exact displaced instruction before installing any hook.
  for(unsigned i=0;i<8;i++){auto p=b+sites[i];if(p[0]!=0xC7||p[1]!=0x05||*reinterpret_cast<void**>(p+2)!=b+0x17EE1E8||*reinterpret_cast<unsigned*>(p+6)!=(i==7?1u:0u))return "refused instruction";}

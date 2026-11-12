@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.6.0-dev.1.zip')
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.6.0-dev.2.zip')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -15,6 +15,7 @@ $files = [ordered]@{
     'textures/FilthyCasual/reload-carrier.dds' = 'build/reload-parts/mod/textures/FilthyCasual/reload-carrier.dds'
     'docs/PHYSICAL_PARTS.md' = 'docs/PHYSICAL_PARTS.md'
     'README.md' = 'README.md'
+    'LICENSE' = 'LICENSE'
     'docs/INSTALL.md' = 'docs/INSTALL.md'
     'docs/assets/terminal-banner.svg' = 'docs/assets/terminal-banner.svg'
     'meta.ini' = 'meta.ini'
@@ -47,12 +48,12 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.6.0-dev.1'
+    version = '1.6.0-dev.2'
     architecture = 'x86'
     channel = 'development'
     tutorialDefault = 'off'
     tutorialCards = $cards.Count
-    supportedTTWVR = 'E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB'
+    supportedTTWVR = 'C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73'
     sourceCommit = "$sourceCommit".Trim()
     sourceDirty = ($sourceChanges.Count -gt 0)
     files = @($names | ForEach-Object {

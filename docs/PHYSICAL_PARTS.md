@@ -1,4 +1,4 @@
-# Physical reload parts - TTR 1.1
+# Physical reload parts - TTR 1.1.2
 
 Manual reload parts become native world objects. Drop a spare, eject a magazine,
 or use TTR's Save Ammo action and release it. Pick it up with the original grip
@@ -36,7 +36,7 @@ The addon derives each part's model from your installed game/mod files into
 never redistribute it. No original game or TTR assets are included in the ZIP.
 
 Supported target: FalloutNV 1.4.0.525/x86, TTWVR SHA256
-`E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB`.
+`C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73`.
 Unknown builds are refused. JIP LN and the enabled carrier ESP are required.
 
 Set `[Weapons] PhysicalReloadParts=0` and restart to disable physical drops and
