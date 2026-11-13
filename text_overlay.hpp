@@ -1,6 +1,8 @@
 #pragma once
 // A small OpenXR composition layer for inventory names, counts, and controls.
 // It owns only its own swapchain and VIEW space; original layers pass through.
+#include "controls_runtime.hpp"
+#include "robco_theme.hpp"
 #include <d3d11.h>
 #include <d3d10.h>
 #define XR_USE_GRAPHICS_API_D3D11
@@ -10,6 +12,7 @@
 #pragma comment(lib,"gdi32.lib")
 #pragma comment(lib,"user32.lib")
 namespace overlay {
+inline PFN_xrEndFrame controlsSubmit=nullptr;inline void(*controlsCleanup)()=nullptr;
 inline PFN_xrCreateSession createSession=nullptr;
 inline PFN_xrDestroySession destroySession=nullptr;
 inline PFN_xrEndFrame endFrame=nullptr;
@@ -34,7 +37,7 @@ inline std::vector<unsigned char> pixels;
 inline std::string lastText;
 inline bool failed=false;
 inline unsigned anchorEpoch=~0u;inline XrSpace anchorSpace=XR_NULL_HANDLE;inline XrPosef anchorPose{};
-constexpr int width=1024,height=192;
+constexpr int width=1400,height=500;
 inline void init(PFN_xrGetInstanceProcAddr get,XrInstance instance){
  #define LOAD(n,v) get(instance,n,reinterpret_cast<PFN_xrVoidFunction*>(&v))
  LOAD("xrCreateSession",createSession);LOAD("xrDestroySession",destroySession);LOAD("xrEndFrame",endFrame);
@@ -45,6 +48,7 @@ inline void init(PFN_xrGetInstanceProcAddr get,XrInstance instance){
  #undef LOAD
 }
 inline void cleanup(){
+ if(controlsCleanup)controlsCleanup();
  if(chain&&destroySwapchain)destroySwapchain(chain);chain=XR_NULL_HANDLE;images.clear();
  if(view&&destroySpace)destroySpace(view);view=XR_NULL_HANDLE;
  if(contextLock){contextLock->SetMultithreadProtected(previousProtection);contextLock->Release();contextLock=nullptr;}
@@ -86,14 +90,16 @@ inline bool renderText(const char* text){
  void* data=nullptr;HBITMAP bitmap=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&data,nullptr,0);
  if(!bitmap){DeleteDC(dc);return false;}auto old=SelectObject(dc,bitmap);
  RECT rect{0,0,width,height};HBRUSH bg=CreateSolidBrush(RGB(12,17,17));FillRect(dc,&rect,bg);DeleteObject(bg);
- SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(255,219,143));
- HFONT font=CreateFontA(-37,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,"Segoe UI");
- auto oldFont=SelectObject(dc,font);rect={18,16,width-18,height-8};DrawTextA(dc,text,-1,&rect,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+ robco_theme::background(data,width,height,true);
+ SetBkMode(dc,TRANSPARENT);SetTextColor(dc,robco_theme::phosphor);
+ HFONT font=CreateFontA(-43,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,robco_theme::font);
+ auto oldFont=SelectObject(dc,font);rect={65,100,width-65,height-80};DrawTextA(dc,text,-1,&rect,DT_CENTER|DT_VCENTER|DT_NOPREFIX|DT_WORDBREAK);
  GdiFlush();pixels.assign(static_cast<unsigned char*>(data),static_cast<unsigned char*>(data)+width*height*4);
- for(size_t i=3;i<pixels.size();i+=4)pixels[i]=235;
+ for(size_t i=3;i<pixels.size();i+=4)pixels[i]=255;
  SelectObject(dc,oldFont);DeleteObject(font);SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);return true;
 }
 inline XrResult XRAPI_CALL onEndFrame(XrSession s,const XrFrameEndInfo* info){
+ if(controlsSubmit&&controls_runtime::snapshot().visible)return controlsSubmit(s,info);
  using UI=uint32_t(__cdecl*)(char*,uint32_t);auto module=GetModuleHandleW(L"SeatedControls.dll");
  auto ui=module?reinterpret_cast<UI>(GetProcAddress(module,"SC_UI")):nullptr;
  char text[1024]{};
@@ -110,9 +116,9 @@ inline XrResult XRAPI_CALL onEndFrame(XrSession s,const XrFrameEndInfo* info){
  }
  XrCompositionLayerQuad panel{XR_TYPE_COMPOSITION_LAYER_QUAD};panel.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT|XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
  panel.space=view;panel.eyeVisibility=XR_EYE_VISIBILITY_BOTH;panel.subImage.swapchain=chain;panel.subImage.imageRect.extent={width,height};
- panel.pose.orientation.w=1;panel.pose.position={0,.17f,-.62f};panel.size={.52f,.0975f};
+ panel.pose.orientation.w=1;panel.pose.position={0,.17f,-.62f};panel.size={.74f,.74f*height/width};
  using UIState=unsigned(__cdecl*)();auto status=reinterpret_cast<UIState>(GetProcAddress(module,"SC_UIState"));unsigned flags=status?status():0;
- if((flags&1)&&height_layer::lastBase){
+ if((flags&3)&&height_layer::lastBase){
   if(anchorEpoch!=(flags>>2)){anchorEpoch=flags>>2;anchorSpace=height_layer::lastBase;anchorPose=height_layer::lastHead;
    auto q=anchorPose.orientation;float yaw=std::atan2(2*(q.w*q.y+q.x*q.z),1-2*(q.y*q.y+q.x*q.x));
    anchorPose.orientation={0,std::sin(yaw*.5f),0,std::cos(yaw*.5f)};

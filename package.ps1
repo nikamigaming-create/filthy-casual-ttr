@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.6.0-dev.2.zip')
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.7.0-dev.1.zip')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -15,10 +15,6 @@ $files = [ordered]@{
     'textures/FilthyCasual/reload-carrier.dds' = 'build/reload-parts/mod/textures/FilthyCasual/reload-carrier.dds'
     'docs/PHYSICAL_PARTS.md' = 'docs/PHYSICAL_PARTS.md'
     'README.md' = 'README.md'
-    'docs/VALIDATION.md' = 'docs/VALIDATION.md'
-    'docs/ALL-MODS.md' = 'docs/ALL-MODS.md'
-    'docs/TUTORIAL-COVERAGE.json' = 'docs/TUTORIAL-COVERAGE.json'
-    'LICENSE' = 'LICENSE'
     'docs/INSTALL.md' = 'docs/INSTALL.md'
     'docs/assets/terminal-banner.svg' = 'docs/assets/terminal-banner.svg'
     'meta.ini' = 'meta.ini'
@@ -26,6 +22,15 @@ $files = [ordered]@{
     'third_party/openxr/LICENSES/Apache-2.0.txt' = 'third_party/openxr/LICENSES/Apache-2.0.txt'
     'third_party/openxr/LICENSES/MIT.txt' = 'third_party/openxr/LICENSES/MIT.txt'
 }
+# Explicitly licensed controller models plus our generated terminal artwork.
+foreach($asset in 'left.mesh','right.mesh','left.png','right.png','robco-terminal.png','robco-compact.png','LICENSE.txt','LICENSE-MGS5VR.txt','provenance.json','filthy-casual-provenance.json'){
+ $files['NVSE/Plugins/SeatedControls/Controls/'+$asset]='assets/controls/'+$asset
+}
+foreach($name in 'controls','weapons','aid','height','driving','flight'){$files['docs/assets/robco-'+$name+'.png']='docs/assets/robco-'+$name+'.png'}
+$files['docs/VALIDATION.md']='docs/VALIDATION.md'
+$files['docs/CONTROLS-EDITOR.md']='docs/CONTROLS-EDITOR.md'
+$files['docs/CONTROLS-PROVIDERS.md']='docs/CONTROLS-PROVIDERS.md'
+$files['tools/controls-editor.html']='tools/controls-editor.html'
 # Original tutorial assets only: derive the explicit card names from the model,
 # never recurse over the game installation or a development staging directory.
 $header=[IO.File]::ReadAllText((Join-Path $repo 'reload_tutorial.hpp'))
@@ -51,12 +56,13 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.6.0-dev.2'
+    version = '1.7.0-dev.1'
     architecture = 'x86'
     channel = 'development'
+    features = @('robco-controls-editor','quest-touch-plus-3d','runtime-remapping','eight-profiles','mode-aware-providers','offline-editor','shared-robco-overlays','native-magazine-recovery')
     tutorialDefault = 'off'
     tutorialCards = $cards.Count
-    supportedTTWVR = 'C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73'
+    supportedTTWVR = '7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E'
     sourceCommit = "$sourceCommit".Trim()
     sourceDirty = ($sourceChanges.Count -gt 0)
     files = @($names | ForEach-Object {

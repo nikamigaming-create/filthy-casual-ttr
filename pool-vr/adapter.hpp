@@ -12,11 +12,22 @@ inline Form* backupPackage(Form* actor){
   if(scene::field<unsigned char>(node,4)==0x19)return scene::field<Form*>(node,0xC);
  return nullptr;
 }
+// FNV ModelLoader performs renderer/material preparation. Exact7EB clone
+// 31BCB0 is cdecl(node), calls retail A5D680 and returns its clone in EAX.
+inline const char* ownVisualFailure="not loaded";
+inline void* loadOwnVisual(const char* path){
+ auto b=build_adapter::heldModule();auto loader=*reinterpret_cast<void**>(0x11C3B3C);if(!b||!loader){ownVisualFailure="module or loader missing";return nullptr;}
+ const unsigned char entry[]={0x55,0x8B,0xEC,0x6A,0xFE};if(memcmp(b+0x31BCB0,entry,sizeof entry)){ownVisualFailure="clone guard mismatch";return nullptr;}
+ auto model=reinterpret_cast<void*(__thiscall*)(void*,const char*,unsigned,bool,unsigned,bool,bool)>(0x447080)(loader,path,0,true,0,false,true);
+ if(!model){ownVisualFailure="ModelLoader returned null";return nullptr;}auto clone=reinterpret_cast<void*(__cdecl*)(void*)>(b+0x31BCB0)(model);ownVisualFailure=clone?"ready":"clone returned null";return clone;
+}
 inline scene::Vec tracking(scene::Vec world){
- auto b=reinterpret_cast<unsigned char*>(GetModuleHandleW(L"TTWVR.dll"));
- auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
+ auto b=build_adapter::heldModule();if(!b)return {};
+ auto nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(b+reinterpret_cast<IMAGE_DOS_HEADER*>(b)->e_lfanew);
+ if(nt->FileHeader.TimeDateStamp!=0x6AF60DF2)return {};
+ auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();if(!manager)return {};
  scene::Vec out{};
- reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x64B0B0)(manager,&out,&world);
+ reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x69AAC0)(manager,&out,&world);
  return out;
 }
 // Agreed xNVSE/JIP prefix; GetAnimTime in kNVSE compares +3C to text keys.

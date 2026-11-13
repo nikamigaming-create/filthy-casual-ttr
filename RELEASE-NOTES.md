@@ -1,15 +1,21 @@
-# Filthy Casual TTR 1.6.0-dev.2 — TTR 1.1.2
+# Filthy Casual TTR 1.7.0-dev.1
 
-Compatibility update for the exact TTR 1.1.2 DLL listed in docs/INSTALL.md.
-Updates native hook addresses for selectors, item handoff, fingers and physical reload.
-Existing controls and optional tutorial behavior remain unchanged.
+RobCo controls in game and offline, real 3D Quest Touch Plus controllers,
+eight saved profiles, independent on-foot/driving/flight banks and discoverable
+addon providers. Shared native actions remain grouped; spatial interactions
+stay native. Height, selector labels and tutorial cards share the RobCo style.
 
-Install through MO2 below TTR. Enable Filthy Casual Reload Parts.esp and preserve
-SeatedControls.ini when upgrading. Pool and Meta Link are separate optional downloads.
+Recovered compatible native magazines can re-enter native insertion or ammo-pouch
+handling. Tested on 10mm pistol and assault carbine with exact remaining rounds.
+Add `[Reload] RecoverWorldMagazines=1` when keeping an older personal INI.
 
-Combined simulator checks passed for selection, native aid handoff, height, reload,
-physical magazine recovery, dialogue, pool and scope restoration. Public source
-builds and control/reload unit checks passed. No new physical headset acceptance
-is claimed. Tutorial coverage is incomplete; see docs/VALIDATION.md.
+Open controls: hold left Menu, then click left stick in Height/settings.
+Fixed recovery: hold physical left Menu + right-stick click for one second.
 
-Original dependencies are linked, never bundled.
+Install the ZIP in MO2 after an already working TTR setup. Preserve your personal
+INI. Exact supported upstream hash and populated screenshots are in the README.
+Pool stays separate and optional. Vehicles are an optional source/development
+integration, not included in this core ZIP. No game or dependency assets bundled.
+
+The simulator checks passed; physical headset comfort and unrestricted custom
+binding combinations still need user testing. See docs/VALIDATION.md for coverage.

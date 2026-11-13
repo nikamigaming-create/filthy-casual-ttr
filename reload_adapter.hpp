@@ -1,34 +1,32 @@
 #pragma once
 #include "build_adapter.hpp"
 
-// Private-build native reload settings adapter. All entry points must run on
+// Exact 7EB72860 native reload settings adapter (INI loader A18B8/A1B29). All entry points must run on
 // the game's main thread. Static contract only; runtime switching still needs
 // acceptance with a weapon, magazine and both reload modes.
 namespace build_adapter {
 inline unsigned char* liveReloadSettings() {
     auto b = heldModule();
-    if (!b || !b[0x17EDEE0]) return nullptr;
-    // Exact-hash startup: RVA 1F095B unconditionally calls 859E -> 25F2C0.
-    // Successful native reload-hook installation sets 121EF58 at 25F55D.
-    // Getter 8F7B -> 92290 is cdecl/no args; its initialized return is
-    // module+E77408 (922CE). Calling it preserves native initialization.
-    auto settings = reinterpret_cast<unsigned char*(__cdecl*)()>(b + 0xA641)();
-    return settings == b + 0xF76648 ? settings : nullptr;
+    if (!b || !b[0x18B3C10]) return nullptr;
+    // 7EB72860: native install success sets18B3C10 at32326D.
+    // ADC1 ->9D5E0 is cdecl/no args;9D61E returns101FA88.
+    auto settings = reinterpret_cast<unsigned char*(__cdecl*)()>(b + 0xADC1)();
+    return settings == b + 0x101FA88 ? settings : nullptr;
 }
 inline bool readManualReload(bool& enabled) {
     auto settings = liveReloadSettings();
-    if (!settings || settings[0x494] > 1) return false;
-    enabled = settings[0x494] != 0;
+    if (!settings || settings[0x49C] > 1) return false;
+    enabled = settings[0x49C] != 0;
     return true;
 }
 inline bool setManualReload(bool enabled) {
     auto settings = liveReloadSettings();
-    if (!settings || settings[0x494] > 1) return false;
-    // INI load 96445..9645D writes this same one-byte bManual cache.
+    if (!settings || settings[0x49C] > 1) return false;
+    // Native INI loader A18B8 writes this same one-byte bManual cache.
     // Native reload frame 280B25 and hooks 25E629 etc read it live.
     // This does not install hooks, change inventory/ammunition, persist a
     // setting or synthesize native magazine/chamber state.
-    *reinterpret_cast<volatile unsigned char*>(settings + 0x494) = enabled ? 1 : 0;
+    *reinterpret_cast<volatile unsigned char*>(settings + 0x49C) = enabled ? 1 : 0;
     return true;
 }
 }
@@ -51,16 +49,17 @@ inline bool setSeatedPouch(bool enabled, float forward = 0.28f,
         bool active = false;
         unsigned char spareEnabled = 0;
         float settings[4]{};
-        unsigned char native[0x4C]{};
         float applied[4]{};
     };
     static Snapshot original;
     if (original.active && original.module != b) return false;
     if (!enabled) {
         if (!original.active) return true;
-        settings[0x4B4] = original.spareEnabled;
-        memcpy(settings + 0x4B8, original.settings, sizeof(original.settings));
-        memcpy(b + 0x17EE138, original.native, sizeof(original.native));
+        settings[0x4BC] = original.spareEnabled;
+        memcpy(settings + 0x4C0, original.settings, sizeof(original.settings));
+        // Kupo owns calibrated placement. Never restore a stale snapshot over
+        // a position the player moved/saved while our seated mode was active.
+        if (!b[0x18B3EB1]) b[0x18B3EC4] = 0;
         original.active = false;
         return true;
     }
@@ -73,30 +72,30 @@ inline bool setSeatedPouch(bool enabled, float forward = 0.28f,
     // SavedPouch and sets loaded=1 even if no file exists. Run it before the
     // snapshot so an original bSpare=false cannot prevent initialization, and
     // the user's parsed native placement remains available for restoration.
-    if (b[0x17EE138] > 1) return false;
-    if (!b[0x17EE138]) reinterpret_cast<void(__cdecl*)()>(b + 0x2EC710)();
-    if (b[0x17EE138] != 1 || b[0x17EE139] > 1 || b[0x17EE14C] > 1 ||
-        settings[0x4B4] > 1) return false;
+    if (b[0x18B3EB0] > 1) return false;
+    if (!b[0x18B3EB0]) reinterpret_cast<void(__cdecl*)()>(b + 0x327C40)();
+    if (b[0x18B3EB0] != 1 || b[0x18B3EB1] > 1 || b[0x18B3EC4] > 1 ||
+        settings[0x4BC] > 1) return false;
     const float placement[4] = {forward, side, height, belowEye};
     if (original.active && !memcmp(original.applied, placement, sizeof(placement)))
         return true;
     if (!original.active) {
         original.module = b;
-        original.spareEnabled = settings[0x4B4];
-        memcpy(original.settings, settings + 0x4B8, sizeof(original.settings));
-        memcpy(original.native, b + 0x17EE138, sizeof(original.native));
+        original.spareEnabled = settings[0x4BC];
+        memcpy(original.settings, settings + 0x4C0, sizeof(original.settings));
         original.active = true;
     }
-    settings[0x4B4] = 1; // native Reload/bSpare creation gate at 27838B
-    memcpy(settings + 0x4B8, placement, sizeof(placement));
+    settings[0x4BC] = 1; // native Reload/bSpare creation gate at 27838B
+    memcpy(settings + 0x4C0, placement, sizeof(placement));
     memcpy(original.applied, placement, sizeof(placement));
     // 2602F0 uses fChest* when saved-offset override is false. 257556 builds a
     // new native torso anchor when its valid byte is false. 2575E8..25762B only
     // automatically writes SavedPouch when the saved-offset override is true.
     // Leave the previous transform bytes inert until native code replaces them;
     // do not manufacture bone indices or transforms, or write the SavedPouch file.
-    b[0x17EE139] = 0;
-    b[0x17EE14C] = 0;
+    // Saved native placement wins on startup and every mode toggle. Seated
+    // values are a fallback for players who have not placed their own pouch.
+    if (!b[0x18B3EB1]) b[0x18B3EC4] = 0;
     return true;
 }
 }
@@ -182,43 +181,43 @@ inline bool readPouchDiagnostics(PouchDiagnostics& out) {
     out = {};
     auto b = heldModule(); auto settings = liveReloadSettings();
     if (!b || !settings) return false;
-    out.primaryNode = *reinterpret_cast<void**>(b + 0x17EE108);
-    out.copyNode = *reinterpret_cast<void**>(b + 0x17EE11C);
-    out.weaponRoot = *reinterpret_cast<void**>(b + 0x17EDF14);
-    out.nativeInitialized = b[0x17EDF3C] != 0;
-    out.spareCenterValid = b[0x17EE105] != 0;
-    memcpy(out.spareLocalCenter, b + 0x17EE10C, sizeof(out.spareLocalCenter));
-    out.spareLocalRadius = *reinterpret_cast<float*>(b + 0x17EE118);
-    out.spareEnabled = settings[0x4B4] != 0;
-    out.settingsLoaded = b[0x17EE138] != 0;
-    out.savedOverride = b[0x17EE139] != 0;
-    out.torsoAnchor = b[0x17EE14C] != 0;
-    out.primaryShown = b[0x17EE106] != 0;
-    out.nativeMode = *reinterpret_cast<int*>(b + 0x17EE1E8);
-    // Read-only lifecycle evidence. 288B7C releases held spare; 256F10 advances
-    // a visual-only flight, 257025 culls it. No world reference is created there.
-    out.heldRounds = *reinterpret_cast<int*>(b + 0x17EE1EC);
-    out.detachedMode = *reinterpret_cast<int*>(b + 0x17EDF9C);
-    out.detachedRounds = *reinterpret_cast<int*>(b + 0x17EDFA0);
-    out.installedMode = *reinterpret_cast<int*>(b + 0x17EE0C4);
-    out.installedRounds = *reinterpret_cast<int*>(b + 0x17EE0C8);
-    out.discardAmmo = settings[0x495] != 0;
-    out.flightAge = *reinterpret_cast<float*>(b + 0x17EE004);
-    memcpy(out.flightPosition, b + 0x17EDFE0, sizeof(out.flightPosition));
-    memcpy(out.flightVelocity, b + 0x17EDFEC, sizeof(out.flightVelocity));
+    out.primaryNode = *reinterpret_cast<void**>(b + 0x18B3E80);
+    out.copyNode = *reinterpret_cast<void**>(b + 0x18B3E94);
+    out.weaponRoot = *reinterpret_cast<void**>(b + 0x18B3C90);
+    out.nativeInitialized = b[0x18B3C4D] != 0;
+    out.spareCenterValid = b[0x18B3E72] != 0;
+    memcpy(out.spareLocalCenter, b + 0x18B3E84, sizeof(out.spareLocalCenter));
+    out.spareLocalRadius = *reinterpret_cast<float*>(b + 0x18B3E90);
+    out.spareEnabled = settings[0x4BC] != 0;
+    out.settingsLoaded = b[0x18B3EB0] != 0;
+    out.savedOverride = b[0x18B3EB1] != 0;
+    out.torsoAnchor = b[0x18B3EC4] != 0;
+    out.primaryShown = b[0x18B3E73] != 0;
+    out.nativeMode = *reinterpret_cast<int*>(b + 0x18B3F60);
+    // Read-only native lifecycle facts. This build owns dropped magazine
+    // world references, Havok placement and save restoration itself.
+    out.heldRounds = *reinterpret_cast<int*>(b + 0x18B3F64);
+    out.detachedMode = *reinterpret_cast<int*>(b + 0x18B3D14);
+    out.detachedRounds = *reinterpret_cast<int*>(b + 0x18B3D18);
+    out.installedMode = *reinterpret_cast<int*>(b + 0x18B3E3C);
+    out.installedRounds = *reinterpret_cast<int*>(b + 0x18B3E40);
+    out.discardAmmo = settings[0x49D] != 0;
+    out.flightAge = *reinterpret_cast<float*>(b + 0x18B3D7C);
+    memcpy(out.flightPosition, b + 0x18B3D58, sizeof(out.flightPosition));
+    memcpy(out.flightVelocity, b + 0x18B3D64, sizeof(out.flightVelocity));
     if (!std::isfinite(out.flightAge)) out.flightAge = 0;
     for (auto& v : out.flightPosition) if (!std::isfinite(v)) v = 0;
     for (auto& v : out.flightVelocity) if (!std::isfinite(v)) v = 0;
     out.metresToUnits = *reinterpret_cast<float*>(settings + 0x28);
-    out.forward = *reinterpret_cast<float*>(settings + 0x4B8);
-    out.side = *reinterpret_cast<float*>(settings + 0x4BC);
-    out.height = *reinterpret_cast<float*>(settings + 0x4C0);
-    out.belowEye = *reinterpret_cast<float*>(settings + 0x4C4);
+    out.forward = *reinterpret_cast<float*>(settings + 0x4C0);
+    out.side = *reinterpret_cast<float*>(settings + 0x4C4);
+    out.height = *reinterpret_cast<float*>(settings + 0x4C8);
+    out.belowEye = *reinterpret_cast<float*>(settings + 0x4CC);
     // Generic tube path at312ACF: root17EDF14 transforms local17EEAA8.
-    memcpy(out.roundTargetLocal,b+0x17EEAA8,sizeof(out.roundTargetLocal));
+    memcpy(out.roundTargetLocal,b+0x18B4820,sizeof(out.roundTargetLocal));
     out.roundTargetValid=out.nativeInitialized&&readPouchNode(out.weaponRoot).readable;
     for(float& v:out.roundTargetLocal)if(!std::isfinite(v)||std::abs(v)>100000){v=0;out.roundTargetValid=false;}
-    const unsigned offsets[]={0x17EE8A1,0x17EE8A3,0x17EE85B,0x17EE88E,0x17EE88F};
+    const unsigned offsets[]={0x18B461A,0x18B462C,0x18B45F8,0x18B4607,0x18B4618};
     for(int i=0;i<5;i++)out.roundFlags[i]=b[offsets[i]];
     out.primary = readPouchNode(out.primaryNode);
     out.copy = readPouchNode(out.copyNode);

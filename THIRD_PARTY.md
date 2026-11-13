@@ -1,26 +1,31 @@
-# Third-party notices
+# Third-party code
 
-The OpenXR 1.1.60 headers are from KhronosGroup/OpenXR-SDK, source archive
-KhronosGroup-OpenXR-SDK-4ce2937. Original copyright and SPDX notices are retained
-under Apache-2.0 OR MIT; both license texts are in third_party/openxr/LICENSES.
+## OpenXR
+
+The headers in `third_party/openxr/include/openxr` are the complete OpenXR 1.1.60
+header set from the existing local SDK checkout, identified by the source archive
+as `KhronosGroup-OpenXR-SDK-4ce2937`. Both addon and simulator use this same set.
+Copyright and SPDX notices are retained (Apache-2.0 OR MIT), with license texts
+in `third_party/openxr/LICENSES`.
 Upstream: https://github.com/KhronosGroup/OpenXR-SDK/tree/release-1.1.60
 
-Fallout: New Vegas, Tale of Two Wastelands, KUPOkinz's A Tale of Two Realities,
-xNVSE and JIP LN NVSE are external dependencies. Their game content and binaries
-are not distributed here. The addon uses a minimal native plugin ABI declaration
-and guarded integration points; it does not include the base mod's source.
-The development simulator and private diagnostics are not in this public snapshot.
-Original addon code is covered by LICENSE.
+## bvr-xrsim32
 
-## Optional standalone pool addon
+`xrsim` is a locally modified import from
+https://github.com/VR-Stereo-Hub/bioshock-trilogy-vr/tree/main/src/tools/xrsim
+under the retained `xrsim/LICENSE`. The exact upstream commit was not recorded
+during initial setup. Local changes include per-hand actions, quad/view matrix
+layout, and capture diagnostics. The first Git checkpoint preserves this state.
 
-Pool Tables Of The Mojave v4 by Luke2172 remains a separate required download:
-https://www.nexusmods.com/newvegas/mods/100097
-No original pool assets, ESP or completed upstream-derived scripts are included.
-Prepare-Pool.ps1 reads the user's verified original installation to generate
-three local integration scripts. These local generated outputs are excluded
-from source and release archives. Animation tracks are newly authored against
-the locally read game bind rig; no retail skeleton or animation is included.
+Fallout: New Vegas, TTW, TTWVR, xNVSE, and JIP LN NVSE are external runtime
+dependencies. Their binaries and game content are not included in this repository.
 
-Tutorial cards, highlight geometry and reload carrier assets are newly authored.
-TTR handling data is read from the user installation and is not distributed.
+## Quest Touch Plus controls editor
+
+`assets/controls/left.mesh`, `right.mesh` and their PNG textures derive from
+WebXR Input Profiles Touch Plus GLBs under the retained Amazon MIT license.
+`provenance.json` records the exact source model hashes and export counts.
+The D3D11 model loader/shaders in `controls_models.hpp` are adapted from MIT
+MGS5VR `src/controls_panel_renderer.cpp`; both license files ship with the assets.
+The RobCo-style terminal artwork was generated with the built-in image_gen tool
+for this addon. It is not extracted from Fallout. See the asset provenance JSON.

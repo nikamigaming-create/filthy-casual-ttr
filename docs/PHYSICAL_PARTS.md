@@ -1,4 +1,37 @@
-# Physical reload parts - TTR 1.1.2
+# Current TTR: recover native dropped magazines
+
+For supported TTR 1.1.2, native TTR owns dropped ammunition. Filthy Casuals
+1.7 adds a narrowly scoped handoff after you pick up a compatible native magazine.
+Keep gripping, align it with the empty gun well and use the native insertion
+movement. To save its rounds instead, bring it to the native ammo pouch and
+release grip. Native reload rules still apply; this does not refill empty mags.
+
+Enable `[Reload] RecoverWorldMagazines=1` in SeatedControls.ini (included by
+default in this release). Set it to 0 to return to entirely native behavior.
+When preserving an older personal INI, add this section/key explicitly.
+The older `[Weapons] PhysicalReloadParts` feature remains disabled on current
+TTR even if its old setting is 1. No competing drop/spawn hooks are enabled.
+
+The bridge validates the native world-mag record, actual held reference,
+remaining rounds, weapon/model compatibility and current hand state. It uses
+native inventory transfer and native reload initialization; it never writes a
+clip count or introduces a save handler. Unknown builds and incompatible objects
+stay on the native path. An ambiguous transfer disables recovery for that session.
+
+Verified in-game with the 10mm pistol and assault carbine: ordinary pickup,
+reinsertion and return to the native pouch preserve the exact rounds. Gravity
+pickup uses the same native held-reference path but was not independently tested
+in this round. Empty magazines and every weapon family are not certified.
+See [validation](VALIDATION.md) for exact coverage and the supported DLL hash.
+Keep the old carrier ESP installed for saves referencing it; no records or saves
+are deleted or migrated.
+
+---
+
+The following describes the historical TTR 1.1 implementation. It is not the
+current drop handler and is not evidence for untested current weapon families.
+
+# Physical reload parts - TTR 1.1
 
 Manual reload parts become native world objects. Drop a spare, eject a magazine,
 or use TTR's Save Ammo action and release it. Pick it up with the original grip
@@ -36,7 +69,7 @@ The addon derives each part's model from your installed game/mod files into
 never redistribute it. No original game or TTR assets are included in the ZIP.
 
 Supported target: FalloutNV 1.4.0.525/x86, TTWVR SHA256
-`C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73`.
+`E428C4BD1209D58D21F75108808C86049E26C76E58A164AD864A61B99696BDAB`.
 Unknown builds are refused. JIP LN and the enabled carrier ESP are required.
 
 Set `[Weapons] PhysicalReloadParts=0` and restart to disable physical drops and

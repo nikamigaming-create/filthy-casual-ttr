@@ -179,8 +179,8 @@ __declspec(naked) inline void ejectBStateEntry(){
  }
 }
 
-// Recover only our real, normally grabbed world part into the original FULL
-// installed-magazine initializer. Original insertion/cocking remains native.
+// Recover our normally grabbed world part into the native pouch-held initializer.
+// It supplies the weapon-specific insertion grip for magazines and loose rounds.
 using Recover=int(__cdecl*)(void* player,int hand);
 inline Recover recover=nullptr;
 inline void* recoverFallback=nullptr;inline void* recoverComplete=nullptr;
@@ -189,10 +189,12 @@ inline int __cdecl onRecover(unsigned char* frame){
  recoverStage=1;auto b=module;auto settings=build_adapter::liveReloadSettings();
  if(!b||!recover||GetCurrentThreadId()!=ownerThread||!settings||settings[0x494]!=1)return -1;
  recoverStage=2;
- if(*reinterpret_cast<int*>(b+0x17EE0C4)!=4||*reinterpret_cast<int*>(b+0x17EE1E8)||b[0x17EE134]||b[0x17EDF88]||b[0x17EE882])return -1;
- recoverStage=3;if(!build_adapter::readPouchNode(*reinterpret_cast<void**>(b+0x17EDF20)).readable)return -1;
+ int installed=*reinterpret_cast<int*>(b+0x17EE0C4);
+ if((installed!=0&&installed!=4&&installed!=5)||*reinterpret_cast<int*>(b+0x17EE1E8)||b[0x17EE134]||b[0x17EDF88])return -1;
+ recoverStage=3;if(!build_adapter::readPouchNode(*reinterpret_cast<void**>(b+0x17EE108)).readable)return -1;
  int hand=reinterpret_cast<bool(__cdecl*)()>(b+0x13642)()?1:0;
- if(!frame[-0x1576])return -1;
+ // Generic pickup ownership, validated by the callback, replaces the native
+ // magazine-contact gate; loose-round weapons do not populate that gate.
  int count=recover(*reinterpret_cast<void**>(frame-0x1600),hand);
  if(count>=0){recoveredParts++;recoveredRounds=count;}return count;
 }
@@ -213,6 +215,7 @@ __declspec(naked) inline void recoverEntry(){
   jl nativePath
   mov edx,[esp+512]
   mov [edx+4],eax
+  mov [edx+28],eax
   fxrstor [esp]
   mov esp,[esp+512]
   popad
@@ -233,31 +236,12 @@ inline void* trampoline(unsigned char* p,unsigned n){
  if(!VirtualProtect(code,n+5,PAGE_EXECUTE_READ,&old)){VirtualFree(code,0,MEM_RELEASE);return nullptr;}
  FlushInstructionCache(GetCurrentProcess(),code,n+5);return code;
 }
-inline const char* install(Commit callback,Recover recovery){
- if(module)return "already installed";auto b=build_adapter::heldModule();if(!b)return "refused hash";
- auto cmp=[&](unsigned rva,unsigned global){auto p=b+rva;return p[0]==0x80&&p[1]==0x3D&&*reinterpret_cast<void**>(p+2)==b+global&&p[6]==0;};
- auto callSite=[&](unsigned rva){auto p=b+rva;return p[0]==0xE8&&p+5+*reinterpret_cast<int*>(p+1)==b+0x30A0B0;};
- auto state=b+0x7D5A12;
- if(!cmp(0x7DA576,0x17EE134)||!cmp(0x7D82DD,0x17EE134)||!cmp(0x2E31B0,0x17EDF88)||b[0x2E327B]!=0xC3||!callSite(0x7D566D)||!callSite(0x7D59E5)||state[0]!=0xC7||state[1]!=0x05||*reinterpret_cast<void**>(state+2)!=b+0x17EE0C4||*reinterpret_cast<int*>(state+6)!=5)return "refused release/ejection instructions";
- const unsigned char recoveryCmp[]={0x80,0xBD,0x6E,0xEA,0xFF,0xFF,0};
- if(memcmp(b+0x7DBE02,recoveryCmp,7)||b[0x7DDE71]!=0xE8||b+0x7DDE76+*reinterpret_cast<int*>(b+0x7DDE72)!=b+0x2D00F0)return "refused recovery instructions";
- const unsigned char clonePrefix[]={0x55,0x8B,0xEC};if(memcmp(b+0x2E25B0,clonePrefix,3))return "refused clone entry";
- fallback=trampoline(b+0x7DA576,7);installedFallback=trampoline(b+0x7D82DD,7);ejectOriginal=trampoline(b+0x2E31B0,7);
- recoverFallback=trampoline(b+0x7DBE02,7);
- if(!fallback||!installedFallback||!ejectOriginal||!recoverFallback)return "trampoline allocation failed";
- struct Patch{unsigned rva,n;void* target;unsigned char op;DWORD protection;};
- Patch patches[]={{0x7DA576,7,entry,0xE9,0},{0x7D82DD,7,installedEntry,0xE9,0},{0x2E31B0,7,ejectEntry,0xE9,0},{0x7D566D,5,ejectAEntry,0xE8,0},{0x7D59E5,5,ejectBEntry,0xE8,0},{0x7D5A12,10,ejectBStateEntry,0xE9,0},{0x7DBE02,7,recoverEntry,0xE9,0}};
- // Protect all sites before changing any instruction. Restore permissions on
- // failure; never leave a partially installed set of state transitions.
- unsigned count=0;for(auto& p:patches){if(!VirtualProtect(b+p.rva,p.n,PAGE_EXECUTE_READWRITE,&p.protection)){for(int j=int(count)-1;j>=0;j--){DWORD ignored;auto& q=patches[j];VirtualProtect(b+q.rva,q.n,q.protection,&ignored);}return "site protection failed";}count++;}
- completed=b+0x7DA680;installedCompleted=b+0x7D8314;ejectBContinue=b+0x7D5A1C;commit=callback;recover=recovery;recoverComplete=b+0x7DDE71;ownerThread=GetCurrentThreadId();module=b;
- for(auto& patch:patches){auto p=b+patch.rva;p[0]=patch.op;*reinterpret_cast<int*>(p+1)=int(reinterpret_cast<unsigned char*>(patch.target)-(p+5));for(unsigned j=5;j<patch.n;j++)p[j]=0x90;FlushInstructionCache(GetCurrentProcess(),p,patch.n);}
- // Several sites share a page. Restore in reverse acquisition order.
- for(int i=int(count)-1;i>=0;i--){auto& p=patches[i];DWORD ignored;VirtualProtect(b+p.rva,p.n,p.protection,&ignored);}
- return "guarded physical spare/installed/ejection transactions active";
+inline const char* install(Commit,Recover){
+ // Upstream owns world-magazine creation, Havok placement and save restore.
+ // No legacy hook is installed, even when an old INI enables this feature.
+ return "disabled: TTR 7EB72860 owns native world magazines";
 }
-// FNV 1.4.0.525: xNVSE GameAPI.cpp LookupFormByID / NiTPointerMap.
-// Resolve IDs afresh on the main thread; never keep a world-reference pointer.
+
 inline void* lookup(unsigned id){
  struct Entry{Entry* next;unsigned key;void* data;};
  struct Map{void* vt;unsigned buckets;Entry** table;unsigned count;};
@@ -422,14 +406,14 @@ inline void* dropAmmo(void* player,void* ammo,unsigned count){
 inline unsigned stackCount(void* ref){if(!ref)return 0;auto p=scene::field<void*>(ref,0x48);unsigned guard=0;while(p&&guard++<256){if(scene::field<unsigned char>(p,4)==0x24)return unsigned(std::max(0,int(scene::field<short>(p,0xC))));p=scene::field<void*>(p,8);}return 1;}
 inline scene::Vec trackingPoint(scene::Vec point){
  auto b=build_adapter::heldModule();scene::Vec result{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
-  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x64B0B0)(manager,&result,&point);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
+  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x69AAC0)(manager,&result,&point);}
  return result;
 }
 inline scene::Vec gripPoint(int hand){
  auto b=build_adapter::heldModule();scene::Vec point{};float rotation[9]{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
-  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x6452C0)(manager,hand!=0,false,&point,rotation);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
+  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x6949C0)(manager,hand!=0,false,&point,rotation);}
  return point;
 }
 
@@ -503,5 +487,7 @@ inline void contactDiagnostics(std::ostream& out){
  auto t=trackingPoint(point);
  out<<",\"installedContact\":{\"hand\":"<<int(hand)<<",\"valid\":"<<(valid?1:0)<<",\"tracking\":["<<t.x<<","<<t.y<<","<<t.z<<"],\"looseRounds\":"<<int(b[0x17EDF88])<<",\"blocked\":"<<int(b[0x17EE882])<<",\"simple\":"<<int(b[0x17EE228])<<"}";
 }
-inline void diagnostics(std::ostream& out){gloveDiagnostics(out);insertionDiagnostics(out);contactDiagnostics(out);auto point=installedPoint();auto b=build_adapter::heldModule();auto settings=build_adapter::liveReloadSettings();out<<",\"nativeGrabReach\":"<<(settings?*reinterpret_cast<float*>(settings+0x28)**reinterpret_cast<float*>(settings+0x32C):0)<<",\"nativeReloadPriority\":"<<(b?unsigned(b[0x17EE6C2]):0)<<",\"nativeReloadActive\":"<<(b?unsigned(b[0x17EDF3C]):0);out<<",\"installedPartTracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";out<<",\"physicalMags\":{\"active\":"<<(module?"true":"false")<<",\"attempts\":"<<attempts<<",\"successes\":"<<successes<<",\"calibration\":"<<calibration<<",\"pouchReturns\":"<<pouchReturns<<",\"failures\":"<<failures<<",\"distance\":"<<lastDistance<<",\"threshold\":"<<lastThreshold<<",\"installedDrops\":"<<installedDrops<<",\"ejectedDrops\":"<<ejectedDrops<<",\"emptyDrops\":"<<emptyDrops<<",\"recovered\":"<<recoveredParts<<",\"recoveredPouch\":"<<recoveredPouch<<",\"recoveredRounds\":"<<recoveredRounds<<",\"recoverStage\":"<<recoverStage<<",\"recoverDistance\":"<<recoverDistance<<",\"lastRef\":"<<lastRefID<<"}";}
+inline void diagnostics(std::ostream& out){
+ out<<",\"physicalMags\":{\"active\":false,\"nativeOwned\":true}";
+}
 }

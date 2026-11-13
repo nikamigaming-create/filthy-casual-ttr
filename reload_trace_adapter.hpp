@@ -18,21 +18,8 @@ inline void __cdecl capture(unsigned site){
 SC_TRACE(0) SC_TRACE(1) SC_TRACE(2) SC_TRACE(3) SC_TRACE(4) SC_TRACE(5) SC_TRACE(6) SC_TRACE(7)
 #undef SC_TRACE
 inline const char* install(){
- char flag[8]{};if(!GetEnvironmentVariableA("SC_TEST_RELOAD_EVENTS",flag,sizeof(flag))||strcmp(flag,"1"))return "not requested";
- if(module)return "already installed";
- auto b=build_adapter::heldModule();if(!b)return "refused hash";
- const unsigned sites[]={0x588778,0x7D999D,0x7D9CA2,0x7D9FDD,0x7DA249,0x7DA680,0x476ED7,0x2E067B};
- void* hooks[]={entry0,entry1,entry2,entry3,entry4,entry5,entry6,entry7};
- // Preflight every exact displaced instruction before installing any hook.
- for(unsigned i=0;i<8;i++){auto p=b+sites[i];if(p[0]!=0xC7||p[1]!=0x05||*reinterpret_cast<void**>(p+2)!=b+0x17EE1E8||*reinterpret_cast<unsigned*>(p+6)!=(i==7?1u:0u))return "refused instruction";}
- auto code=static_cast<unsigned char*>(VirtualAlloc(nullptr,8*16,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!code)return "allocation failed";
- for(unsigned i=0;i<8;i++){auto t=code+i*16;memcpy(t,b+sites[i],10);t[10]=0xE9;*reinterpret_cast<int*>(t+11)=int((b+sites[i]+10)-(t+15));jumps[i]=t;}
- DWORD old=0;if(!VirtualProtect(code,8*16,PAGE_EXECUTE_READ,&old)){VirtualFree(code,0,MEM_RELEASE);return "trampoline protection failed";}
- FlushInstructionCache(GetCurrentProcess(),code,8*16);
- module=b;mainThread=GetCurrentThreadId();
- for(unsigned i=0;i<8;i++){auto p=b+sites[i];DWORD prev=0;if(!VirtualProtect(p,10,PAGE_EXECUTE_READWRITE,&prev))return "site protection failed";
- p[0]=0xE9;*reinterpret_cast<int*>(p+1)=int(static_cast<unsigned char*>(hooks[i])-(p+5));memset(p+5,0x90,5);FlushInstructionCache(GetCurrentProcess(),p,10);DWORD unused;VirtualProtect(p,10,prev,&unused);}
- return "eight observation sites active";
+ // Legacy observation sites are deliberately absent from the new host adapter.
+ return "disabled: legacy reload trace sites are not ported to 7EB72860";
 }
 inline void diagnostics(std::ostream& out){
  out<<",\"reloadTrace\":{\"active\":"<<(module?"true":"false")<<",\"mainThread\":"<<mainThread<<",\"total\":"<<total<<",\"events\":[";

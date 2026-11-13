@@ -1,0 +1,3 @@
+LIBRARY FilthyCasualVehiclesInput
+EXPORTS
+ xrNegotiateLoaderApiLayerInterface=_xrNegotiateLoaderApiLayerInterface@12

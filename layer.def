@@ -3,3 +3,8 @@ EXPORTS
  SC_PoolBridgeVersion
  SC_LabelDebug
  xrNegotiateLoaderApiLayerInterface=_xrNegotiateLoaderApiLayerInterface@12
+
+SC_VehicleBridgeVersion
+
+ SC_OpenControls
+ SC_ControlsDebug

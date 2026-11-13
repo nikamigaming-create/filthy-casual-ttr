@@ -12,6 +12,8 @@ inline std::atomic<bool> enabled{true};
 inline std::atomic<unsigned> attempts{0},restored{0},failures{0};
 inline std::atomic<unsigned> width{0},height{0},samples{0};
 inline std::atomic<long> lastResult{0};
+// Verified 6AF60DF2: caller pushes nine stack arguments; all native exits use
+// plain RET and caller removes the arguments. Context layout remains opaque.
 using Render=bool(__cdecl*)(void*,void*,IDirect3DDevice9*,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 template<class T> struct Com {
  T* value=nullptr;
@@ -20,9 +22,9 @@ template<class T> struct Com {
 };
 inline bool __cdecl render(void* manager,void* context,IDirect3DDevice9* device,
  uintptr_t a3,uintptr_t a4,uintptr_t a5,uintptr_t a6,uintptr_t a7,uintptr_t a8){
- const auto original=reinterpret_cast<Render>(base+0x3B6020);
+ const auto original=reinterpret_cast<Render>(base+0x3F05E0);
  // Avoid any allocation/copy when the native scope isn't active.
- if(!enabled||!device||!base[0xECCD68])return original(manager,context,device,a3,a4,a5,a6,a7,a8);
+ if(!enabled||!device||!base[0xF76120])return original(manager,context,device,a3,a4,a5,a6,a7,a8);
  ++attempts;
  Com<IDirect3DSurface9> buffer,backup;
  D3DSURFACE_DESC desc{};
@@ -43,16 +45,16 @@ inline bool __cdecl render(void* manager,void* context,IDirect3DDevice9* device,
 }
 inline bool install(unsigned char* module){
  if(base)return true;
- const unsigned char expected[]={0xE8,0x20,0x2E,0xFF,0xFF};
+ const unsigned char expected[]={0xE8,0x40,0x2E,0xFF,0xFF};
  const unsigned char prologue[]={0x81,0xEC,0x9C,0,0,0,0x56};
- if(!module||memcmp(module+0x3C31FB,expected,5)||memcmp(module+0x3B6020,prologue,7))return false;
+ if(!module||memcmp(module+0x3FD79B,expected,5)||memcmp(module+0x3F05E0,prologue,7))return false;
  DWORD protection{};
- if(!VirtualProtect(module+0x3C31FB,5,PAGE_EXECUTE_READWRITE,&protection))return false;
+ if(!VirtualProtect(module+0x3FD79B,5,PAGE_EXECUTE_READWRITE,&protection))return false;
  base=module;
- const int rel=int(reinterpret_cast<unsigned char*>(&render)-(module+0x3C3200));
- memcpy(module+0x3C31FC,&rel,4);
- FlushInstructionCache(GetCurrentProcess(),module+0x3C31FB,5);
- DWORD ignored{};VirtualProtect(module+0x3C31FB,5,protection,&ignored);
+ const int rel=int(reinterpret_cast<unsigned char*>(&render)-(module+0x3FD7A0));
+ memcpy(module+0x3FD79C,&rel,4);
+ FlushInstructionCache(GetCurrentProcess(),module+0x3FD79B,5);
+ DWORD ignored{};VirtualProtect(module+0x3FD79B,5,protection,&ignored);
  return true;
 }
 }

@@ -1,0 +1,1 @@
+{"file_format_version":"1.0.0","api_layer":{"name":"XR_APILAYER_NIKAMI_vehicles","library_path":".\\FilthyCasualVehiclesInput.dll","api_version":"1.0","implementation_version":"1","description":"Standalone vehicle input for TTR","functions":{"xrNegotiateLoaderApiLayerInterface":"xrNegotiateLoaderApiLayerInterface"}}}

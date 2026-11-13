@@ -13,6 +13,7 @@ inline PFN_xrWaitFrame waitFrame=nullptr;inline PFN_xrEndFrame realEnd=nullptr,f
 inline PFN_xrDestroySession realDestroySession=nullptr,forwardDestroySession=nullptr;
 struct Ref {XrSession session;XrReferenceSpaceCreateInfo original;XrSpace current;};
 inline std::recursive_mutex mutex;inline std::unordered_map<XrSpace,Ref> refs;
+inline std::atomic<int64_t> frameTime{0};
 inline float applied=0;inline XrPosef lastHead{{0,0,0,1},{0,0,0}};inline XrSpace lastBase=XR_NULL_HANDLE;
 using Height=float(__cdecl*)(float);
 inline Height bridge(){auto m=GetModuleHandleA("SeatedControls.dll");return m?reinterpret_cast<Height>(GetProcAddress(m,"SC_Height")):nullptr;}
@@ -41,7 +42,7 @@ inline void applyPending(){
  for(auto& p:pending){auto& ref=refs[p.first];if(ref.current!=p.first)destroy(ref.current);ref.current=p.second;}applied=target;
 }
 inline XrResult XRAPI_CALL onWaitFrame(XrSession s,const XrFrameWaitInfo* i,XrFrameState* out){
- {std::lock_guard<std::recursive_mutex> lock(mutex);applyPending();}return waitFrame(s,i,out);
+ {std::lock_guard<std::recursive_mutex> lock(mutex);applyPending();}auto result=waitFrame(s,i,out);if(XR_SUCCEEDED(result))frameTime=out->predictedDisplayTime;return result;
 }
 inline XrResult XRAPI_CALL onLocateSpace(XrSpace space,XrSpace base,XrTime time,XrSpaceLocation* out){std::lock_guard<std::recursive_mutex> lock(mutex);return locateSpace(resolve(space),resolve(base),time,out);}
 inline XrResult XRAPI_CALL onLocateViews(XrSession s,const XrViewLocateInfo* info,XrViewState* state,uint32_t cap,uint32_t* count,XrView* views){

@@ -1,13 +1,13 @@
 #pragma once
 #include "reload_adapter.hpp"
 #include "scene_adapter.hpp"
-// TTR1.1-only read-only facts. ECCBA0 is the native 'chambered %d' argument
+// Exact 7EB72860 read-only facts. ECCBA0 is the native 'chambered %d' argument
 // at2E95CF and spent-case branch at2E92FE. Runtime transition checks required.
 namespace tutorial_adapter {
 struct Snapshot {bool valid=false,chamberKnown=false,chambered=false;build_adapter::PouchDiagnostics reload;};
 inline Snapshot read(){
  Snapshot s;auto b=build_adapter::heldModule();if(!b||!build_adapter::readPouchDiagnostics(s.reload))return s;
- auto chamber=b[0xECCBA0];s.chamberKnown=chamber<=1;s.chambered=chamber==1;
+ auto chamber=b[0xF75F50];s.chamberKnown=chamber<=1;s.chambered=chamber==1;
  s.valid=s.reload.nativeInitialized&&s.reload.weaponRoot&&build_adapter::readPouchNode(s.reload.weaponRoot).readable;
  return s;
 }

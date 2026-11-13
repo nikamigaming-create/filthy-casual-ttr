@@ -1,4 +1,4 @@
-"""Original 3D tutorial lines/cards. Reads no game or third-party assets."""
+"""Original 3D tutorial lines/cards with generated RobCo artwork. No game assets."""
 from pathlib import Path
 import math,time,re
 time.clock=time.perf_counter
@@ -45,10 +45,9 @@ def fitted_font(text, bold, size):
   size-=1
  raise ValueError('Tutorial text exceeds readable card width: '+text)
 for name,lines in texts.items():
- im=Image.new('RGBA',(1024,384),(10,22,18,255));d=ImageDraw.Draw(im)
- d.rounded_rectangle((3,3,1020,380),radius=15,outline=(118,245,157),width=4)
- for i,(text,y,c) in enumerate(zip(lines,(35,153,252),((149,255,175),(239,235,204),(239,235,204)))):
-  f=fitted_font(text,i==0,56 if i==0 else 48)
+ im=Image.open(R/'assets/controls/robco-compact.png').convert('RGBA').resize((1024,384),Image.Resampling.LANCZOS);d=ImageDraw.Draw(im)
+ for i,(text,y,c) in enumerate(zip(lines,(66,156,244),((173,245,139),(173,245,139),(145,191,158)))):
+  f=fitted_font(text,i==0,50 if i==0 else 44)
   box=d.textbbox((512,y),text,anchor='mt',font=f)
   assert box[0]>=20 and box[2]<=1004 and box[3]<364,(name,box)
   d.text((512,y),text,anchor='mt',font=f,fill=c)

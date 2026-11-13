@@ -19,6 +19,7 @@
 #include "nvse_api.hpp"
 #include "build_adapter.hpp"
 #include "reload_adapter.hpp"
+#include "native_worldmag_recovery.hpp"
 #include "reload_trace_adapter.hpp"
 #include "scene_adapter.hpp"
 #include "physical_reload_adapter.hpp"
@@ -36,6 +37,9 @@ namespace {
  InventoryRef*(__cdecl* inventoryRef)(u32)=nullptr;
  FILE* logfile=nullptr;std::mutex logMutex,inputMutex,displayMutex;
  std::string displayText;ULONGLONG displayUntil=0;
+ std::atomic<bool> controlsEditor{false};
+ std::atomic<unsigned> controlsOverrides{0};
+ float physicalGrip[2]{},physicalTrigger[2]{};ULONGLONG physicalAt[2]{};
  std::atomic<bool> enabled{false},selectorOpen{false},heightMenu{false},showSelectorPopups{false};
  std::atomic<bool> weaponTransition{false};
  std::atomic<int> weaponHand{-1},aidHand{-1};std::atomic<float> heightOffset{0},physicalHeight{0};
@@ -196,11 +200,30 @@ namespace {
  }
 
  Form* playerForm(){Element e;Form* p=nullptr;if(call(getPlayer,e)&&e.type==2)p=e.value.form;release(e);return p;}
+ // WIP native-worldmag bridge: existing scripts only, no per-drop compilation.
+ void* __cdecl worldmagPlayer() noexcept {
+  if(!ready||!loaded||!gestureGameplayAllowed||!enabled||selectorOpen||heightMenu||weaponTransition||controlsEditor||selectedRef)return nullptr;
+  auto vehicleModule=GetModuleHandleW(L"FilthyCasualVehicles.dll");
+  auto vehicleActive=vehicleModule?reinterpret_cast<bool(__cdecl*)()>(GetProcAddress(vehicleModule,"FC_VehicleActive")):nullptr;
+  if(vehicleModule&&(!vehicleActive||vehicleActive()))return nullptr;
+  {std::lock_guard<std::mutex> lock(inputMutex);if(GetTickCount64()-input.time>=500||!input.h[0].active||!input.h[1].active)return nullptr;}
+  Element menu;bool ok=call(getMenu,menu)&&menu.type==1&&menu.value.number==0;release(menu);
+  return ok?playerForm():nullptr;
+ }
+ bool __cdecl worldmagInventory(void* player,void* ammo,int* out) noexcept {
+  if(!ready||!getCount||!player||!ammo||!out)return false;
+  Element e;bool ok=call(getCount,e,static_cast<Form*>(ammo));
+  double count=ok&&e.type==1?e.value.number:-1;release(e);
+  if(!std::isfinite(count)||count<0||count>INT_MAX||std::floor(count)!=count)return false;
+  *out=int(count);return true;
+ }
+
 
  // First physical-magazine slice. World references retain engine collision;
  // only their visible geometry is replaced by a separately retained clone.
  struct PhysicalMag {unsigned refID=0,weaponID=0,ammoID=0;bool wasHeld=false,wasNearPouch=false,identityDirty=false;int lastHeldHand=-1;ULONGLONG identityAt=0,contactAt=0;float contactDistance=-1;int contactHand=-1;unsigned contactWeapon=0;void* visual=nullptr;scene::Transform pose{};Vec center{},velocity{};ULONGLONG born=0;bool attached=false;std::string cache;scene::Transform relative{};bool restoring=false;bool fullModel=false,modelAssigned=false;bool metadataDirty=false;ULONGLONG retryAt=0,metadataAt=0;};
  std::vector<PhysicalMag> physicalMags;
+ bool physicalPartsEnabled=false;
  Script *partSet=nullptr,*partGet=nullptr,*partKeys=nullptr,*partErase=nullptr,*partModel=nullptr,*partIdentitySet=nullptr,*partIdentityGet=nullptr,*removeEmptyPart=nullptr;ULONGLONG partDiscoverAt=0;
  bool initPartMetadata(){
   if(partSet&&partGet&&partKeys&&partErase&&partModel&&partIdentitySet&&partIdentityGet&&removeEmptyPart)return true;
@@ -238,12 +261,12 @@ namespace {
  bool __cdecl commitPhysicalMag(const physical_reload_adapter::Drop& d);
  int __cdecl recoverPhysicalMag(void* player,int hand);
  const char* installPhysicalParts(){
-  char flag[8]{};const bool test=GetEnvironmentVariableA("SC_TEST_PHYSICAL_MAGS",flag,sizeof(flag))&&strcmp(flag,"1")==0;
-  if(!test&&!GetPrivateProfileIntA("Weapons","PhysicalReloadParts",1,settingsPath))return "disabled in INI (existing appearances still restored)";
-  if(!ready||!initPartMetadata())return "disabled: required JIP metadata commands unavailable";
-  if(!emptyReloadPart()||GetFileAttributesA((gameDirectory+"Data\\meshes\\FilthyCasual\\reload-carrier.nif").c_str())==INVALID_FILE_ATTRIBUTES||GetFileAttributesA((gameDirectory+"Data\\textures\\FilthyCasual\\reload-carrier.dds").c_str())==INVALID_FILE_ATTRIBUTES)return "disabled: enable Filthy Casual Reload Parts.esp and install its original carrier assets";
-  return physical_reload_adapter::install(commitPhysicalMag,recoverPhysicalMag);
+  // This exact upstream build owns world magazines. Never install competing
+  // release/recovery hooks, including under the old private test override.
+  physicalPartsEnabled=false;
+  return "disabled: upstream TTR owns dropped ammunition";
  }
+
  void discoverParts(){
   if(!ready||!loaded||!initPartMetadata())return;Element e;
   if(call(partKeys,e)&&e.type==4&&e.value.array){auto n=arrays->size(e.value.array);if(n<=8192){std::vector<Element> entries(n);if(arrays->elements(e.value.array,entries.data(),nullptr))for(auto& key:entries){
@@ -335,47 +358,45 @@ namespace {
  int __cdecl recoverPhysicalMag(void* player,int hand){
   if(!ready||!loaded||!gestureGameplayAllowed||!player||!initPartMetadata())return -1;auto b=build_adapter::heldModule();
   physical_reload_adapter::recoverStage=4;
-  auto first=b[0x136CE35]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x136D2F0)):nullptr;
-  auto second=b[0x136CF04]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x136CF0C)):nullptr;
+  auto first=b[0x1416775]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x1417410)):nullptr;
+  auto second=b[0x1416844]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x141684C)):nullptr;
   physical_reload_adapter::recoverStage=5;
   auto ref=first?first:second;if(!ref||(first&&second&&first!=second))return -1;
   physical_reload_adapter::recoverStage=6;
-  int heldHand=*reinterpret_cast<int*>(b+(first?0xEB5A88:0x136CF08));if(heldHand!=hand)return -1;
+  int heldHand=*reinterpret_cast<int*>(b+(first?0xF6B520:0x1416848));if(heldHand!=hand)return -1;
   physical_reload_adapter::recoverStage=7;
   auto it=std::find_if(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;});
   if(it==physicalMags.end()||!it->weaponID||!it->ammoID)return -1;
   physical_reload_adapter::recoverStage=8;
   Element equipped;unsigned weapon=0;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)weapon=equipped.value.form->id;release(equipped);
-  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x2DC7C0)(player));
+  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x315CF0)(player));
   physical_reload_adapter::recoverStage=9;
   if(weapon!=it->weaponID||!ammo||ammo->id!=it->ammoID)return -1;
   physical_reload_adapter::recoverStage=10;
   auto base=scene::field<Form*>(ref,0x20);bool empty=base==emptyReloadPart();if(!empty&&base!=ammo)return -1;
   physical_reload_adapter::recoverStage=11;
-  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x2D00F0)();
+  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x31B6A0)();
   if(count<0||count>capacity||capacity<1)return -1;
-  physical_reload_adapter::recoverStage=15;physical_reload_adapter::recoverDistance=it->contactDistance;
-  // Scene publication is sampled together by tickPhysicalMags. This callback
-  // runs inside TTR's reload update, when live node transforms are intermediate.
-  // Consume only the immediately preceding main-thread contact observation.
-  if(!it->contactAt||GetTickCount64()-it->contactAt>50||it->contactHand!=hand||it->contactWeapon!=weapon)return -1;
-  it->contactAt=0;
+  // Actual native grab ownership is the pickup/catch event. Hand over now,
+  // not only after approaching the well with an arbitrary physics grab pose.
+  // The native initializer computes this weapon's held offset and orientation.
   physical_reload_adapter::recoverStage=16;
   if(!takePhysicalPart(*it,ref,player,true))return -1;
   return count;
  }
  bool nearPhysicalPouch(void* ref){
-  auto b=physical_reload_adapter::module;auto reloadSettings=build_adapter::liveReloadSettings();if(!b||!reloadSettings||reloadSettings[0x494]!=1)return false;
-  auto pouch=*reinterpret_cast<void**>(b+0x17EE11C);auto root=scene::root(ref);
-  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x17EE1E8))pouch=*reinterpret_cast<void**>(b+0x17EE108);
+  auto b=physical_reload_adapter::module;auto reloadSettings=build_adapter::liveReloadSettings();if(!b||!reloadSettings||reloadSettings[0x49C]!=1)return false;
+  auto pouch=*reinterpret_cast<void**>(b+0x18B3E94);auto root=scene::root(ref);
+  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x18B3F60))pouch=*reinterpret_cast<void**>(b+0x18B3E80);
   if(!root||!build_adapter::readPouchNode(pouch).readable)return false;
-  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x17EE10C))*pose.scale;
+  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x18B3E84))*pose.scale;
   auto bound=scene::field<float*>(root,0x20);if(!bound)return false;
   float threshold=*reinterpret_cast<float*>(reloadSettings+0x4CC)**reinterpret_cast<float*>(reloadSettings+0x28);
   float distance=scene::distance(center,{bound[0],bound[1],bound[2]});
   return std::isfinite(threshold)&&threshold>0&&std::isfinite(distance)&&distance<threshold;
  }
  void tickPhysicalMags(){
+  if(!physicalPartsEnabled)return;
   if(!build_adapter::heldModule())return;
   if(GetTickCount64()-partDiscoverAt>3000){partDiscoverAt=GetTickCount64();discoverParts();}
   for(auto it=physicalMags.begin();it!=physicalMags.end();){auto ref=static_cast<Form*>(physical_reload_adapter::lookup(it->refID));
@@ -389,16 +410,16 @@ namespace {
    m.contactAt=0;m.contactDistance=-1;m.contactHand=-1;m.contactWeapon=0;
    if(held&&gestureGameplayAllowed&&physical_reload_adapter::module){
     auto root=scene::root(ref);scene::Transform rest{};auto reloadSettings=build_adapter::liveReloadSettings();
-    if(reloadSettings&&reloadSettings[0x494]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
+    if(reloadSettings&&reloadSettings[0x49C]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
      auto bound=scene::field<float*>(root,0x20);float units=*reinterpret_cast<float*>(reloadSettings+0x28);
      if(bound&&std::isfinite(units)&&units>1){m.contactDistance=scene::distance({bound[0],bound[1],bound[2]},rest.p)/units;if(std::isfinite(m.contactDistance)&&m.contactDistance<=.12f){
-      auto b=physical_reload_adapter::module;m.contactHand=(b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEB5A88):build_adapter::grabbedHand();
+      auto b=physical_reload_adapter::module;m.contactHand=(b[0x1416775]&&*reinterpret_cast<void**>(b+0x1417410)==ref)?*reinterpret_cast<int*>(b+0xF6B520):build_adapter::grabbedHand();
       Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)m.contactWeapon=equipped.value.form->id;release(equipped);m.contactAt=GetTickCount64();
      }}
     }
    }
    if(m.wasHeld&&!held&&m.wasNearPouch&&nearPouch&&m.weaponID&&m.ammoID&&m.lastHeldHand>=0&&partInput.h[m.lastHeldHand].active&&partInput.h[m.lastHeldHand].grip<.2f&&GetTickCount64()-partInput.time<100&&gestureGameplayAllowed){if(takePhysicalPart(m,ref,playerForm(),false)){physical_reload_adapter::recoveredPouch++;continue;}}
-   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x136CE35]&&*reinterpret_cast<void**>(b+0x136D2F0)==ref)?*reinterpret_cast<int*>(b+0xEB5A88):build_adapter::grabbedHand();}
+   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x1416775]&&*reinterpret_cast<void**>(b+0x1417410)==ref)?*reinterpret_cast<int*>(b+0xF6B520):build_adapter::grabbedHand();}
    m.wasHeld=held;m.wasNearPouch=held&&nearPouch;
    auto root=scene::root(ref);
    if(m.fullModel){
@@ -497,9 +518,9 @@ namespace {
   // Clear native grab ownership before activation can delete its world ref.
   // Consume through the engine inventory-use path, retaining all normal effects.
   Item food=heldAid;double before=number(getCount,food.form);
-  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<void**>(b+0x136D2F4),*reinterpret_cast<int*>(b+0xEB5A88),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<void**>(b+0x136CF10),*reinterpret_cast<int*>(b+0x136CF08));
+  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<void**>(b+0x1417414),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<void**>(b+0x1416850),*reinterpret_cast<int*>(b+0x1416848));
   if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
-   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x136CE35],*reinterpret_cast<void**>(b+0x136D2F0),*reinterpret_cast<int*>(b+0xEB5A88),b[0x136CF04],*reinterpret_cast<void**>(b+0x136CF0C),*reinterpret_cast<int*>(b+0x136CF08),b[0x24ADE0],b[0x24ADE1],b[0x24ADE2],b[0x24ADE3]);
+   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<int*>(b+0x1416848),b[0x1A95A0],b[0x1A95A1],b[0x1A95A2],b[0x1A95A3]);
    mouthGate.reset();return;
   }
   forgetHeldAid();
@@ -571,7 +592,7 @@ namespace {
   }release(e);std::sort(items.begin(),items.end(),[](const Item&a,const Item&b){return a.name<b.name;});
   openHand=hand;page=0;uiEpoch++;selectorOpen=true;if(!buildPage())close();
  }
- void heightText(){char text[320];sprintf_s(text,"SEATED HEIGHT: %+d cm | Y: selector popups %s\nRight stick up/down adjusts | A calibrates to %d cm\nX resets | B saves and closes",int(std::round(heightOffset*100)),showSelectorPopups?"ON":"OFF",int(std::round(desiredHeight*100)));tell(text,true);}
+ void heightText(){char text[320];sprintf_s(text,"SEATED HEIGHT: %+d cm | Popups: %s\nRight stick adjusts | A calibrates to %d cm\nX resets | Y toggles popups | Left stick: Controls\nB saves and closes",int(std::round(heightOffset*100)),showSelectorPopups?"ON":"OFF",int(std::round(desiredHeight*100)));tell(text,true);}
  void saveHeight(){char value[32];sprintf_s(value,"%.1f",heightOffset*100);WritePrivateProfileStringA("Seated","HeightOffsetCm",value,settingsPath);log("HEIGHT saved offset=%s cm",value);}
  void toggleReload(){
    bool manual=false;
@@ -779,13 +800,14 @@ namespace {
   out<<"]}";
  }
  void tick(){
+  native_worldmag_recovery::tick(ready&&loaded&&gestureGameplayAllowed&&!selectorOpen&&!heightMenu&&!weaponTransition&&!controlsEditor);
   if(!ready||!loaded){enabled=false;gestureGameplayAllowed=false;return;}auto now=GetTickCount64();if(now-lastLoop<10)return;lastLoop=now;
   if(presentation_adapter::base){
    unsigned id=0;Vec namePoint{};
-   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xD094)()==0x3F1){
+   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xDA03)()==0x3F1){
     Element e;if(call(dialoguePartner,e)&&e.type==2&&e.value.form){
      auto actorRoot=scene::root(e.value.form);auto head=scene::find(actorRoot,"Bip01 Head");
-     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0xA641)();
+     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0xADC1)();
       // Head joint is inside the skull: allow crown height plus a visible air gap.
       namePoint.z+=.32f*(*reinterpret_cast<float*>(nativeSettings+0x28));id=e.value.form->id;}
     }release(e);
@@ -797,11 +819,13 @@ namespace {
   auto player=playerForm();auto root=scene::root(player);bool usable=root&&number(getMenu)==0&&now-current.time<500&&current.h[0].active&&current.h[1].active;
   enabled=usable;
   gestureGameplayAllowed=usable&&!weaponTransition;
+  native_worldmag_recovery::tick(usable&&!selectorOpen&&!heightMenu&&!weaponTransition&&!controlsEditor);
   static ULONGLONG nextGestureLog=0;static unsigned gestureLogs=0;
   if(now>=nextGestureLog&&gestureLogs<90){nextGestureLog=now+2000;++gestureLogs;
    std::lock_guard<std::mutex> lock(inputMutex);
    log("GESTURE gameplay=%d usable=%d controls=%d L(active=%d thumb=%d index=%d grip=%.2f trigger=%.2f applied=%lu) R(active=%d thumb=%d index=%d grip=%.2f trigger=%.2f applied=%lu)",int(gestureGameplayAllowed.load()),usable,int(controlsActive.load()),gestures[0].active,gestures[0].thumb,gestures[0].index,input.h[0].grip,input.h[0].trigger,finger_adapter::applied[0].load(),gestures[1].active,gestures[1].thumb,gestures[1].index,input.h[1].grip,input.h[1].trigger,finger_adapter::applied[1].load());
   }
+  if(controlsEditor.load()){mouthGate.reset();pendingControl=-1;previous=current;return;}
   int wristAction=-1;
   int action=pendingControl.exchange(-1);
   if(selectorOpen||heightMenu||weaponTransition||action>=0)mouthGate.reset();
@@ -834,7 +858,14 @@ namespace {
       else if(now>=aidDeadline){clearAid();weaponTransition=false;tell("Item returned to inventory; native handoff unavailable");}
       else {pendingAt=now+100;auto palm=scene::palm(root,1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));}
      }
-    }else if(pendingStage==1){double result=number(equip,pendingWeapon.form,0);number(holster);log("TOUCH EQUIP %08X hand=%d result=%.0f",pendingWeapon.id,pendingHand,result);
+    }else if(pendingStage==1){
+     // A holstered copy is already equipped. Do not enqueue a second native
+     // equip/unequip transaction for the same item; only request its draw.
+     Element currentEquipped;u32 currentID=0;
+     if(call(getEquipped,currentEquipped)&&currentEquipped.type==2&&currentEquipped.value.form)currentID=currentEquipped.value.form->id;
+     release(currentEquipped);
+     double result=currentID==pendingWeapon.id?1:number(equip,pendingWeapon.form,0);
+     number(holster);log("TOUCH EQUIP %08X hand=%d result=%.0f already=%d",pendingWeapon.id,pendingHand,result,currentID==pendingWeapon.id);
      if(!result){weaponTransition=false;tell("Weapon could not be equipped");}else{pendingStage=2;pendingAt=now+100;}
     }else{weaponHand=pendingHand;selectedWeaponID=pendingWeapon.id;redrawAfter=now+1000;log("Draw request: %s",build_adapter::requestHandDraw(pendingHand));number(draw);weaponTransition=false;tell("Equipped: "+pendingWeapon.name);pendingWeapon={};}
    }previous=current;return;
@@ -860,6 +891,7 @@ namespace {
   const auto& l=current.h[0];const auto& r=current.h[1];const auto& oldL=previous.h[0];const auto& oldR=previous.h[1];
   bool b=r.secondary&&!oldR.secondary,a=r.primary&&!oldR.primary,x=l.primary&&!oldL.primary,y=l.secondary&&!oldL.secondary;
   if(heightMenu){
+   if(current.h[0].stick&&!previous.h[0].stick){auto m=GetModuleHandleW(L"SeatedInput.dll");using Open=void(__cdecl*)();auto fn=m?reinterpret_cast<Open>(GetProcAddress(m,"SC_OpenControls")):nullptr;if(fn){heightMenu=false;fn();previous=current;return;}}
    if(b){heightMenu=false;saveHeight();tell("Seated height saved",true);}
    else if(y){showSelectorPopups=!showSelectorPopups.load();WritePrivateProfileStringA("UI","ShowSelectorPopups",showSelectorPopups?"1":"0",settingsPath);heightText();}
    else if(a&&physicalHeight>.2f){heightOffset=std::clamp(desiredHeight-physicalHeight.load(),-.5f,1.2f);heightText();}
@@ -910,9 +942,11 @@ namespace {
   if(!fingerGestures||!gestureGameplayAllowed.load())return false;
   std::lock_guard<std::mutex> lock(inputMutex);auto now=GetTickCount64();auto& g=gestures[hand];
   if(!g.active||now-g.time>250){g.blendTime=0;return false;}
-  float trigger=std::clamp(input.h[hand].trigger,0.f,1.f);
-  float grip=std::clamp(input.h[hand].grip,0.f,1.f);
-  freeGrip=(selectorOpen.load()||heightMenu.load()||controlDrain[hand][3])?grip:-1.f;
+  float trigger=std::clamp(now-physicalAt[hand]<250?physicalTrigger[hand]:input.h[hand].trigger,0.f,1.f);
+  float grip=std::clamp(now-physicalAt[hand]<250?physicalGrip[hand]:input.h[hand].grip,0.f,1.f);
+  auto vehicleModule=GetModuleHandleW(L"FilthyCasualVehicles.dll");
+  auto vehicleActive=vehicleModule?reinterpret_cast<bool(__cdecl*)()>(GetProcAddress(vehicleModule,"FC_VehicleActive")):nullptr;
+  freeGrip=(controlsEditor.load()||selectorOpen.load()||heightMenu.load()||controlDrain[hand][3]||(vehicleActive&&vehicleActive()))?grip:-1.f;
   // Thumb contact closes from relaxed to the full authored fist as grip rises.
   // A lifted thumb stays extended, independently of the finger grip.
   float targetThumb=g.thumb?(.20f+.80f*grip):.12f;
@@ -939,20 +973,30 @@ namespace {
     auto script=compile("target probe",expression.c_str(),true);Element e;
     auto b=build_adapter::heldModule();Vec centre{},tracking{};float extent=0;
     bool ok=call(script,e)&&e.type==2&&e.value.form&&b;
-    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1966C0)(e.value.form,&centre,&extent);
-    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x12BC5)();
-     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x64B0B0)(manager,&tracking,&centre);}
+    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1A5CB0)(e.value.form,&centre,&extent);
+    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
+     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x69AAC0)(manager,&tracking,&centre);}
     std::ofstream probe(std::string(dir)+"\\target-probe.json");
     probe<<"{\"ok\":"<<(ok?"true":"false")<<",\"tracking\":["<<tracking.x<<","<<tracking.y<<","<<tracking.z<<"],\"extent\":"<<extent<<"}";
     release(e);continue;
    }
    if(cmd=="sc_scope_guard"||cmd=="sc_scope_native"){scope_surface_adapter::enabled=(cmd=="sc_scope_guard");continue;}
    if(cmd=="sc_scope_inline"||cmd=="sc_scope_separate"){presentation_adapter::testScopeSchedule(cmd=="sc_scope_inline");continue;}
-   if(cmd=="sc_state"){
+   if(cmd=="sc_controls"||cmd=="sc_controls_state"){
+    auto m=GetModuleHandleW(L"SeatedInput.dll");if(m){if(cmd=="sc_controls"){using F=void(__cdecl*)();auto f=reinterpret_cast<F>(GetProcAddress(m,"SC_OpenControls"));if(f)f();}else{using F=void(__cdecl*)(char*,unsigned);auto f=reinterpret_cast<F>(GetProcAddress(m,"SC_ControlsDebug"));if(f){char data[4096]{};f(data,sizeof(data));std::ofstream out(std::string(dir)+"\\controls-state.json");out<<data;}}}
+   }
+   else if(cmd=="sc_state"){
     std::ofstream state(std::string(dir)+"\\addon-state.json");auto rig=scene::root(playerForm());
     state<<"{\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
     state<<",\"dialoguePlacements\":"<<presentation_adapter::placements.load()<<",\"dialogueTargetDistance\":"<<presentation_adapter::lastDistance.load()<<",\"dialogueSideDegrees\":"<<presentation_adapter::lastAngle.load();
     tutorialDiagnostics(state);presentation_adapter::diagnostics(state);reload_trace_adapter::diagnostics(state);physical_reload_adapter::diagnostics(state);
+    {const auto d=native_worldmag_recovery::readInsertion();state<<",\"insertion\":{\"valid\":"<<(d.valid?"true":"false");
+     if(d.valid){auto t=physical_reload_adapter::trackingPoint({d.rest.p[0],d.rest.p[1],d.rest.p[2]});auto h=physical_reload_adapter::trackingPoint({d.held.p[0],d.held.p[1],d.held.p[2]});
+      state<<",\"target\":["<<t.x<<","<<t.y<<","<<t.z<<"],\"held\":["<<h.x<<","<<h.y<<","<<h.z<<"]";
+      scene::Transform rest{},held{};memcpy(&rest,&d.rest,sizeof(rest));memcpy(&held,&d.held,sizeof(held));
+      state<<",\"restBasis\":";physical_reload_adapter::trackingBasis(state,rest);state<<",\"heldBasis\":";physical_reload_adapter::trackingBasis(state,held);}
+     state<<",\"pouchValid\":"<<(d.pouchValid?"true":"false");if(d.pouchValid){auto p=physical_reload_adapter::trackingPoint({d.pouch[0],d.pouch[1],d.pouch[2]});state<<",\"pouchTarget\":["<<p.x<<","<<p.y<<","<<p.z<<"]";}state<<"}";}
+
     {DialogueAnchor anchor{};bool valid=presentation_adapter::readSpeaker(anchor);state<<",\"speakerSourceId\":"<<presentation_adapter::speakerId<<",\"speakerFrameUpdates\":"<<presentation_adapter::speakerFrameUpdates.load()<<",\"speakerNameActive\":"<<(valid?"true":"false")<<",\"speakerNameTracking\":["<<anchor.position[0]<<","<<anchor.position[1]<<","<<anchor.position[2]<<"]";
      using Debug=void(__cdecl*)(char*,unsigned);auto layer=GetModuleHandleW(L"SeatedInput.dll");auto debug=layer?reinterpret_cast<Debug>(GetProcAddress(layer,"SC_LabelDebug")):nullptr;
      if(debug){char json[512]{};debug(json,sizeof(json));state<<",\"speakerNameCrop\":"<<json;}}
@@ -967,6 +1011,22 @@ namespace {
     auto grab=static_cast<Form*>(build_adapter::grabbedItem());auto grabRoot=scene::root(grab);
     state<<",\"nativeStimHand\":"<<build_adapter::stimHand()<<",\"nativeGrabHand\":"<<build_adapter::grabbedHand()<<",\"nativeGrabRef\":"<<(grab?grab->id:0)<<",\"nativeGrabScale\":"<<(grabRoot?scene::world(grabRoot).scale:0)<<",\"aidGripLatch\":"<<(aidGripLatch?"true":"false");
     state<<",\"heldFood\":"<<(heldFood?"true":"false")<<",\"mouthDistance\":"<<mouthDistance<<",\"mouthArmed\":"<<(mouthGate.armed?"true":"false")<<",\"freePoseWeight\":["<<finger_adapter::freePoseWeight[0].load()<<","<<finger_adapter::freePoseWeight[1].load()<<"]";
+    {native_worldmag_recovery::WorldRef refs[256]{};unsigned count=native_worldmag_recovery::readWorldRefs(refs,256);
+     state<<",\"nativeWorldMags\":[";
+     for(unsigned i=0;i<count;i++){const auto& r=refs[i];if(i)state<<",";
+      state<<"{\"ref\":"<<r.id<<",\"ammo\":"<<r.ammoID<<",\"count\":"<<r.recordedCount<<",\"actualCount\":"<<r.actualCount
+           <<",\"valid\":"<<int(r.valid)<<",\"rootValid\":"<<int(r.rootValid)<<",\"boundValid\":"<<int(r.boundValid)
+           <<",\"center\":["<<r.rootCenter[0]<<","<<r.rootCenter[1]<<","<<r.rootCenter[2]<<"],\"bound\":["<<r.bound[0]<<","<<r.bound[1]<<","<<r.bound[2]<<","<<r.bound[3]<<"]";
+      if(r.boundValid){auto point=physical_reload_adapter::trackingPoint({r.bound[0],r.bound[1],r.bound[2]});
+       if(std::isfinite(point.x)&&std::isfinite(point.y)&&std::isfinite(point.z))state<<",\"tracking\":["<<point.x<<","<<point.y<<","<<point.z<<"]";}
+      state<<"}";}
+     state<<"]";}
+    {const auto& d=native_worldmag_recovery::diagnostics;
+     state<<",\"worldmagRecovery\":{\"installed\":"<<int(d.installed)<<",\"poisoned\":"<<int(d.poisoned)
+          <<",\"candidate\":"<<d.candidate<<",\"transferred\":"<<d.transferred<<",\"rounds\":"<<d.rounds<<",\"hand\":"<<d.hand
+          <<",\"firstEntries\":"<<d.firstEntries<<",\"secondEntries\":"<<d.secondEntries<<",\"prepared\":"<<d.prepared
+          <<",\"attempts\":"<<d.attempts<<",\"committed\":"<<d.committed<<",\"failures\":"<<d.failures
+          <<",\"inventoryBefore\":"<<d.inventoryBefore<<",\"inventoryAfter\":"<<d.inventoryAfter<<",\"reason\":\""<<d.reason<<"\"}";}
     bool manual=false;bool reloadKnown=build_adapter::readManualReload(manual);state<<",\"manualReloadKnown\":"<<(reloadKnown?"true":"false")<<",\"manualReload\":"<<(manual?"true":"false")<<",\"seatedPouchApplied\":"<<(pouchApplied?"true":"false");
     build_adapter::PouchDiagnostics pouch;
     if(build_adapter::readPouchDiagnostics(pouch)){
@@ -1011,6 +1071,7 @@ namespace {
   if(m->type==DeferredInit){init();log("RELOAD TRACE %s",reload_trace_adapter::install());log("PHYSICAL RELOAD %s",installPhysicalParts());if(fingerGestures)log("FINGERS %s",finger_adapter::install(queryGesture));log("PRESENTATION %s",presentation_adapter::install(GetPrivateProfileIntA("Presentation","StableWorldPanels",0,settingsPath)!=0));return;}
   // xNVSE Serialization.cpp sends the boolean value cast to void*, not a pointer.
   if(m->type==PostLoadGame){loaded=m->data!=nullptr;log("PostLoadGame loaded=%d",loaded);return;}
+  if(m->type==NewGame||m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame)native_worldmag_recovery::reset();
   if(m->type==NewGame){clearPhysicalMags();clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
   // Native TTWVR owns held-item save/load and teardown. Only discard addon
   // pointers here; never activate/stow a native object during lifecycle events.
@@ -1024,12 +1085,13 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
  bool active=(kind&8)!=0;kind&=7;
  if(!strncmp(name,"fc_diag:",8)){log("GESTURE XR %s result=%d",name+8,int(x));return 0;}
  if(!strcmp(name,"fc_controls")){
-  auto now=GetTickCount64();int action=holdState.update(unsigned(x),now,active,enabled&&!selectorOpen&&!heightMenu&&!weaponTransition);
-  menuOwned=holdState.menuOwned;controlsAt=now;controlsActive=active;if(action>=0)pendingControl=action;return 0;
+  auto now=GetTickCount64();int action=holdState.update(unsigned(x),now,active,enabled&&!selectorOpen&&!heightMenu&&!weaponTransition&&!controlsEditor);
+  menuOwned=holdState.menuOwned;controlsAt=now;controlsActive=active;if(action>=0&&!(controlsOverrides.load()&(1u<<action)))pendingControl=action;return 0;
  }
  if(!strcmp(name,"fc_gestures")){
   std::lock_guard<std::mutex> lock(inputMutex);auto& g=gestures[hand];g.active=active;g.thumb=x>.5f;g.index=y>.5f;g.time=GetTickCount64();if(!active)g.blendTime=0;return 0;
  }
+ if(!strcmp(name,"fc_physical")){std::lock_guard<std::mutex> lock(inputMutex);physicalGrip[hand]=x;physicalTrigger[hand]=y;physicalAt[hand]=active?GetTickCount64():0;return 0;}
  bool stick=!strcmp(name,"thumbstick_click");
  const bool lootHorizontal=hand==1&&kind==2&&!strcmp(name,"thumbstick")&&floating_hud_adapter::horizontalInput(x,active);
  if(!strcmp(name,"menu_click")&&hand==0){
@@ -1044,7 +1106,7 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
  // inactive XR actions are never forced active.
  if(active&&!strcmp(name,"squeeze")&&aidHand.load()==hand&&aidGripLatch.load())return 2;
  if(!enabled.load())return 0;
- bool modal=selectorOpen.load()||heightMenu.load()||weaponTransition.load();
+ bool modal=controlsEditor.load()||selectorOpen.load()||heightMenu.load()||weaponTransition.load();
  int control=stick?0:!strcmp(name,"primary_click")?1:!strcmp(name,"secondary_click")?2:!strcmp(name,"squeeze")?3:!strcmp(name,"trigger")?4:!strcmp(name,"thumbstick")?5:-1;
  if(control<0)return 0;
  bool pressed=kind==2?(x*x+y*y>.09f):x>.15f;
@@ -1069,12 +1131,17 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse){
  if(!messaging->listen(nvse->getPluginHandle(),"NVSE",message))return false;
  log("Reload preference: %s (applied after native initialization)",automaticReload?"automatic":"manual");
  log("Renderer isolation: %s",build_adapter::testDisableUpscaler());
+ // Install only at startup after all load-failure paths. Default off until native QA passes.
+ if(GetPrivateProfileIntA("Reload","RecoverWorldMagazines",0,settingsPath))log("WORLD MAG RECOVERY %s",native_worldmag_recovery::install({worldmagPlayer,worldmagInventory}));
  return true;
 }
 extern "C" __declspec(dllexport) u32 __cdecl SC_UI(char* text,u32 capacity){
  if(!text||capacity<2||!enabled.load())return 0;
  std::lock_guard<std::mutex> lock(displayMutex);
- if(displayText.empty()||(!selectorOpen.load()&&!heightMenu.load()&&GetTickCount64()>displayUntil))return 0;
+ if(displayText.empty()||(!selectorOpen.load()&&!heightMenu.load()&&GetTickCount64()>displayUntil)){
+  auto pool=GetModuleHandleW(L"FilthyCasualPool.dll");auto status=pool?reinterpret_cast<u32(__cdecl*)(char*,u32)>(GetProcAddress(pool,"FC_PoolStatus")):nullptr;
+  return status?status(text,capacity):0;
+ }
  strncpy_s(text,capacity,displayText.c_str(),_TRUNCATE);return 1;
 }
 
@@ -1082,3 +1149,6 @@ extern "C" __declspec(dllexport) float __cdecl SC_Height(float rawHeadHeight){if
 extern "C" __declspec(dllexport) bool __cdecl SC_DialogueAnchor(DialogueAnchor* out){return out&&presentation_adapter::readSpeaker(*out);}
 extern "C" __declspec(dllexport) void __cdecl SC_Head(float x,float y,float z){std::lock_guard<std::mutex> lock(inputMutex);input.head={x,y,z};input.headValid=std::isfinite(x)&&std::isfinite(y)&&std::isfinite(z);}
 extern "C" __declspec(dllexport) unsigned __cdecl SC_UIState(){return (uiEpoch.load()<<2)|(selectorOpen.load()?1:0)|(heightMenu.load()?2:0);}
+
+extern "C" __declspec(dllexport) void __cdecl SC_ControlsState(unsigned modal,unsigned overrides){controlsEditor=modal!=0;controlsOverrides=overrides;}
+extern "C" __declspec(dllexport) void __cdecl SC_ControlAction(int action){if(action>=0&&action<=4&&!controlsEditor.load())pendingControl=action;}

@@ -8,3 +8,6 @@ EXPORTS
 SC_Head
  SC_UIState
  SC_DialogueAnchor
+
+ SC_ControlsState
+ SC_ControlAction

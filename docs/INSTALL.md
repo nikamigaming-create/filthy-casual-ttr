@@ -1,155 +1,75 @@
-# Install Filthy Casual TTR
+# Install Filthy Casual TTR 1.7.0-dev.1
 
-[Back to the controls and overview](../README.md)
+Start with TTR already working in VR through Mod Organizer 2, including its
+xNVSE, JIP LN NVSE and other upstream requirements. This addon does not install
+the original games or TTR. [Overview](../README.md) · [Controls](CONTROLS-EDITOR.md).
 
-Revision 1.6.0-dev.2 is the TTR 1.1.2 tutorial development candidate. It includes
-an optional in-world reload guide, off by default. Final mechanism/video review
-is still in progress; this is not a release-ready recommendation. Preserve your
-personal INI when updating. See [tutorial coverage](WEAPON-TUTORIAL.md).
+## Supported base
 
-## Before installing
-
-Use a working Tale of Two Wastelands VR setup in Mod Organizer 2. Verify that your
-usual MO2 executable already launches TTWVR in VR. The base setup must include
-its required xNVSE and JIP LN NVSE dependencies.
-
-The addon accepts only the following **TTWVR.dll SHA-256**:
+The upstream archive labels itself **1.1.2**, but multiple different DLLs share
+that label. This candidate accepts only TTWVR.dll SHA-256:
 
 ```text
-C565A6C296B597F89FCF84D7F6001D47D1635792F0E8CACAD92C6A88F6823E73
+7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E
 ```
 
-The associated PE timestamp is `6AF4F66C`. The DLL hash is the compatibility
-check; matching a filename or archive label is insufficient. Integration with
-other TTWVR builds is refused.
-
-To check your DLL, locate the `TTWVR.dll` supplied by the enabled base TTWVR mod
-in MO2. In PowerShell, replace the example path with that file's actual path:
+PE timestamp: `6AF60DF2`. Unknown builds refuse integration. Check the DLL from
+the enabled base mod, rather than an unrelated copy outside MO2:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\your\TTWVR.dll'
+Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\TTWVR.dll'
 ```
 
-Keep your current working base installation. This addon does not include TTWVR,
-xNVSE, JIP LN NVSE, or game content.
+## Install or update
 
-## Install the ZIP
+1. Quit the game. Back up your personal `SeatedControls.ini` when updating.
+2. In MO2 choose **Install a new mod from an archive**, selecting
+   `Filthy-Casual-TTR-1.7.0-dev.1.zip`.
+3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane, so the
+   addon wins its own file conflicts. Leave base TTR and its dependencies enabled.
+4. Preserve the personal INI, especially height and reload preferences.
+5. Start your headset/runtime normally and use the same working TTR executable
+   entry in MO2. No new launcher or global OpenXR registration is required.
 
-1. Close the game. Open the MO2 instance and profile you normally use for TTWVR.
-2. Choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.6.0-dev.2.zip` (or the supplied local-test ZIP).
-3. Name the new mod **Filthy Casual TTR** and complete installation. The
-   archive's data root contains `NVSE`; no enclosing mod folder needs to be selected.
-4. Enable the new mod in MO2's left pane. Place it below the enabled base TTWVR
-   mod so the addon has higher file priority. This is left-pane mod priority,
-   not the ESP load order. Also enable **Filthy Casual Reload Parts.esp** in the
-   right pane; it requires only FalloutNV.esm. Keep your existing personal INI
-   when updating, especially seated height and reload preferences.
-5. Start your headset/runtime as you normally would. Launch the same TTWVR
-   executable entry through MO2 that worked before installing the addon.
+The core ZIP contains no Pool or Vehicles DLL. They stay optional. The legacy
+`Filthy Casual Reload Parts.esp` and original carrier are retained for existing
+saves: keep the ESP if your saves already depend on it. Current native TTR owns
+world-magazine creation and save records; the old addon drop hooks stay disabled.
 
-The addon loads its companion OpenXR layer for this game process. Use your
-existing working OpenXR runtime. No new launcher, environment-variable setup,
-or system-wide OpenXR registration is part of installation.
-
-The runtime files installed under the mod's data root are:
+## Files that must remain together
 
 ```text
-Filthy Casual Reload Parts.esp
-meshes/FilthyCasual/reload-carrier.nif
+NVSE/Plugins/SeatedControls.dll
+NVSE/Plugins/SeatedControls.ini
+NVSE/Plugins/SeatedControls/SeatedInput.dll
+NVSE/Plugins/SeatedControls/SeatedInput.json
+NVSE/Plugins/SeatedControls/Controls/
 meshes/FilthyCasual/tutorial.nif
 textures/FilthyCasual/Tutorial/
-textures/FilthyCasual/reload-carrier.dds
-NVSE/
-  Plugins/
-    SeatedControls.dll
-    SeatedControls.ini
-    SeatedControls/
-      SeatedInput.dll
-      SeatedInput.json
+tools/controls-editor.html
 ```
 
-Documentation, original SVG artwork, license notices, and a package manifest are
-also included. The test runtime and machine-specific development launchers are
-excluded.
+The Controls directory includes the licensed Quest models and textures and
+original RobCo artwork. Install the complete archive. Documentation, licenses
+and a per-file SHA-256 manifest are included. No original game/TTR files, test
+runtime, personal save or machine-specific launcher is included.
 
-DLSS, anti-aliasing, render resolution, and reprojection are separate local
-graphics preferences. This archive contains no TTWVR graphics INI, FalloutPrefs,
-or SteamVR settings, and does not change those settings during normal play.
+## First use
 
-## First session
+Hold the opposite separate thumbrest and double-tap the right thumbrest for
+weapons or left for consumables. Touch a preview; it goes to the right hand.
+The center cap clears the hand. B closes. A deliberate right-grip squeeze returns
+holding behavior to TTR. Stimpaks use native trigger plus body stab. Ordinary food
+in sticky mode can be brought to the mouth; A/X stows it without eating.
 
-Double-tap the right thumbrest for weapons or the left thumbrest for consumables
-while keeping the opposite thumb on its thumbrest. No stick click or wheel hold.
-Keep the opposite thumbrest touched throughout the two taps. Releasing that
-thumbrest cancels the sequence; resting both thumbs alone opens nothing. Tap left
-Menu to change reload mode; hold it for one second to open seated settings.
-A long hold never also changes reload. Left Menu replaces its native binding
-during gameplay and passes through in native menus. Y Pause, face buttons,
-triggers, grips and stick clicks retain native gameplay input without combo delay.
-No addon wrist cuff. `[Controls] DoubleTapMs` sets the 450 ms gap between taps;
-`HoldMs` adjusts only the Menu hold (1000 ms by default).
-Touch a preview with either hand; the native item goes to the right hand.
-Touch the large center bottle cap to clear your hand without consuming anything.
-Press B to dismiss the selector without changing your selection.
-Item use follows TTR's controls; there is no addon Y-consume override. Ordinary
-held-food consumption is not yet verified. Stimpaks retain the native
-right-trigger-and-body-stab action. Push the left stick fully to run.
+Tap left Menu to switch manual/automatic reload. Hold Menu for seated height:
+A calibrates, right stick adjusts, B saves for next run, Y toggles routine hints.
+Click the left stick there to open the RobCo controls editor. Fixed recovery:
+physical left Menu + right stick click for one second.
 
-For seated height, sit in your normal position and hold left Menu for one second.
-A calibrates to a default target of 165 cm; right stick
-up/down adjusts by 5 cm; X resets the offset; B saves and closes. A fresh package
-starts with a zero height offset.
+Profiles are separate from game saves:
+`%LOCALAPPDATA%\FilthyCasualTTR\Controls\profile-1.fcp` through `profile-8.fcp`.
+The folder also contains `catalog.json` for offline editing. [Full instructions](CONTROLS-EDITOR.md).
 
-Selector popups default off. Inside the height panel, press Y to toggle them.
-All height messages stay visible regardless of this setting.
-
-Native gun actions remain available outside our panels. Tap left Menu
-to switch automatic/manual reload. The mode message is shown and the choice is
-saved. Manual mode places TTR's native pouch in seated reach. `[Weapons]
-SeatedAmmoPouch=0` preserves native placement; the centimetre offsets are in
-`SeatedControls.ini`. Squeeze the right grip deliberately to take over native
-holding/release for a selected gun or consumable.
-
-See [the full control reference](../README.md#reach-touch-equip) for Stimpak use,
-other aid, page changes, holstering, and stowing.
-
-## Update or remove
-
-Before updating, back up your existing `NVSE/Plugins/SeatedControls.ini` if you
-want to preserve its settings. Close the game, install the new archive in MO2,
-and replace the previous addon mod. Keep only one copy enabled. Compare your
-saved settings with the new defaults before restoring them.
-
-If MO2 has placed a generated `SeatedControls.ini` in **Overwrite** or a separate
-profile output mod, that copy may take priority over the packaged defaults.
-Check those locations when a reset or update appears not to take effect.
-
-If starting directly from MO2 chooses a different runtime than your working
-launcher, set `[OpenXR] RuntimeJson` in `SeatedControls.ini` to that runtime's
-absolute JSON path. This applies only to the game process; it does not change
-Windows' registered runtime. An explicit launcher's `XR_RUNTIME_JSON` wins.
-
-Earlier local builds were named **TTWVR - Seated Controls**. Update that existing
-mod in place or disable it before enabling Filthy Casual TTR; never enable both.
-The internal DLL and INI filenames remain `SeatedControls` for compatibility.
-
-To disable the addon, close the game and untick **Filthy Casual TTR** in
-MO2. Keep the base TTWVR mod enabled. If you reset a previous runtime height
-offset when installing, restore your preferred adjustment separately.
-
-## Troubleshooting
-
-| Symptom | Check |
-| --- | --- |
-| TTWVR does not launch without the addon | Restore the working base setup first; this package depends on it. |
-| Addon controls do not appear | Confirm the addon is enabled in the active MO2 profile, all four runtime files are present, and you launched through that MO2 instance. |
-| Compatibility is refused | Hash the active base `TTWVR.dll` and compare it with the supported SHA-256 above. |
-| Touch does nothing immediately after opening | Move your hand away from the preview, then touch it again. Resting overlaps are deliberately ignored. |
-| Touching with the left hand equips the right | This is expected: either hand selects; native item handoff always targets the right hand. |
-| Ordinary aid does not consume on trigger | The addon adds no consume override. Ordinary held-food consumption is not yet verified; Stimpaks use the native trigger-and-body-stab action. |
-| Seated height is too high | Check for a second height adjustment in your runtime, then use X in the addon height panel to reset and recalibrate. |
-
-If reporting a problem, include the addon version, your TTWVR DLL hash, runtime,
-and the action that triggered it. Describe whether you observed it in a simulator
-or a physical headset.
+Graphics, DLSS, Link/Air Link and texture settings are separate from this addon.
+The installer does not alter them. [Validation](VALIDATION.md).

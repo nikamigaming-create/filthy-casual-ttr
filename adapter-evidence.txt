@@ -1,3 +1,10 @@
+Controls editor addition � 2026-11-13
+Current tested TTWVR: 7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E.
+This change adds no native RVAs or consumer hooks. It routes the host's observed
+OpenXR action names and passes identity bindings through unchanged. Native
+semantic actions sharing a channel remain grouped and documented. Raw physical
+finger samples are independent. Historical adapter records follow unchanged.
+
 Seated Controls 1.1 adapter record — TTWVR PE32 timestamp 6AF014A8
 TTWVR SHA-256: C9D047D4199C0458281D341AC9DC438A7C928999E19CDAD6F327F8A439A7F9EB
 Selection-only addon SHA-256: 128723EFB7F2B8019E0B492DF5CE80D1BF13511D10748ED2B01C3841AB5A90B3
@@ -244,3 +251,11 @@ process bytes. Carrier migration uses native ModelLoader; no raw Havok load.
 PID36548 passed carbine old-cache save/load migration, reinsertion+pouch,
 plasma gravity/reinsertion+pouch and10mm reinsertion+pouch with exact counts.
 Final core078D84C82F3149FF34163A784B84BEB55007019DB76F5186677CF8F0C32948D4, PID43720 passed rifle migration+pouch / plasma+pouch /9mm+pouch. Normal profile installed; input and personal INI preserved.
+
+2026-11-13 native recovered-magazine handoff, current 7EB72860 build/PE 6AF60DF2:
+Native world-mag registry RVA 18C68A8/18C68AC, record stride 1E8.
+Guarded hooks 34DD22/34E861; native installed-held initializer 350852, spare 34E90F.
+Installed-held pouch basis 18B3E80/local center 18B3E84; nativeGripTracking contact.
+Exact hash/byte tests and C++ identity/arithmetic guards passed. Live pistol/carbine
+normal pickup, insertion, pouch return: 4 commits, 0 failures, exact ammo deltas.
+No native spawn/drop/save hooks, clip count writes, or native registry writes.

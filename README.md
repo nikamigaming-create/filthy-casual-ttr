@@ -2,240 +2,146 @@
 
 # Filthy Casual TTR
 
-[**All three mods: source and downloads**](docs/ALL-MODS.md)
-
 **We love A Tale of Two Realities. We're just filthy casuals.**
 
-Can't be bothered to reload? Tired of digging for snacks? Stay seated.
+Pick a weapon. Grab a snack. Set your seated height. Keep TTR's normal interactions.
+Filthy Casuals adds comfort and control tools to an existing **Tale of Two Wastelands VR** installation.
 
-Reach out to choose a weapon or aid item, let TTWVR put it in your right hand,
-and set a comfortable seated eye height. An independent addon for an existing
-**Tale of Two Wastelands VR** installation.
+**1.7.0-dev.1 · RobCo controls candidate · updated 13 November 2026**
 
-**Revision 1.6.0-dev.2 (TTR 1.1.2 development candidate).** Optional in-world reload
-lessons teach the distinct mechanisms, using the installed weapon's own parts.
-Triple-tap left Menu to toggle the guide. It starts off each launch.
-Mechanism coverage and the outdoor tutorial video are still being verified;
-this is an incomplete-coverage development prerelease.
-[Development coverage and acceptance](docs/WEAPON-TUTORIAL.md).
+[⬇ Downloads](https://github.com/nikamigaming-create/filthy-casual-ttr/releases) · [⚙ Install](docs/INSTALL.md) · [🎮 Controls](docs/CONTROLS-EDITOR.md) · [⌨ Offline editor](tools/controls-editor.html) · [Validation](docs/VALIDATION.md)
 
-Recovered magazines and cells can return to the gun through native manual reload,
-or to the ammo pouch on grip release. [Controls and compatibility](docs/PHYSICAL_PARTS.md).
-Graphics tuning (DLSS, anti-aliasing, resolution, or reprojection) is separate
-from this addon and is not included in its package.
+## Your controls, your couch
 
-[TTR 1.1.2 development download](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.6.0-dev.2) · [Standalone optional pool addon](pool-vr/README.md) · [Optional Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+![Actual in-game RobCo controller editor with populated bindings](docs/assets/robco-controls.png)
 
-**Choose independently:** this seated addon does not need pool. Filthy Casual
-Pool needs only working TTR plus the separately downloaded original pool mod;
-it does not require this addon. If you use both, install version 1.4.5 or newer
-of Filthy Casual TTR for legacy TTR, or the matching TTR 1.1.2 builds listed below. The original mods are linked, never bundled.
+The in-game editor displays real 3D Quest Touch Plus controllers. Point at an
+entry, record a button or two-input combo, review it and apply. Choose Direct,
+Press, Tap, Hold or Double tap; save one of **eight profiles**. Physical finger
+animation remains independent of remapped gameplay inputs.
 
-## Install through Mod Organizer 2
+**Open:** hold left Menu, then click the left stick in Height/settings.
+**Recovery:** hold physical left Menu + right stick click for one second.
+Recovery stays available even after changing your normal bindings.
 
-Start with **TTWVR already working in VR**, including its xNVSE and JIP LN NVSE
-requirements. This addon supports one exact TTWVR build; check the
-[supported DLL and detailed installation guide](docs/INSTALL.md).
+| What you can configure | What it does |
+| --- | --- |
+| Buttons, triggers, grips, stick directions and touch sensors | Assign any exposed physical input to an available destination |
+| Weapon / consumable wheels, reload mode, height and tutorial | Separate Filthy Casuals shortcuts |
+| On foot / driving / flight | Independent bindings in each saved profile; automatic gameplay switching |
+| Installed providers | Addons advertise their modes and channels; configure them without mounting a vehicle |
+| Offline profiles | Open the local HTML editor, import the installed catalog and profile, edit and download |
 
-1. In MO2, choose **Install a new mod from an archive** and select
-   `Filthy-Casual-TTR-1.6.0-dev.2.zip`.
-2. Install it as **Filthy Casual TTR** and tick its checkbox in the left pane.
-3. Place it **below the base TTWVR mod in the left pane**, so the addon has higher
-   file priority. Keep the base TTWVR mod enabled.
-4. Start your headset/runtime as usual, then run your **existing TTWVR executable
-   entry through MO2**.
-
-The plugin discovers its companion OpenXR layer inside the running game process.
-No separate addon launcher, global layer registration, or runtime change is
-required. The archive contains the addon, documentation, and license notices.
+TTR shares some input channels between actions: Trigger can mean fire, operate
+a part, use a scope or activate a held item. Those uses move together and are
+listed together. Holster reaches, magazine insertion, throwing and other spatial
+interactions remain native. Quest's system Home button belongs to the headset.
+[Full editor guide](docs/CONTROLS-EDITOR.md) · [Addon provider API](docs/CONTROLS-PROVIDERS.md).
 
 ## Reach, touch, equip
 
-Keep your opposite thumb resting on its thumbrest, then **double-tap the right thumbrest**
-for weapons or **double-tap the left thumbrest** for consumables. No stick click.
-The selector stays where you opened it,
-with compact previews arranged within reach. Touch an item with **either hand**;
-the selected item goes to the **right hand at its native game size**, and the
-selector closes.
+![Populated weapon selector in game](docs/assets/robco-weapons.png)
 
-| Action | Control |
+Hold the opposite thumb on its **separate thumbrest** and double-tap the right
+thumbrest for weapons, or the left for consumables. These are the small resting
+pads, not the sticks. The selector stays where you opened it. Touch a compact
+preview with either hand: the native item replaces what is in your **right hand**
+at its normal size. Touch the center cap to select nothing; B closes the wheel.
+
+![Populated consumable selector in game](docs/assets/robco-aid.png)
+
+Selection does not consume an item. Stimpaks retain TTR's trigger-and-body-stab
+interaction. In our sticky holding mode, ordinary food can be brought to the
+mouth and held there briefly; A/X returns it to inventory. Squeeze the right grip
+once to return the item to native holding, release, throw and backpack behavior.
+Native interactions and your normal save system continue to own the item.
+
+| Default shortcut | Action |
 | --- | --- |
-| Open weapons | Keep **left thumbrest touched**, **double-tap right thumbrest** |
-| Open aid | Keep **right thumbrest touched**, **double-tap left thumbrest** |
-| Choose an item | Touch its preview with either hand |
-| Select nothing / clear your hand | Touch the large center bottle cap |
-| Holster the drawn weapon | Touch that weapon in the selector again |
-| Reload the right-hand gun | A, with the selector and height panel closed |
-| Switch manual / automatic reload | Tap **left Menu**; a message confirms the mode |
-| Return holding control to TTR | Squeeze the right grip once |
-| Run | Push the left stick fully in the movement direction; no click needed |
-| Change page | A / X |
-| Close the selector | B, or move away |
-| Open seated-height settings | Hold **left Menu** for **1 s** |
+| Opposite thumbrest held + double-tap right thumbrest | Weapons |
+| Opposite thumbrest held + double-tap left thumbrest | Consumables |
+| Left Menu tap | Manual / automatic reload toggle |
+| Left Menu hold | Seated-height settings |
+| Left Menu triple tap | Optional weapon tutorial |
+| Right grip squeeze with our selected item | Return to native holding |
+| Y | Native Pause |
 
-The thumbrests are the small touch-sensitive resting pads, not the thumbsticks
-or face buttons. Keep the opposite thumbrest touched throughout two short taps.
-The wheel opens on the second contact; simply resting there never opens it.
-Loss of the opposite thumbrest contact and tracking/menu interruptions cancel
-an unfinished sequence. Resting both thumbs without tapping opens nothing. `[Controls] DoubleTapMs=450` sets
-the gap allowed between taps (200–700 ms). `HoldMs=1000` controls Menu only.
+Face buttons keep their normal native gameplay behavior outside our panels.
+Left Menu intentionally replaces its native gameplay shortcut; it passes through
+in native menus. Conflicting custom assignments are shown, never silently stolen.
 
-Development tutorial build: a short left Menu press toggles reload after a **450 ms** click window. Triple-tap toggles the optional weapon guide; a double tap cancels. A full hold opens settings
-and never also toggles reload. These actions are available during gameplay with
-our panels closed. **Left Menu already has a native TTR binding; this intentionally
-replaces it during gameplay.** It passes through in native menus. Y Pause and
-all standalone face buttons retain native input without the previous combo delay.
-Triggers, grips, movement and stick clicks retain their normal gameplay bindings.
-Inside the selectors/settings, the displayed panel controls apply. No wrist cuff.
+Recovered compatible native magazines can be inserted into the gun again or
+returned to the native ammo pouch. [Setup and tested coverage](docs/PHYSICAL_PARTS.md).
 
-Both selectors open 60 cm ahead of your head and stay fixed in the world.
-Adjust `[Selector] ForwardCm` in `SeatedControls.ini` for your seated reach;
-placement changes apply at the next game launch. Compact previews keep their size.
+## Set your height once
 
-An item already touching your resting hand when the selector opens is ignored
-until you move away and touch it again. Weapon changes use TTWVR's own
-holster/equip/draw handoff. The selected item stays held without a grip press.
-A deliberate right-grip squeeze gives holding control back to TTWVR for guns,
-food, ordinary aid, and live Stimpaks. Release then follows that native item's
-behavior. For guns this also cancels automatic redraw after menus. Selecting
-another item starts the convenience hold again.
+![Seated height panel with saved offset and actual controls](docs/assets/robco-height.png)
 
-If a native menu holsters your selected gun, the addon requests its normal draw
-again when gameplay and combat controls return, provided the same gun is still
-equipped. The center cap and touching the drawn gun again cancel that selection.
-This selection memory lasts only for the current session; it adds no save data.
+Sit comfortably, hold left Menu, press A to calibrate and B to save. Right stick
+adjusts the offset. **Your seated height is restored next launch.** Y toggles
+routine popup hints; height messages remain available. Height, selector labels,
+reload notifications, controls and tutorial cards share the RobCo motif.
 
-The center cap appears on every page, including empty inventory categories.
-Touch it to holster a drawn weapon or return held aid through the native stow
-path, without consuming it. It is a preview of the game's own bottle-cap model;
-it does not spend or require any currency. Its default diameter is 12 cm,
-adjustable with `CenterCapSizeCm` in `SeatedControls.ini`.
+## Driving and flight are optional
 
-### Aid stays native
+![Driving bindings advertised by the installed vehicle addon](docs/assets/robco-driving.png)
 
-**Stimpaks:** select one, then use TTWVR's live-Stimpak action: hold the right
-trigger and stab into the body. Selecting a Stimpak alone does not consume it.
+![Flight bindings configured while on foot](docs/assets/robco-flight.png)
 
-**Other aid:** selection puts an ordinary native grabbed item in your right hand.
-Squeeze and release the right grip to drop it, or release over a shoulder to stow
-it in the backpack. Selecting another item also returns the held item to inventory.
-**Food in sticky mode:** move it away from your face, then bring it to your mouth
-and hold it there briefly to eat one item through the game's normal food-use path.
-A/X return the held food to inventory. Squeezing back into native holding disables
-this mouth gesture. Other aid keeps its native use; there is no Y-consume command.
-Y remains native Pause outside our panels. The height panel keeps its own Y
-popup-toggle action. Quest aid is excluded from the selector.
+The separate Vehicles development addon advertises car and aircraft controls.
+The core seated mod needs neither Vehicles nor Pool. When installed, its modes
+appear before entering a vehicle; the active profile follows boarding and exit.
 
-Menu/dialogue suspension retains the selected item's grip signal instead of
-manufacturing a release. Deliberately squeezing and releasing grip still hands
-release/drop/stow behavior back to TTWVR. Nothing is automatically recovered
-from the ground or added to inventory.
+- **Roadster:** physical two-hand steering, right-trigger throttle, left-trigger
+  brake, X reverse, B exit.
+- **Vertibird:** left-stick movement, right-stick heading, A climb, X descend,
+  B land, Y aircraft HUD, triggers for aircraft weapons and stick-click selectors.
 
-## Natural empty-hand gestures
+Vehicle source and local asset-import instructions are in [vehicle-vr](vehicle-vr/README.md).
+Its native dependencies are separate downloads: [Uhmatt Drivable Cars](https://www.nexusmods.com/newvegas/mods/63890),
+[Vertibird Player Home and TTW patch](https://www.nexusmods.com/newvegas/mods/60923),
+and [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171).
+This is a development integration, not a bundled turnkey vehicle release.
+The selected classic aircraft uses locally owned New Vegas assets; Fallout 4 is
+not required. No original game or dependency meshes/textures are distributed.
 
-Lift your thumb off the rest, stick and both face buttons to release it. Close
-an empty hand with grip while your index rests on the trigger for a thumbs-up;
-you do not need to pull the trigger. With the grip open, the thumb rests softly.
-With thumb contact and grip squeezed, it folds inward against the curled fingers.
-Grip plus index contact makes a fist; lifting the index off the trigger allows
-pointing. Trigger pull remains an independent index curl. Transitions are smooth.
-The three other fingers use native grip animation. While either wheel or settings
-is open, free-hand animation still reads the physical squeeze, even though gameplay
-grabbing is blocked. Held-item and weapon-support poses remain native. These are controller-driven
-gestures, not independent five-finger tracking.
+[Pool](pool-vr/README.md) remains a separate optional addon and is not enabled by
+this release. [Meta Link helper](https://github.com/nikamigaming-create/ttr-meta-link)
+is separate too. DLSS, anti-aliasing, Link settings and texture packs are not part
+of Filthy Casuals.
 
-Each free hand articulates independently, including the left hand while the right
-holds a gun or consumable. Native weapon/support grips, grabbed items, Stimpaks
-and per-hand transitions retain TTR's own poses.
-Set `[Hands] FingerGestures=0` in the INI and restart to use only TTR's original
-finger animation. No hand meshes, saved games, or item records are replaced.
+## Install in MO2
 
-## Reload your way
+1. Start with TTR already launching correctly in VR.
+2. Install `Filthy-Casual-TTR-1.7.0-dev.1.zip` using MO2's **Install a new mod from an archive**.
+3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane so it wins
+   file conflicts. Keep the base mod enabled. Preserve your personal INI on update.
+4. Launch the same working TTR executable through MO2. No global OpenXR changes
+   or new launcher are required.
 
-Automatic reload is the default. Native A/X gun actions remain available outside
-our panels, without a face-button recognition delay. Tap **left Menu** to switch the native
-manual/automatic setting; a message confirms the actual mode. The choice is
-remembered. A still calibrates height or changes pages when those panels are
-open; B remains close/back.
+The supported upstream archive labels itself **1.1.2**. Compatibility is checked
+against **TTWVR.dll SHA-256**, not its filename or version label:
 
-Manual mode uses TTR's reload system. The addon positions its native ammo pouch
-in seated reach, anchored to the torso rather than your gaze. Look down toward
-your lap. Defaults are40cm forward,18cm left, and45cm below eye height.
-The native pouch controls visibility and magazine handling.
-
-In `NVSE/Plugins/SeatedControls.ini`, `[Weapons] AutomaticReload=0` starts in
-manual mode; `1` starts in automatic mode. `SeatedAmmoPouch=0` preserves TTR's
-own pouch position. `PouchForwardCm`, `PouchSideCm`, and `PouchBelowEyesCm`
-adjust seated placement. Restart after editing the INI. Turning automatic mode
-back on restores the prior native pouch placement for that session. This does
-not write TTR's SavedPouch file.
-
-## Set your seated height
-
-Sit comfortably and look forward. Hold **left Menu** for one second,
-release them, press **A** to calibrate, then **B** to save and close.
-
-| While the height panel is open | Result |
-| --- | --- |
-| A | Calibrate to the target eye height; default **165 cm** |
-| Right stick up / down | Adjust by **5 cm** |
-| X | Reset the height offset |
-| Y | Toggle selector popups on / off; remembered immediately |
-| B | Save and close |
-
-Selector hints and selection/dismissal notices default to **off**. To see them,
-hold **left Menu** to open this panel and press **Y**. **All height messages stay
-on**, including calibration, adjustment, reset, and saving. The equivalent INI
-setting is `[UI] ShowSelectorPopups=0` (quiet) or `1` (show). This controls the
-addon's messages, not notifications from the game or other mods.
-
-A fresh installation starts at zero offset. If you previously added a seated
-height offset in SteamVR or another runtime tool, reset that offset first if you
-want this addon to handle the entire adjustment. See the
-[installation guide](docs/INSTALL.md) for updates, troubleshooting, and removal.
-
-## Guide
-
-Use the illustrated overview and controls above for this beta. An updated video
-is still in preparation; older footage shows superseded controls. There is no
-addon Y-consume action.
-
-The selector adds no save hooks, custom co-save data, or inventory recovery.
-Saving and native held-item behavior remain with the game and TTWVR.
-
-## For contributors
-
-Build from the source checkout with Visual Studio 2022 Build Tools, the Desktop
-development with C++ workload, and a Windows SDK:
-
-```bat
-build.cmd
+```text
+7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E
 ```
 
-The build discovers Visual Studio using `vswhere`; `SC_VCVARS32` can point to a
-specific `vcvars32.bat`. Both addon DLLs target x86 to match `FalloutNV.exe`.
-Run `package.ps1` after building to produce the MO2 ZIP. Packaging uses an explicit
-file list and records hashes in `manifest.json`; it does not publish anything.
+Unknown builds are refused. [Installation details](docs/INSTALL.md).
+Profiles live in `%LOCALAPPDATA%\FilthyCasualTTR\Controls`, outside game saves.
+The package contains only our code, our artwork and licensed controller assets.
 
-The public source includes focused control and input-layer tests. The private
-development simulator, raw captures and machine-specific launchers are excluded.
-See `docs/VALIDATION.md` for the release's tested behavior and remaining limits.
+## Build and verification
 
-This is an independent community project, not an official Fallout release.
-Built on KUPOkinz's A Tale of Two Realities / TTWVR. The base mod supplies the
-VR experience; this addon supplies a little more couch comfort.
-Game assets and dependency binaries are not included. Third-party notices and
-licenses are retained; see [THIRD_PARTY.md](THIRD_PARTY.md).
+Windows x86 / Visual Studio C++: run `build.cmd`. Focused checks:
+`tests\check-controls.cmd` and `node tests\controls-offline-unit.js`.
+`vehicle-vr\build.cmd` builds the optional provider separately.
 
-### Physical reload parts
+The simulator tests real XR remapping, native Pause/Back, save/load, recovery,
+mode discovery and switching, physical steering, throttle, climb and native
+landing. README pictures are populated in-game captures; both eyes were reviewed.
+This development candidate still needs physical headset comfort and arbitrary
+custom-binding testing. See [validation](docs/VALIDATION.md) for precise coverage.
+[Reload tutorial coverage](docs/WEAPON-TUTORIAL.md) · [Dropped ammo](docs/PHYSICAL_PARTS.md).
 
-In manual mode, dropped magazines and native loose reload parts become real
-world objects. Use the original grip and release controls to pick them up or
-throw them. Native Take returns their ammunition to inventory for the original
-pouch/reload path. Automatic reload and returning a spare to the pouch stay native.
-
-Enable the included **Filthy Casual Reload Parts.esp**. The package contains only
-our original carrier assets and code. Reload models are derived from your own
-installation into `meshes/FilthyCasualLocal/Reload`; keep this cache local and never
-redistribute it. See [tested coverage, video and limits](docs/PHYSICAL_PARTS.md).
-The phone video shows rifle magazines and plasma cells at normal speed.
+Original mods remain their authors' work. We link to them, never bundle their
+files. [Licenses and attribution](THIRD_PARTY.md).

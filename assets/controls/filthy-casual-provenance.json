@@ -1,0 +1,14 @@
+{
+  "artwork": {
+    "tool": "built-in image_gen",
+    "prompt": "Use case: stylized-concept. Asset type: production game UI background texture for a VR controls editor in Fallout New Vegas, Filthy Casuals. Create a beautiful RobCo inspired 1950s retrofuturist computer service terminal faceplate, perfectly straight-on orthographic rectangle, landscape aspect 7:5. Thin weathered olive enamel metal bezel with gently rounded corners, tiny screws, a restrained embossed RobCo wordmark at top left and small FILTHY CASUALS service sticker on bottom bezel. Huge nearly black dark-green glass screen occupying central 92 percent of width and 86 percent of height, entirely blank and uniform for live UI text and real 3D controller rendering. Wear is subtle and plausible on outer metal edges only: small paint chips, rubbed corners. Crisp realistic materials, beautiful industrial design, amber power indicator. No controller drawings, no user interface lists, no buttons inside the screen, no scan lines over text area, no scene, no perspective, no busy circuitry, no fake labels in the large blank central screen. This image will be the actual background behind interactive controls; keep center dark and uncluttered.",
+    "sha256": "1c72b8bc75185c3bdffc0b235846e0707d5832b88409449901f6a52ba3fba307"
+  },
+  "models": "MIT WebXR Input Profiles Touch Plus assets reused from MGS5VR; original licenses and provenance included",
+  "renderer": "Adapted MIT MGS5VR 3D controller renderer; separate deferred D3D11 context; state restored after command execution",
+  "compact_artwork": {
+    "tool": "built-in image_gen",
+    "sha256": "2e36616109890d2a77f1bf911e7571ffc724e676218482fdd53fedcf71721142",
+    "prompt": "Create a matching wide compact notification / instruction panel asset for this exact RobCo Filthy Casuals terminal visual system. Make it 3:1 landscape aspect ratio, straight-on orthographic, the same weathered olive metal bezel, dark-green almost black glass, subtle edge wear, rounded corners, four screws. Tiny RobCo embossed mark in the upper left of the bezel, tiny amber power lamp upper right, tiny FILTHY CASUALS service badge centered on bottom bezel. Keep bezel narrow (5% each edge), and the interior screen completely empty, nearly black and uniform: live tutorial instructions will be rendered there by code. Preserve the refined realistic original materials and proportions of the screws. No controls, no UI text inside the screen, no controllers, no scene, no perspective. This will be the actual shared in-game texture behind height controls, weapon and consumable labels, reload notifications, and weapon tutorial cards."
+  }
+}
