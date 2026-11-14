@@ -11,7 +11,12 @@ function Send-Game([string[]]$Lines) {
     $path = Join-Path $script:Session 'game-command.txt'
     if (Test-Path -LiteralPath $path) { throw 'A native game command is already pending' }
     $before = @(Get-Content -LiteralPath $script:GameLog).Count
-    [IO.File]::WriteAllLines($path, $Lines)
+    # Publish complete commands atomically: the native poll must never see an empty/partial file.
+    $pending = Join-Path $script:Session ('game-command-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        [IO.File]::WriteAllLines($pending, $Lines)
+        [IO.File]::Move($pending, $path)
+    } finally { if(Test-Path -LiteralPath $pending){Remove-Item -LiteralPath $pending} }
     $deadline = [DateTime]::UtcNow.AddSeconds(8)
     while (Test-Path -LiteralPath $path) {
         if ([DateTime]::UtcNow -gt $deadline) { throw 'Native mailbox timed out' }
@@ -21,8 +26,18 @@ function Send-Game([string[]]$Lines) {
     return @(Get-Content -LiteralPath $script:GameLog | Select-Object -Skip $before)
 }
 function Get-Addon {
+    $path=Join-Path $script:Session 'addon-state.json'
+    $before=if(Test-Path -LiteralPath $path){(Get-Item -LiteralPath $path).LastWriteTimeUtc.Ticks}else{0}
+    $pidExpected=(Get-Content "$script:Session\state.json" -Raw|ConvertFrom-Json).pid
     Send-Game @('sc_state') | Out-Null
-    return Get-Content "$script:Session\addon-state.json" -Raw | ConvertFrom-Json
+    $deadline=[DateTime]::UtcNow.AddSeconds(8)
+    do {
+        if((Test-Path -LiteralPath $path) -and (Get-Item -LiteralPath $path).LastWriteTimeUtc.Ticks -gt $before){
+            try {$value=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;if($value.pid -eq $pidExpected){return $value}}catch{}
+        }
+        Start-Sleep -Milliseconds 25
+    }while([DateTime]::UtcNow -lt $deadline)
+    throw 'Native state response was not refreshed by this session'
 }
 function Get-Native([string]$Expression) {
     $lines = Send-Game @("expr $Expression")

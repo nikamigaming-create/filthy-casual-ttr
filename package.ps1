@@ -1,4 +1,4 @@
-param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.8.0-beta.1.zip', [string]$ReleaseCommit='')
+param([ValidatePattern('^[A-Za-z0-9._-]+\.zip$')][string]$OutputName = 'Filthy-Casual-TTR-1.8.0-beta.2.zip', [string]$ReleaseCommit='')
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $out = Join-Path $repo 'outputs'
@@ -74,13 +74,13 @@ $sourceChanges = @(git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Could not identify source working-tree state.' }
 $manifest = [ordered]@{
     addon = 'Filthy Casual TTR'
-    version = '1.8.0-beta.1'
+    version = '1.8.0-beta.2'
     architecture = 'x86'
     channel = 'beta'
     features = @('robco-controls-editor','quest-touch-plus-3d','runtime-remapping','eight-profiles','mode-aware-providers','offline-editor','shared-robco-overlays','native-magazine-recovery','typed-ini-bindings','controller-profiles','70-input-sources','steam-frame-community-test','mouth-head-space-fix','separate-seat-memory','manual-recovered-magazine-chamber','native-glass-projection')
     tutorialDefault = 'off'
     tutorialCards = $cards.Count
-    supportedTTWVR = '7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E'
+    supportedTTWVR = 'E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1'
     sourceCommit = "$sourceCommit".Trim()
     sourceDirty = (!$ReleaseCommit -and $sourceChanges.Count -gt 0)
     files = @($names | ForEach-Object {

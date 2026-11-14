@@ -19,7 +19,7 @@ SC_TRACE(0) SC_TRACE(1) SC_TRACE(2) SC_TRACE(3) SC_TRACE(4) SC_TRACE(5) SC_TRACE
 #undef SC_TRACE
 inline const char* install(){
  // Legacy observation sites are deliberately absent from the new host adapter.
- return "disabled: legacy reload trace sites are not ported to 7EB72860";
+ return "disabled: legacy reload trace sites are not ported to E14567BC";
 }
 inline void diagnostics(std::ostream& out){
  out<<",\"reloadTrace\":{\"active\":"<<(module?"true":"false")<<",\"mainThread\":"<<mainThread<<",\"total\":"<<total<<",\"events\":[";

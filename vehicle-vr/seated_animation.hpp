@@ -52,14 +52,14 @@ inline bool rotation(const NativeQT& q,mounted_frame::Mat& r){
  float n=q.w*q.w+q.x*q.x+q.y*q.y+q.z*q.z;if(n<.5f||n>1.5f)return false;
  // Use the exact native conversion used by NiMultiTargetTransformController.
  // This avoids relying on conflicting SDK row/column quaternion conventions.
- reinterpret_cast<void(__thiscall*)(const float*,mounted_frame::Mat*)>(0x4F0180)(&q.w,&r);return true;
+ reinterpret_cast<void(__thiscall*)(const float*,mounted_frame::Mat*)>(0x4f0180)(&q.w,&r);return true;
 }
 inline bool verified(){
  static bool result=[](){const unsigned char getter[]={0x55,0x8B,0xEC,0x51,0x89,0x4D,0xFC,0x8B,0x45,0xFC,0x8B,0x80,0xC0,0x01,0x00,0x00};
  const unsigned char simple[]={0x83,0xEC,0x20,0x53,0x8B,0xD9,0x80,0x7B,0x44,0x00};
  const unsigned char spline[]={0x83,0xEC,0x20,0x53,0x8B,0xD9,0xD9,0x43,0x08};
  const unsigned char quaternion[]={0x55,0x8B,0xEC,0x83,0xEC,0x58};
- return !memcmp(reinterpret_cast<void*>(0x4F0180),quaternion,sizeof quaternion)&&!memcmp(reinterpret_cast<void*>(0x602150),getter,sizeof getter)&&!memcmp(reinterpret_cast<void*>(0xA3FDB0),simple,sizeof simple)&&!memcmp(reinterpret_cast<void*>(0xA50F60),spline,sizeof spline);}();return result;
+ return !memcmp(reinterpret_cast<void*>(0x4f0180),quaternion,sizeof quaternion)&&!memcmp(reinterpret_cast<void*>(0x602150),getter,sizeof getter)&&!memcmp(reinterpret_cast<void*>(0xa3fdb0),simple,sizeof simple)&&!memcmp(reinterpret_cast<void*>(0xA50F60),spline,sizeof spline);}();return result;
 }
 inline void sample(void* actor,void* root){
  pending={};if(!actor||!root||!verified()||!vehicle_body::verified())return;
@@ -91,7 +91,7 @@ inline void sample(void* actor,void* root){
   auto node=scene::find(root,names[j]);if(!node)return;void* interp=nullptr;
   for(unsigned i=0;i<count;i++){auto name=scene::field<const char*>(tags+i*20,0);if(name&&!strcmp(name,names[j])){interp=scene::field<void*>(blocks+i*16,0);break;}}
   if(!interp)return;auto update=scene::field<void**>(interp,0)[0x8C/4];
-  if(update!=reinterpret_cast<void*>(0xA3FDB0)&&update!=reinterpret_cast<void*>(0xA50F60))return;
+  if(update!=reinterpret_cast<void*>(0xa3fdb0)&&update!=reinterpret_cast<void*>(0xA50F60))return;
   NativeQT q{};if(!reinterpret_cast<Update>(update)(interp,time,node,&q))return;
   mounted_frame::Mat r;if(!rotation(q,r)||!finite(q.translation.x)||!finite(q.translation.y)||!finite(q.translation.z))return;
   auto t=scene::local(node);memcpy(t.r,r.a,sizeof t.r);t.p=q.translation;
@@ -101,8 +101,8 @@ inline void sample(void* actor,void* root){
    // Only their scale is used when the source clip leaves that channel unset;
    // do not inherit a temporary standing-IK leg compression into a seated clip.
    const unsigned indices[]={0,0,10,12,14,16,11,13,15,17};auto base=build_adapter::heldModule();unsigned index=indices[j];
-   if(base&&scene::field<void*>(base+0x101AEEC,index*4)==node&&scene::field<unsigned char>(base+0x101B2F0,index)){
-    float bindScale=scene::field<float>(base+0x101AF48,index*0x34+0x30);
+   if(base&&scene::field<void*>(base+0x109097C,index*4)==node&&scene::field<unsigned char>(base+0x1090D80,index)){
+    float bindScale=scene::field<float>(base+0x10909D8,index*0x34+0x30);
     if(finite(bindScale)&&bindScale>.01f&&bindScale<10)t.scale=bindScale;
    }
   }

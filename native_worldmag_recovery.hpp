@@ -1,5 +1,5 @@
 #pragma once
-// Native world-mag recovery, TTWVR SHA256 7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E only.
+// Native world-mag recovery, TTWVR SHA256 E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1 only.
 // x86 / main thread. No drop hooks, save records, AddItem, clip writes or registry writes.
 #include "reload_adapter.hpp"
 #include <cstdint>
@@ -92,55 +92,55 @@ inline Pending pending{};
 inline bool gates() noexcept {
     bool manual = false;
     if (!module || !enabled || diagnostics.poisoned || !ownerThread || GetCurrentThreadId() != ownerThread ||
-        !build_adapter::readManualReload(manual) || !manual || !module[0x18B3C4D] ||
-        module[0x18B3FA7] || global<int>(0x18B3F60) != 0) return false;
-    const int mode = global<int>(0x18B3E3C);
+        !build_adapter::readManualReload(manual) || !manual || !module[0x198D03D] ||
+        module[0x198D3AD] || global<int>(0x198D368) != 0) return false;
+    const int mode = global<int>(0x198D22C);
     return mode == 0 || mode == 4 || mode == 5;
 }
 inline void* lookup(unsigned id) noexcept {
     // 41A910: cdecl form-ID wrapper over FalloutNV LookupFormByID 4839C0, with native SEH.
-    return reinterpret_cast<void*(__cdecl*)(unsigned)>(module + 0x41A910)(id);
+    return reinterpret_cast<void*(__cdecl*)(unsigned)>(module + 0x444DE0)(id);
 }
 inline bool readCandidate(Candidate& out) noexcept {
     if (!gates() || !callbacks.player || !callbacks.inventory || !(out.player = callbacks.player())) return false;
-    out.installedMode = global<int>(0x18B3E3C);
-    if (global<int>(0xF76574) >= 0) return false;
-    out.hand = reinterpret_cast<bool(__cdecl*)()>(module + 0x320320)() ? 1 : 0;
+    out.installedMode = global<int>(0x198D22C);
+    if (global<int>(0xFEBFCC) >= 0) return false;
+    out.hand = reinterpret_cast<bool(__cdecl*)()>(module + 0x348C50)() ? 1 : 0;
     // Conservative: exactly one physical held slot; alias/multiple-object holds stay entirely native.
-    const bool first = module[0x1416775] != 0, second = module[0x1416844] != 0;
+    const bool first = module[0x14DA7FD] != 0, second = module[0x14DA8CC] != 0;
     if (first == second) return false;
-    const int heldHand = global<int>(first ? 0xF6B520 : 0x1416848);
+    const int heldHand = global<int>(first ? 0xFE0E40 : 0x14DA8D0);
     if (heldHand != out.hand) return false;
-    out.ref = global<void*>(first ? 0x1417410 : 0x141684C);
+    out.ref = global<void*>(first ? 0x14DB5D8 : 0x14DA8D4);
     if (!readable(out.ref, 0x68) || (field<unsigned>(out.ref, 8) & 0x20)) return false;
     out.id = field<unsigned>(out.ref, 0xC);
     if (!out.id || lookup(out.id) != out.ref) return false;
     out.ammo = field<void*>(out.ref, 0x20);
     if (!readable(out.ammo, 0x10) || field<unsigned char>(out.ammo, 4) != 41) return false;
     out.ammoID = field<unsigned>(out.ammo, 0xC);
-    if (reinterpret_cast<void*(__cdecl*)(void*)>(module + 0x315CF0)(out.player) != out.ammo) return false;
-    out.count = reinterpret_cast<int(__cdecl*)(void*)>(module + 0x41C350)(out.ref);
-    const int capacity = reinterpret_cast<int(__cdecl*)()>(module + 0x31B6A0)();
+    if (reinterpret_cast<void*(__cdecl*)(void*)>(module + 0x33E600)(out.player) != out.ammo) return false;
+    out.count = reinterpret_cast<int(__cdecl*)(void*)>(module + 0x446820)(out.ref);
+    const int capacity = reinterpret_cast<int(__cdecl*)()>(module + 0x343FD0)();
     if (out.count <= 0 || out.count > 32767 || capacity <= 0 || out.count > capacity) return false;
     // Preserve the native per-acquisition limit34E8A2..34E90C; reject rather than truncate a real stack.
     int limit = capacity;
     if (out.installedMode != 4) {
-        if (module[0x18B4649]) limit = 1;
-        else if (!module[0x18B4648]) {
-            if (module[0x18B462F]) limit = 2;
-            else if (!module[0x18B4619] && !module[0x18B45D1] && !module[0x18B462D]) {
-                if (module[0x18B45FB]) limit = 1;
-                else if (module[0x18B3D02]) limit = reinterpret_cast<int(__cdecl*)()>(module + 0x318B20)();
+        if (module[0x198DA4F]) limit = 1;
+        else if (!module[0x198DA4E]) {
+            if (module[0x198DA4D]) limit = 2;
+            else if (!module[0x198DA1F] && !module[0x198D9D7] && !module[0x198DA33]) {
+                if (module[0x198DA01]) limit = 1;
+                else if (module[0x198D0F2]) limit = reinterpret_cast<int(__cdecl*)()>(module + 0x341430)();
             }
         }
     }
     if (limit <= 0 || out.count > limit) return false;
-    out.weapon = global<void*>(0x18B3CB4);
+    out.weapon = global<void*>(0x198D0A4);
     if (!readable(out.weapon, 0x10) || field<unsigned char>(out.weapon, 4) != 40) return false;
     out.weaponID = field<unsigned>(out.weapon, 0xC);
-    out.visual = global<void*>(0x18B3E80);
+    out.visual = global<void*>(0x198D270);
     if (!readable(out.visual, 0x9C)) return false;
-    const uintptr_t begin = global<uintptr_t>(0x18C68A8), end = global<uintptr_t>(0x18C68AC);
+    const uintptr_t begin = global<uintptr_t>(0x199FD40), end = global<uintptr_t>(0x199FD44);
     if (!begin || end < begin || (end - begin) % 0x1E8 || (end - begin) / 0x1E8 > 256 ||
         !readable(reinterpret_cast<void*>(begin), end - begin)) return false;
     unsigned matches = 0;
@@ -155,7 +155,7 @@ inline bool readCandidate(Candidate& out) noexcept {
     // Only reads its inputs/native selected weapon; +48=model C string, +4C=node C string.
     unsigned char description[0x54]{};
     const float zero[3]{}, identity[9]{1,0,0,0,1,0,0,0,1};
-    reinterpret_cast<void*(__cdecl*)(void*,void*,const float*,const float*,const float*)>(module + 0x328C40)
+    reinterpret_cast<void*(__cdecl*)(void*,void*,const float*,const float*,const float*)>(module + 0x351610)
         (description, out.visual, zero, identity, zero);
     char model[512]{}, node[512]{};
     if (!cstring(field<const char*>(description, 0x48), model) ||
@@ -184,7 +184,7 @@ inline int commitBody(uintptr_t frame) noexcept {
     // Native SetCurrentAmmoRounds mirrors the live clip count at F76030.
     // A fired/empty gun can retain its chamber pose flag. Recovering its magazine
     // must not turn that stale pose into a live chamber after native insertion.
-    const bool emptyChamber=c.installedMode==4&&global<int>(0xF76030)==0;
+    const bool emptyChamber=c.installedMode==4&&global<int>(0xFEBA88)==0;
     int before = -1;
     if (!callbacks.inventory(c.player, c.ammo, &before) || before < 0 || before > INT_MAX - c.count) return 0;
     diagnostics.inventoryBefore = before; diagnostics.inventoryAfter = -1;
@@ -198,17 +198,17 @@ inline int commitBody(uintptr_t frame) noexcept {
     diagnostics.inventoryAfter = after;
     void* remaining = lookup(c.id);
     const bool consumed = !remaining || (readable(remaining, 0x10) && (field<unsigned>(remaining, 8) & 0x20));
-    const bool unchanged = global<void*>(0x18B3CB4) == c.weapon && global<void*>(0x18B3E80) == c.visual &&
-        global<int>(0x18B3F60) == 0 && !module[0x18B3FA7] && global<int>(0x18B3E3C) == c.installedMode;
+    const bool unchanged = global<void*>(0x198D0A4) == c.weapon && global<void*>(0x198D270) == c.visual &&
+        global<int>(0x198D368) == 0 && !module[0x198D3AD] && global<int>(0x198D22C) == c.installedMode;
     bool manual = false;
     if (!counted || !exactDelta(before, after, c.count) || !consumed || !unchanged ||
         !build_adapter::readManualReload(manual) || !manual || callbacks.player() != c.player ||
-        reinterpret_cast<void*(__cdecl*)(void*)>(module + 0x315CF0)(c.player) != c.ammo) {
+        reinterpret_cast<void*(__cdecl*)(void*)>(module + 0x33E600)(c.player) != c.ammo) {
         ++diagnostics.failures; return 0;
     }
     diagnostics.poisoned = false; diagnostics.transferred = c.id; ++diagnostics.committed;
     commitInstalled = c.installedMode == 4;
-    if(emptyChamber){module[0xF75F50]=0;cycleWeapon=c.weapon;cycleRequiredHand=1-c.hand;}
+    if(emptyChamber){module[0xFEB9A8]=0;cycleWeapon=c.weapon;cycleRequiredHand=1-c.hand;}
     // Keep the native empty-trigger auto-load fallback from cycling this recovered
     // magazine. Off-hand trigger/physical slide remain untouched and clear the gate.
     // A real round already in the chamber never enters this path.
@@ -256,7 +256,7 @@ __declspec(naked) inline void firstHook() {
         mov esp, ebx
         popad
         popfd
-        cmp byte ptr [ebp-1751h], 0
+        cmp byte ptr [ebp-17ADh], 0
         jmp dword ptr [normalFirst]
     }
 }
@@ -294,7 +294,7 @@ __declspec(naked) inline void secondHook() {
         mov esp, ebx
         popad
         popfd
-        cmp byte ptr [ebp-16C5h], 0
+        cmp byte ptr [ebp-1739h], 0
         jmp dword ptr [normalSecond]
     }
 }
@@ -312,8 +312,8 @@ inline bool pinnedHash(HMODULE m) {
     if (ferror(file)) ok = false; fclose(file);
     if (ok) ok = BCryptFinishHash(hash, digest, sizeof(digest), 0) >= 0;
     if (hash) BCryptDestroyHash(hash); if (alg) BCryptCloseAlgorithmProvider(alg, 0);
-    const unsigned char expected[32]{0x7E,0xB7,0x28,0x60,0xD2,0x09,0xD9,0xB9,0xBD,0xD7,0x74,0x60,0x72,0x20,0xEE,0x63,
-        0x32,0x33,0x67,0xAA,0x9F,0xA5,0x25,0xF6,0xEB,0x1B,0x23,0x18,0x4F,0x30,0xF9,0x1E};
+
+    const unsigned char expected[32]{0xE1,0x45,0x67,0xBC,0x1C,0x7D,0x18,0x31,0x30,0xF9,0x02,0xF9,0x48,0x9B,0x8C,0xFF,0xE6,0x26,0x9D,0xE0,0x6E,0xEA,0x0D,0x79,0xBF,0x8D,0x1D,0x30,0x98,0xC5,0x95,0xB1};
     return ok && !memcmp(digest, expected, 32);
 }
 inline void branch(unsigned char* site, void* destination) noexcept {
@@ -330,46 +330,46 @@ inline const char* install(Callbacks supplied) {
     auto base = reinterpret_cast<unsigned char*>(handle);
     const auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     const auto nt = reinterpret_cast<IMAGE_NT_HEADERS32*>(base + dos->e_lfanew);
-    if (nt->FileHeader.Machine != IMAGE_FILE_MACHINE_I386 || nt->FileHeader.TimeDateStamp != 0x6AF60DF2 ||
-        nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC || nt->OptionalHeader.SizeOfImage <= 0x18C68B4)
+    if (nt->FileHeader.Machine != IMAGE_FILE_MACHINE_I386 || nt->FileHeader.TimeDateStamp != 0x6AF8509E ||
+        nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC || nt->OptionalHeader.SizeOfImage <= 0x199FD4C)
         return "REFUSED: PE32 identity";
-    const unsigned char first[]{0x80,0xBD,0xAF,0xE8,0xFF,0xFF,0x00};
-    const unsigned char second[]{0x80,0xBD,0x3B,0xE9,0xFF,0xFF,0x00};
-    unsigned char destination[]{0xFF,0x35,0,0,0,0,0xA3,0,0,0,0,0xE8,0x61,0xD4,0xFC,0xFF};
-    const uint32_t visual = reinterpret_cast<uint32_t>(base + 0x18B3E80), count = reinterpret_cast<uint32_t>(base + 0x18B3F64);
+    const unsigned char first[]{0x80,0xBD,0x53,0xE8,0xFF,0xFF,0x00};
+    const unsigned char second[]{0x80,0xBD,0xC7,0xE8,0xFF,0xFF,0x00};
+    unsigned char destination[]{0xFF,0x35,0x00,0x00,0x00,0x00,0xA3,0x00,0x00,0x00,0x00,0xE8,0xC8,0xCC,0xFC,0xFF};
+    const uint32_t visual = reinterpret_cast<uint32_t>(base + 0x198D270), count = reinterpret_cast<uint32_t>(base + 0x198D36C);
     memcpy(destination + 2, &visual, 4); memcpy(destination + 7, &count, 4);
-    if (memcmp(base + 0x34DD22, first, sizeof(first)) || memcmp(base + 0x34E861, second, sizeof(second)) ||
-        memcmp(base + 0x34E90F, destination, sizeof(destination))) return "REFUSED: native instruction guard";
-    unsigned char installedDestination[]{0xE8,0x49,0xAE,0xFC,0xFF,0xFF,0x35,0,0,0,0,0x3B,0xF0,0x0F,0x4C,0xC6,0xA3,0,0,0,0};
-    const uint32_t installedNode = reinterpret_cast<uint32_t>(base + 0x18B3C9C), installedCount = reinterpret_cast<uint32_t>(base + 0x18B3E40);
+    if (memcmp(base + 0x376DE3, first, sizeof(first)) || memcmp(base + 0x37792A, second, sizeof(second)) ||
+        memcmp(base + 0x3779D8, destination, sizeof(destination))) return "REFUSED: native instruction guard";
+    unsigned char installedDestination[]{0xE8,0x45,0xA6,0xFC,0xFF,0xFF,0x35,0x00,0x00,0x00,0x00,0x3B,0xF0,0x0F,0x4C,0xC6,0xA3,0x00,0x00,0x00,0x00};
+    const uint32_t installedNode = reinterpret_cast<uint32_t>(base + 0x198D08C), installedCount = reinterpret_cast<uint32_t>(base + 0x198D230);
     memcpy(installedDestination + 7, &installedNode, 4); memcpy(installedDestination + 17, &installedCount, 4);
-    if (memcmp(base + 0x350852, installedDestination, sizeof(installedDestination))) return "REFUSED: installed initializer guard";
+    if (memcmp(base + 0x379986, installedDestination, sizeof(installedDestination))) return "REFUSED: installed initializer guard";
     unsigned char chamberRead[]={0x8A,0x0D,0,0,0,0},clipWrite[]={0xA3,0,0,0,0};
-    const uint32_t chamberAddress=reinterpret_cast<uint32_t>(base+0xF75F50),clipAddress=reinterpret_cast<uint32_t>(base+0xF76030);
+    const uint32_t chamberAddress=reinterpret_cast<uint32_t>(base+0xFEB9A8),clipAddress=reinterpret_cast<uint32_t>(base+0xFEBA88);
     memcpy(chamberRead+2,&chamberAddress,4);memcpy(clipWrite+1,&clipAddress,4);
-    if(memcmp(base+0x350D31,chamberRead,sizeof chamberRead)||memcmp(base+0x3337B5,clipWrite,sizeof clipWrite))return "REFUSED: native chamber/clip contract";
+    if(memcmp(base+0x379E65,chamberRead,sizeof chamberRead)||memcmp(base+0x35C485,clipWrite,sizeof clipWrite))return "REFUSED: native chamber/clip contract";
     struct Guard { unsigned rva; unsigned length; unsigned char bytes[8]; };
     const Guard helpers[]{
-        {0x320320,5,{0xE9,0xD8,0x40,0xCF,0xFF}}, {0x315CF0,4,{0xFF,0x74,0x24,0x04}},
-        {0x41C350,4,{0x8B,0x4C,0x24,0x04}}, {0x328C40,8,{0x83,0xEC,0x24,0x56,0x57,0x0F,0x57,0xC0}},
-        {0x41A910,5,{0x55,0x8B,0xEC,0x6A,0xFE}}, {0x31B6A0,6,{0x83,0xEC,0x08,0x53,0x56,0x57}},
-        {0x1A95A0,8,{0x81,0xEC,0xCC,0,0,0,0x56,0x57}}};
+        {0x348C50,5,{0xE9,0x54,0xBB,0xCC,0xFF}}, {0x33E600,4,{0xFF,0x74,0x24,0x04}},
+        {0x446820,4,{0x8B,0x4C,0x24,0x04}}, {0x351610,8,{0x83,0xEC,0x24,0x56,0x57,0x0F,0x57,0xC0}},
+        {0x444DE0,5,{0x55,0x8B,0xEC,0x6A,0xFE}}, {0x343FD0,6,{0x83,0xEC,0x08,0x53,0x56,0x57}},
+        {0x1C33B0,8,{0x81,0xEC,0xCC,0,0,0,0x56,0x57}}};
     for (const auto& g : helpers) if (memcmp(base + g.rva, g.bytes, g.length)) return "REFUSED: helper instruction guard";
     DWORD protection1 = 0, protection2 = 0, unused = 0;
-    if (!VirtualProtect(base + 0x34DD22, 7, PAGE_EXECUTE_READWRITE, &protection1)) return "REFUSED: first page protection";
-    if (!VirtualProtect(base + 0x34E861, 7, PAGE_EXECUTE_READWRITE, &protection2)) {
-        VirtualProtect(base + 0x34DD22, 7, protection1, &unused); return "REFUSED: second page protection";
+    if (!VirtualProtect(base + 0x376DE3, 7, PAGE_EXECUTE_READWRITE, &protection1)) return "REFUSED: first page protection";
+    if (!VirtualProtect(base + 0x37792A, 7, PAGE_EXECUTE_READWRITE, &protection2)) {
+        VirtualProtect(base + 0x376DE3, 7, protection1, &unused); return "REFUSED: second page protection";
     }
     module = base; callbacks = supplied;
-    normalFirst = reinterpret_cast<uintptr_t>(base + 0x34DD29); eligibleFirst = reinterpret_cast<uintptr_t>(base + 0x34DD38);
-    normalSecond = reinterpret_cast<uintptr_t>(base + 0x34E868); initializeSpare = reinterpret_cast<uintptr_t>(base + 0x34E90F);
-    initializeInstalled = reinterpret_cast<uintptr_t>(base + 0x350852);
-    branch(base + 0x34DD22, reinterpret_cast<void*>(&firstHook));
-    branch(base + 0x34E861, reinterpret_cast<void*>(&secondHook));
-    FlushInstructionCache(GetCurrentProcess(), base + 0x34DD22, 7);
-    FlushInstructionCache(GetCurrentProcess(), base + 0x34E861, 7);
-    const bool restored1 = VirtualProtect(base + 0x34DD22, 7, protection1, &unused) != 0;
-    const bool restored2 = VirtualProtect(base + 0x34E861, 7, protection2, &unused) != 0;
+    normalFirst = reinterpret_cast<uintptr_t>(base + 0x376DEA); eligibleFirst = reinterpret_cast<uintptr_t>(base + 0x376DF9);
+    normalSecond = reinterpret_cast<uintptr_t>(base + 0x377931); initializeSpare = reinterpret_cast<uintptr_t>(base + 0x3779D8);
+    initializeInstalled = reinterpret_cast<uintptr_t>(base + 0x379986);
+    branch(base + 0x376DE3, reinterpret_cast<void*>(&firstHook));
+    branch(base + 0x37792A, reinterpret_cast<void*>(&secondHook));
+    FlushInstructionCache(GetCurrentProcess(), base + 0x376DE3, 7);
+    FlushInstructionCache(GetCurrentProcess(), base + 0x37792A, 7);
+    const bool restored1 = VirtualProtect(base + 0x376DE3, 7, protection1, &unused) != 0;
+    const bool restored2 = VirtualProtect(base + 0x37792A, 7, protection2, &unused) != 0;
     diagnostics.installed = true;
     diagnostics.reason = restored1 && restored2 ? "installed; awaiting main-thread enable" : "installed; WARNING page protection restore failed";
     return diagnostics.reason;
@@ -385,23 +385,23 @@ inline bool validPose(const Pose& value) noexcept {
 }
 inline Insertion insertionBody() noexcept {
     Insertion out{}; if(!module || GetCurrentThreadId()!=ownerThread)return out;
-    auto weapon=global<void*>(0x18B3C90), node=global<void*>(0x18B3C9C);
+    auto weapon=global<void*>(0x198D080), node=global<void*>(0x198D08C);
     if(!readable(weapon,0x9C)||!readable(node,0x9C))return out;
     const unsigned char parentGuard[]{0x81,0xEC,0xCC,0,0,0};
     const unsigned char composeGuard[]{0x83,0xEC,0x24,0x56,0x8B,0x74,0x24,0x2C};
-    if(memcmp(module+0x32EC00,parentGuard,sizeof(parentGuard))||memcmp(module+0x31B9B0,composeGuard,sizeof(composeGuard)))return out;
+    if(memcmp(module+0x3575D0,parentGuard,sizeof(parentGuard))||memcmp(module+0x3442E0,composeGuard,sizeof(composeGuard)))return out;
     Pose world=field<Pose>(weapon,0x68), parent{}; out.held=field<Pose>(node,0x68);
     if(!validPose(world)||!validPose(out.held))return out;
-    if(!reinterpret_cast<bool(__cdecl*)(void*,const Pose*,void*,Pose*)>(module+0x32EC00)(weapon,&world,node,&parent)||!validPose(parent))return out;
-    reinterpret_cast<Pose*(__cdecl*)(Pose*,const Pose*,const void*,const void*,float)>(module+0x31B9B0)
-        (&out.rest,&parent,module+0x18B3CE8,module+0x18B3814,1.f);
+    if(!reinterpret_cast<bool(__cdecl*)(void*,const Pose*,void*,Pose*)>(module+0x3575D0)(weapon,&world,node,&parent)||!validPose(parent))return out;
+    reinterpret_cast<Pose*(__cdecl*)(Pose*,const Pose*,const void*,const void*,float)>(module+0x3442E0)
+        (&out.rest,&parent,module+0x198D0D8,module+0x198CC04,1.f);
     out.valid=validPose(out.rest);
     // Installed-held return34A917 uses342890: the visible PRIMARY pouch, not its optional copy.
     // This diagnostic covers mode2 while spareMode==0. Do not mistake a spare already in hand for its pouch.
-    auto primary=global<void*>(0x18B3E80);
-    if(global<int>(0x18B3F60)==0 && module[0x18B3E73] && readable(primary,0x9C)) {
-        const Pose pose=field<Pose>(primary,0x68); const auto center=reinterpret_cast<const float*>(module+0x18B3E84);
-        bool centerValid=module[0x18B3E72]!=0;
+    auto primary=global<void*>(0x198D270);
+    if(global<int>(0x198D368)==0 && module[0x198D263] && readable(primary,0x9C)) {
+        const Pose pose=field<Pose>(primary,0x68); const auto center=reinterpret_cast<const float*>(module+0x198D274);
+        bool centerValid=module[0x198D262]!=0;
         for(unsigned i=0;i<3;i++)if(!std::isfinite(center[i]))centerValid=false;
         if(validPose(pose)) {
             out.pouchValid=true;
@@ -427,7 +427,7 @@ struct WorldRef {
 };
 inline unsigned worldRefsBody(WorldRef* output, unsigned capacity) noexcept {
     if (!module || !output || !capacity || GetCurrentThreadId() != ownerThread) return 0;
-    const uintptr_t begin = global<uintptr_t>(0x18C68A8), end = global<uintptr_t>(0x18C68AC);
+    const uintptr_t begin = global<uintptr_t>(0x199FD40), end = global<uintptr_t>(0x199FD44);
     if (!begin || end < begin || (end-begin)%0x1E8 || (end-begin)/0x1E8 > 256 ||
         !readable(reinterpret_cast<void*>(begin),end-begin)) return 0;
     unsigned count = 0;
@@ -438,7 +438,7 @@ inline unsigned worldRefsBody(WorldRef* output, unsigned capacity) noexcept {
         if(readable(ref,0x68) && !(field<unsigned>(ref,8)&0x20)) {
             auto ammo=field<void*>(ref,0x20);
             if(readable(ammo,0x10) && field<unsigned char>(ammo,4)==41 && field<unsigned>(ammo,0xC)==item.ammoID) {
-                item.actualCount=reinterpret_cast<int(__cdecl*)(void*)>(module+0x41C350)(ref);
+                item.actualCount=reinterpret_cast<int(__cdecl*)(void*)>(module+0x446820)(ref);
                 item.valid=item.actualCount>0 && item.actualCount==item.recordedCount;
                 auto state=field<void*>(ref,0x64);
                 auto root=readable(state,0x18)?field<void*>(state,0x14):nullptr;
@@ -471,7 +471,7 @@ inline void tick(bool allow) noexcept {
     if (GetCurrentThreadId() != ownerThread || busy) return;
     pending = {}; enabled = allow && diagnostics.installed && !diagnostics.poisoned;
     if(cycleRequiredHand.load()>=0){bool manual=false;
-      if(!module||global<void*>(0x18B3CB4)!=cycleWeapon||!build_adapter::readManualReload(manual)||!manual||module[0xF75F50]){cycleRequiredHand=-1;cycleWeapon=nullptr;}
+      if(!module||global<void*>(0x198D0A4)!=cycleWeapon||!build_adapter::readManualReload(manual)||!manual||module[0xFEB9A8]){cycleRequiredHand=-1;cycleWeapon=nullptr;}
     }
 }
 // PreLoad/NewGame/exit: never reset poison in-process; an ambiguous Activate is terminal for this session.

@@ -16,19 +16,19 @@ inline bool __fastcall query(void* manager,void*,bool right,bool aim,Vec* p,floa
 inline bool install(){
  if(original)return true;auto b=build_adapter::heldModule();if(!b)return false;
  const unsigned char prefix[]={0x83,0xEC,0x70,0xA1};
- if(memcmp(b+0x6949C0,prefix,4)||scene::field<unsigned char*>(b,0x6949C4)!=b+0x1016840)return false;
+ if(memcmp(b+0x6C19F0,prefix,4)||scene::field<unsigned char*>(b,0x6C19F4)!=b+0x108C2C0)return false;
  // The raw query's first bool selects hand, second selects aim/grip. It remains
  // unhooked. Both prologues and its native tail are exact-build guarded.
  const unsigned char raw[]={0x0F,0xB6,0x44,0x24,0x08,0x83,0xEC,0x30};
- if(memcmp(b+0x694CD0,raw,8)||b[0x694D4D]!=0xC2||b[0x694D4E]!=0x10)return false;
+ if(memcmp(b+0x6C1D00,raw,8)||b[0x6C1D80]!=0xC2||b[0x6C1D81]!=0x10)return false;
  auto t=static_cast<unsigned char*>(VirtualAlloc(nullptr,16,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!t)return false;
- memcpy(t,b+0x6949C0,8);t[8]=0xE9;scene::field<int>(t,9)=int((b+0x6949C8)-(t+13));DWORD old;
+ memcpy(t,b+0x6C19F0,8);t[8]=0xE9;scene::field<int>(t,9)=int((b+0x6C19F8)-(t+13));DWORD old;
  if(!VirtualProtect(t,16,PAGE_EXECUTE_READ,&old)){VirtualFree(t,0,MEM_RELEASE);return false;}
- if(!VirtualProtect(b+0x6949C0,8,PAGE_EXECUTE_READWRITE,&old)){VirtualFree(t,0,MEM_RELEASE);return false;}
- original=reinterpret_cast<Query>(t);auto p=b+0x6949C0;p[0]=0xE9;scene::field<int>(p,1)=int(reinterpret_cast<unsigned char*>(&query)-(p+5));memset(p+5,0x90,3);
+ if(!VirtualProtect(b+0x6C19F0,8,PAGE_EXECUTE_READWRITE,&old)){VirtualFree(t,0,MEM_RELEASE);return false;}
+ original=reinterpret_cast<Query>(t);auto p=b+0x6C19F0;p[0]=0xE9;scene::field<int>(p,1)=int(reinterpret_cast<unsigned char*>(&query)-(p+5));memset(p+5,0x90,3);
  DWORD unused;VirtualProtect(p,8,old,&unused);FlushInstructionCache(GetCurrentProcess(),p,8);FlushInstructionCache(GetCurrentProcess(),t,16);return true;
 }
-inline bool raw(void* manager,int h,scene::Transform& t){auto b=build_adapter::heldModule();t.scale=1;return b&&manager&&reinterpret_cast<Query>(b+0x694CD0)(manager,h!=0,false,&t.p,&t.r[0][0]);}
+inline bool raw(void* manager,int h,scene::Transform& t){auto b=build_adapter::heldModule();t.scale=1;return b&&manager&&reinterpret_cast<Query>(b+0x6C1D00)(manager,h!=0,false,&t.p,&t.r[0][0]);}
 inline scene::Transform relative(const scene::Transform& frame,const scene::Transform& pose){
  scene::Transform t{};t.scale=1;t.p=scene::inverseRotate(frame,pose.p-frame.p)*(1/frame.scale);
  for(int i=0;i<3;i++)for(int j=0;j<3;j++)for(int k=0;k<3;k++)t.r[i][j]+=frame.r[k][i]*pose.r[k][j];return t;

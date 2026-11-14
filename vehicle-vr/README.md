@@ -4,7 +4,7 @@ Optional development integration for TTR. The core Filthy Casuals mod and Pool
 are independent; neither is required to drive using the default controls.
 
 Target TTWVR.dll SHA-256:
-`7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E`.
+`E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1`.
 Unknown builds refuse hooks. Build x86 with `vehicle-vr\build.cmd`.
 
 ## Native dependencies

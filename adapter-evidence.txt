@@ -1,3 +1,15 @@
+TTR 1.1.5 compatibility (2026-11-14)
+Host E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1
+PE timestamp 6AF8509E, x86 SizeOfImage 01D12000.
+Mapped-image guards plus isolated native runtime exercised; see docs/VALIDATION.md.
+Native pose manager head position 20, rotation 2C, raw grips 60; late yaw/history unchanged.
+World-to-tracking 6C7D50, grip 6C19F0, manager thunk 13C73.
+Settings manual 4A0, discard 4A1, spare pouch 4C0, scope-in-frame 53D.
+Original FalloutNV executable addresses are not host RVAs: free 401030,
+stow 573170, seat animation 4F0180/A3FDB0 retained unchanged.
+Core accepts only byte-verified original tracking entry or exact owned Vehicles
+hook/trampoline, not an arbitrary third-party detour.
+
 Controls editor addition � 2026-11-13
 Current tested TTWVR: 7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E.
 This change adds no native RVAs or consumer hooks. It routes the host's observed

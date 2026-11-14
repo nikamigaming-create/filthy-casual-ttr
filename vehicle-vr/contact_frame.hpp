@@ -1,6 +1,6 @@
 #pragma once
 #include "mounted_frame.hpp"
-// Exact 7EB72860 native contact history. Match TTR's own snap-turn rebase,
+// Exact E14567BC native contact history. Match TTR's own snap-turn rebase,
 // but use the mounted carrier's full rigid delta, once before contact solving.
 namespace vehicle_contact {
 using mounted_frame::Mat;using mounted_frame::Vec;
@@ -38,7 +38,7 @@ inline bool verified(){
  // 19F8 is an INPUT field, not part of either hand pose. Never transport it.
  const unsigned char translation[]={0xF3,0x0F,0x10,0x94,0x8E,0xFC,0x19,0,0};
  const unsigned char rotation[]={0x8D,0x14,0xC5,0x85,0x06,0,0,0x03,0xD0};
- return !memcmp(b+0x694BAF,translation,sizeof translation)&&!memcmp(b+0x694A1F,rotation,sizeof rotation)&&!memcmp(b+0x154630,clear,sizeof clear)&&!memcmp(b+0x156F8D,previous,sizeof previous)&&!memcmp(b+0x160CD5,yaw,sizeof yaw)&&b[0x160CFD]==0xF3&&b[0x160CFE]==0x0F&&b[0x160CFF]==0x5C&&b[0x160D00]==0x0D&&scene::field<unsigned char*>(b,0x160D01)==b+0x122BDDC;
+ return !memcmp(b+0x6C1BDF,translation,sizeof translation)&&!memcmp(b+0x6C1A4F,rotation,sizeof rotation)&&!memcmp(b+0x15AEE0,clear,sizeof clear)&&!memcmp(b+0x15D83D,previous,sizeof previous)&&!memcmp(b+0x167585,yaw,sizeof yaw)&&b[0x1675AD]==0xF3&&b[0x1675AE]==0x0F&&b[0x1675AF]==0x5C&&b[0x1675B0]==0x0D&&scene::field<unsigned char*>(b,0x1675B1)==b+0x12A19B4;
 }
 inline void carryManager(void* manager,const Delta& d){
  for(int h=0;h<2;h++){
@@ -48,22 +48,22 @@ inline void carryManager(void* manager,const Delta& d){
 }
 inline bool carry(void* manager,const Delta& d){
  auto b=build_adapter::heldModule();if(!b||!manager)return false;
- for(int h=0;h<2;h++)if(!validState(b+0x1229240+h*0x81C)||!finite(scene::field<Vec>(manager,0x19FC+h*12))||!finite(scene::field<Mat>(manager,0x1A14+h*36)))return false;
+ for(int h=0;h<2;h++)if(!validState(b+0x129EE18+h*0x81C)||!finite(scene::field<Vec>(manager,0x19FC+h*12))||!finite(scene::field<Mat>(manager,0x1A14+h*36)))return false;
  // The same native snap-turn block carries optional held-item world history.
- if(b[0x122923C])for(unsigned i=0;i<320;i++)if(!finite(scene::field<Vec>(b,0x122BDE0+i*12)))return false;
- if(b[0x122DD1C]&&(!finite(scene::field<Vec>(b,0x122DD20))||!finite(scene::field<Mat>(b,0x122DD2C))))return false;
+ if(b[0x129EE14])for(unsigned i=0;i<320;i++)if(!finite(scene::field<Vec>(b,0x12A19B8+i*12)))return false;
+ if(b[0x12A38F4]&&(!finite(scene::field<Vec>(b,0x12A38F8))||!finite(scene::field<Mat>(b,0x12A3904))))return false;
  for(int h=0;h<2;h++){
-  carryState(b+0x1229240+h*0x81C,d);
+  carryState(b+0x129EE18+h*0x81C,d);
  }
  carryManager(manager,d);
- if(b[0x122923C])for(unsigned i=0;i<320;i++){auto& p=scene::field<Vec>(b,0x122BDE0+i*12);p=d.point(p);}
- if(b[0x122DD1C]){auto& p=scene::field<Vec>(b,0x122DD20);p=d.point(p);auto& r=scene::field<Mat>(b,0x122DD2C);r=d.orientation(r);}
+ if(b[0x129EE14])for(unsigned i=0;i<320;i++){auto& p=scene::field<Vec>(b,0x12A19B8+i*12);p=d.point(p);}
+ if(b[0x12A38F4]){auto& p=scene::field<Vec>(b,0x12A38F8);p=d.point(p);auto& r=scene::field<Mat>(b,0x12A3904);r=d.orientation(r);}
  return true;
 }
-inline void ownYaw(void* manager){auto b=build_adapter::heldModule();if(b&&manager)scene::field<float>(b,0x122BDDC)=scene::field<float>(manager,0xB3C);}
+inline void ownYaw(void* manager){auto b=build_adapter::heldModule();if(b&&manager)scene::field<float>(b,0x12A19B4)=scene::field<float>(manager,0xB3C);}
 struct History {void* actorRoot=nullptr;void* carrier=nullptr;scene::Transform pose{};unsigned sequence=0;};
 inline History history;inline unsigned carries=0,misses=0,reseeds=0;
-inline void reseed(){auto b=build_adapter::heldModule();if(b){reinterpret_cast<void(__cdecl*)()>(b+0x154630)();++reseeds;}}
+inline void reseed(){auto b=build_adapter::heldModule();if(b){reinterpret_cast<void(__cdecl*)()>(b+0x15AEE0)();++reseeds;}}
 inline void reset(){history={};}
 inline void before(void* manager,void* actorRoot,void* carrier,unsigned sequence){
  if(!manager||!actorRoot||!carrier){reset();return;}

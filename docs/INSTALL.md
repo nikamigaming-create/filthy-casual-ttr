@@ -1,30 +1,31 @@
-# Install Filthy Casual TTR 1.8.0-beta.1
+# Install Filthy Casual TTR 1.8.0-beta.2
 
 Start with TTR already working in VR through Mod Organizer 2, including its
 xNVSE, JIP LN NVSE and other upstream requirements. This addon does not install
-the original games or TTR. [Overview](../README.md) · [Controls](CONTROLS-EDITOR.md).
+the original games or TTR. [Overview](../README.md) Â· [Controls](CONTROLS-EDITOR.md).
 
 ## Supported base
 
-The upstream archive labels itself **1.1.2**, but multiple different DLLs share
-that label. This candidate accepts only TTWVR.dll SHA-256:
+This build targets upstream **TTR 1.1.5** and accepts only TTWVR.dll SHA-256:
 
 ```text
-7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E
+E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1
 ```
 
-PE timestamp: `6AF60DF2`. Unknown builds refuse integration. Check the DLL from
+PE timestamp: `6AF8509E`. Unknown builds refuse integration. Check the DLL from
 the enabled base mod, rather than an unrelated copy outside MO2:
 
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\TTWVR.dll'
 ```
 
+The prior TTR 1.1.2 host needs [Filthy Casuals beta 1](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.1). Do not mix core/Vehicle binaries from different compatibility releases.
+
 ## Install or update
 
 1. Quit the game. Back up your personal `SeatedControls.ini` when updating.
 2. In MO2 choose **Install a new mod from an archive**, selecting
-   `Filthy-Casual-TTR-1.8.0-beta.1.zip`.
+   `Filthy-Casual-TTR-1.8.0-beta.2.zip`.
 3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane, so the
    addon wins its own file conflicts. Leave base TTR and its dependencies enabled.
 4. Preserve the personal INI, especially height and reload preferences.
@@ -81,4 +82,4 @@ Enable that plugin alongside Filthy Casual TTR. It adds only a texture-set recor
 and depends on FalloutNV.esm; no third-party game assets are bundled.
 Existing INI preferences are retained during the local upgrade. Gentle impacts
 leave tracked empties intact. Hard collisions shatter them with native sound,
-particles and a timed glass decal. Public 1.8.0-beta.1 does not yet include this update.
+particles and a timed glass decal. Public 1.8.0-beta.2 does not yet include this update.

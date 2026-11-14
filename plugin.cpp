@@ -378,24 +378,24 @@ namespace {
  int __cdecl recoverPhysicalMag(void* player,int hand){
   if(!ready||!loaded||!gestureGameplayAllowed||!player||!initPartMetadata())return -1;auto b=build_adapter::heldModule();
   physical_reload_adapter::recoverStage=4;
-  auto first=b[0x1416775]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x1417410)):nullptr;
-  auto second=b[0x1416844]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x141684C)):nullptr;
+  auto first=b[0x14DA7FD]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x14DB5D8)):nullptr;
+  auto second=b[0x14DA8CC]?static_cast<Form*>(*reinterpret_cast<void**>(b+0x14DA8D4)):nullptr;
   physical_reload_adapter::recoverStage=5;
   auto ref=first?first:second;if(!ref||(first&&second&&first!=second))return -1;
   physical_reload_adapter::recoverStage=6;
-  int heldHand=*reinterpret_cast<int*>(b+(first?0xF6B520:0x1416848));if(heldHand!=hand)return -1;
+  int heldHand=*reinterpret_cast<int*>(b+(first?0xFE0E40:0x14DA8D0));if(heldHand!=hand)return -1;
   physical_reload_adapter::recoverStage=7;
   auto it=std::find_if(physicalMags.begin(),physicalMags.end(),[&](const PhysicalMag& m){return m.refID==ref->id;});
   if(it==physicalMags.end()||!it->weaponID||!it->ammoID)return -1;
   physical_reload_adapter::recoverStage=8;
   Element equipped;unsigned weapon=0;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)weapon=equipped.value.form->id;release(equipped);
-  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x315CF0)(player));
+  auto ammo=static_cast<Form*>(reinterpret_cast<void*(__cdecl*)(void*)>(b+0x33E600)(player));
   physical_reload_adapter::recoverStage=9;
   if(weapon!=it->weaponID||!ammo||ammo->id!=it->ammoID)return -1;
   physical_reload_adapter::recoverStage=10;
   auto base=scene::field<Form*>(ref,0x20);bool empty=base==emptyReloadPart();if(!empty&&base!=ammo)return -1;
   physical_reload_adapter::recoverStage=11;
-  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x31B6A0)();
+  int count=empty?0:int(physical_reload_adapter::stackCount(ref));int capacity=reinterpret_cast<int(__cdecl*)()>(b+0x343FD0)();
   if(count<0||count>capacity||capacity<1)return -1;
   // Actual native grab ownership is the pickup/catch event. Hand over now,
   // not only after approaching the well with an arbitrary physics grab pose.
@@ -406,10 +406,10 @@ namespace {
  }
  bool nearPhysicalPouch(void* ref){
   auto b=physical_reload_adapter::module;auto reloadSettings=build_adapter::liveReloadSettings();if(!b||!reloadSettings||reloadSettings[0x49C]!=1)return false;
-  auto pouch=*reinterpret_cast<void**>(b+0x18B3E94);auto root=scene::root(ref);
-  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x18B3F60))pouch=*reinterpret_cast<void**>(b+0x18B3E80);
+  auto pouch=*reinterpret_cast<void**>(b+0x198D284);auto root=scene::root(ref);
+  if(!build_adapter::readPouchNode(pouch).readable&&!*reinterpret_cast<int*>(b+0x198D368))pouch=*reinterpret_cast<void**>(b+0x198D270);
   if(!root||!build_adapter::readPouchNode(pouch).readable)return false;
-  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x18B3E84))*pose.scale;
+  auto pose=scene::world(pouch);auto center=pose.p+scene::rotate(pose,*reinterpret_cast<Vec*>(b+0x198D274))*pose.scale;
   auto bound=scene::field<float*>(root,0x20);if(!bound)return false;
   float threshold=*reinterpret_cast<float*>(reloadSettings+0x4CC)**reinterpret_cast<float*>(reloadSettings+0x28);
   float distance=scene::distance(center,{bound[0],bound[1],bound[2]});
@@ -433,13 +433,13 @@ namespace {
     if(reloadSettings&&reloadSettings[0x49C]==1&&build_adapter::readPouchNode(root).readable&&physical_reload_adapter::installedRest(rest)){
      auto bound=scene::field<float*>(root,0x20);float units=*reinterpret_cast<float*>(reloadSettings+0x28);
      if(bound&&std::isfinite(units)&&units>1){m.contactDistance=scene::distance({bound[0],bound[1],bound[2]},rest.p)/units;if(std::isfinite(m.contactDistance)&&m.contactDistance<=.12f){
-      auto b=physical_reload_adapter::module;m.contactHand=(b[0x1416775]&&*reinterpret_cast<void**>(b+0x1417410)==ref)?*reinterpret_cast<int*>(b+0xF6B520):build_adapter::grabbedHand();
+      auto b=physical_reload_adapter::module;m.contactHand=(b[0x14DA7FD]&&*reinterpret_cast<void**>(b+0x14DB5D8)==ref)?*reinterpret_cast<int*>(b+0xFE0E40):build_adapter::grabbedHand();
       Element equipped;if(call(getEquipped,equipped)&&equipped.type==2&&equipped.value.form)m.contactWeapon=equipped.value.form->id;release(equipped);m.contactAt=GetTickCount64();
      }}
     }
    }
    if(m.wasHeld&&!held&&m.wasNearPouch&&nearPouch&&m.weaponID&&m.ammoID&&m.lastHeldHand>=0&&partInput.h[m.lastHeldHand].active&&partInput.h[m.lastHeldHand].grip<.2f&&GetTickCount64()-partInput.time<100&&gestureGameplayAllowed){if(takePhysicalPart(m,ref,playerForm(),false)){physical_reload_adapter::recoveredPouch++;continue;}}
-   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x1416775]&&*reinterpret_cast<void**>(b+0x1417410)==ref)?*reinterpret_cast<int*>(b+0xF6B520):build_adapter::grabbedHand();}
+   if(held){auto b=physical_reload_adapter::module;m.lastHeldHand=(b&&b[0x14DA7FD]&&*reinterpret_cast<void**>(b+0x14DB5D8)==ref)?*reinterpret_cast<int*>(b+0xFE0E40):build_adapter::grabbedHand();}
    m.wasHeld=held;m.wasNearPouch=held&&nearPouch;
    auto root=scene::root(ref);
    if(m.fullModel){
@@ -508,7 +508,7 @@ namespace {
  struct FragileBottle {unsigned id=0,base=0;bottle_impact::Sample previous{};};
  std::vector<FragileBottle> fragileBottles;
  unsigned bottleBreaks=0;bool bottleTrace=false;Vec lastGlassPoint{};
- bool emptyBottleBase(unsigned id){return id==0x5B6CE||id==0x5B6CD||id==0x22103||id==0x103B1B;}
+ bool emptyBottleBase(unsigned id){return id==0x5B6CE||id==0x5B6CD||id==0x22103||id==0x103b1b;}
  void trackBottle(Form* ref){
   if(!ref)return;auto base=scene::field<Form*>(ref,0x20);if(!base||!emptyBottleBase(base->id))return;
   for(auto& b:fragileBottles)if(b.id==ref->id)return;
@@ -537,6 +537,10 @@ namespace {
   if(!usable){for(auto& b:fragileBottles)b.previous={};return;}
   auto held=static_cast<Form*>(build_adapter::grabbedItem());if(held)trackBottle(held);
   for(auto i=fragileBottles.begin();i!=fragileBottles.end();){
+   // A spawned replacement is being moved into the native grip, not thrown.
+   // Ignore spawn/teleport contacts until that handoff completes; otherwise a
+   // nearby wall can shatter it during the 3D-loading delay.
+   if(weaponTransition&&pendingAid&&aidDropPending&&selectedRef&&selectedRef->id==i->id){i->previous={};++i;continue;}
    auto ref=static_cast<Form*>(physical_reload_adapter::lookup(i->id));auto base=ref?scene::field<Form*>(ref,0x20):nullptr;
    if(!ref||!base||base->id!=i->base||(ref->flags&0x820)||!scene::root(ref)){i=fragileBottles.erase(i);continue;}
    void* surface=nullptr;auto sample=bottle_impact_adapter::sample(scene::root(ref),held==ref,now*.001,&surface);auto change=sample.velocity-i->previous.velocity;auto speed=bottle_impact::length(change);Vec normal=speed>.001f?Vec{change.x/speed,change.y/speed,change.z/speed}:Vec{0,0,1};auto verdict=bottle_impact::judge(i->previous,sample);if(bottleTrace)log("BOTTLE SAMPLE ref=%08X valid=%d held=%d contact=%d velocity=%.3f %.3f %.3f surface=%.3f %.3f %.3f closing=%.3f delta=%.3f",i->id,sample.valid,sample.held,sample.contact,sample.velocity.x,sample.velocity.y,sample.velocity.z,sample.surfaceVelocity.x,sample.surfaceVelocity.y,sample.surfaceVelocity.z,verdict.closingSpeed,verdict.velocityChange);i->previous=sample;
@@ -605,9 +609,9 @@ namespace {
   Item food=heldAid;double before=number(getCount,food.form);
   unsigned emptyID=empty_bottles::baseForModel(string(getModel,food.form));auto empty=emptyID?static_cast<Form*>(physical_reload_adapter::lookup(emptyID)):nullptr;
   if(empty&&empty->type!=31)empty=nullptr;double emptyBefore=empty?number(getCount,empty):0;
-  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<void**>(b+0x1417414),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<void**>(b+0x1416850),*reinterpret_cast<int*>(b+0x1416848));
+  if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x14DA7FD],*reinterpret_cast<void**>(b+0x14DB5D8),*reinterpret_cast<void**>(b+0x14DB5DC),*reinterpret_cast<int*>(b+0xFE0E40),b[0x14DA8CC],*reinterpret_cast<void**>(b+0x14DA8D4),*reinterpret_cast<void**>(b+0x14DA8D8),*reinterpret_cast<int*>(b+0x14DA8D0));
   if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
-   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<int*>(b+0x1416848),b[0x1A95A0],b[0x1A95A1],b[0x1A95A2],b[0x1A95A3]);
+   if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x14DA7FD],*reinterpret_cast<void**>(b+0x14DB5D8),*reinterpret_cast<int*>(b+0xFE0E40),b[0x14DA8CC],*reinterpret_cast<void**>(b+0x14DA8D4),*reinterpret_cast<int*>(b+0x14DA8D0),b[0x1C33B0],b[0x1C33B1],b[0x1C33B2],b[0x1C33B3]);
    mouthGate.reset();return;
   }
   forgetHeldAid();
@@ -971,10 +975,10 @@ namespace {
   if(!ready||!loaded){enabled=false;gestureGameplayAllowed=false;return;}auto now=GetTickCount64();if(now-lastLoop<10)return;lastLoop=now;
   if(presentation_adapter::base){
    unsigned id=0;Vec namePoint{};
-   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xDA03)()==0x3F1){
+   if(reinterpret_cast<int(__cdecl*)()>(presentation_adapter::base+0xDC6A)()==0x3F1){
     Element e;if(call(dialoguePartner,e)&&e.type==2&&e.value.form){
      auto actorRoot=scene::root(e.value.form);auto head=scene::find(actorRoot,"Bip01 Head");
-     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0xADC1)();
+     if(head){namePoint=scene::world(head).p;auto nativeSettings=reinterpret_cast<unsigned char*(__cdecl*)()>(presentation_adapter::base+0xAF97)();
       // Head joint is inside the skull: allow crown height plus a visible air gap.
       namePoint.z+=.32f*(*reinterpret_cast<float*>(nativeSettings+0x28));id=e.value.form->id;}
     }release(e);
@@ -1155,9 +1159,9 @@ namespace {
     auto script=compile("target probe",expression.c_str(),true);Element e;
     auto b=build_adapter::heldModule();Vec centre{},tracking{};float extent=0;
     bool ok=call(script,e)&&e.type==2&&e.value.form&&b;
-    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1A5CB0)(e.value.form,&centre,&extent);
-    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
-     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x69AAC0)(manager,&tracking,&centre);}
+    if(ok)ok=reinterpret_cast<bool(__cdecl*)(void*,Vec*,float*)>(b+0x1BF6F0)(e.value.form,&centre,&extent);
+    if(ok){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13C73)();
+     reinterpret_cast<Vec*(__thiscall*)(void*,Vec*,const Vec*)>(b+0x6C7D50)(manager,&tracking,&centre);}
     std::ofstream probe(std::string(dir)+"\\target-probe.json");
     probe<<"{\"ok\":"<<(ok?"true":"false")<<",\"tracking\":["<<tracking.x<<","<<tracking.y<<","<<tracking.z<<"],\"extent\":"<<extent<<"}";
     release(e);continue;

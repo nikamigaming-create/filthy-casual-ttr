@@ -51,10 +51,10 @@ inline bool install(){
  if(originalToWorld)return true;auto base=build_adapter::heldModule();if(!base)return false;
  struct Hook{unsigned rva,size;unsigned char bytes[6];void* target;void* trampoline;DWORD old;};
  Hook hooks[]={
- {0x698960,5,{0x83,0xEC,0x5C,0x56,0x57},reinterpret_cast<void*>(&toWorld)},
- {0x69AAC0,6,{0x83,0xEC,0x60,0x56,0x8B,0xF1},reinterpret_cast<void*>(&toTracking)},
- {0x698C20,6,{0x55,0x8B,0xEC,0x83,0xE4,0xF0},reinterpret_cast<void*>(&worldRotation)},
- {0x69A7B0,6,{0x55,0x8B,0xEC,0x83,0xE4,0xF0},reinterpret_cast<void*>(&trackingRotation)}};
+ {0x6C5980,5,{0x83,0xEC,0x5C,0x56,0x57},reinterpret_cast<void*>(&toWorld)},
+ {0x6C7D50,6,{0x83,0xEC,0x60,0x56,0x8B,0xF1},reinterpret_cast<void*>(&toTracking)},
+ {0x6C5C40,6,{0x55,0x8B,0xEC,0x83,0xE4,0xF0},reinterpret_cast<void*>(&worldRotation)},
+ {0x6C7A40,6,{0x55,0x8B,0xEC,0x83,0xE4,0xF0},reinterpret_cast<void*>(&trackingRotation)}};
  for(auto& h:hooks)if(memcmp(base+h.rva,h.bytes,h.size))return false;
  unsigned prepared=0;
  for(auto& h:hooks){h.trampoline=VirtualAlloc(nullptr,16,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);if(!h.trampoline)break;auto t=static_cast<unsigned char*>(h.trampoline);memcpy(t,h.bytes,h.size);t[h.size]=0xE9;*reinterpret_cast<int*>(t+h.size+1)=int((base+h.rva+h.size)-(t+h.size+5));DWORD old;if(!VirtualProtect(t,16,PAGE_EXECUTE_READ,&old))break;++prepared;}
@@ -68,4 +68,17 @@ inline bool install(){
  // protection, then unwind in reverse so the original RX protection wins.
  for(int i=3;i>=0;i--){DWORD unused;VirtualProtect(base+hooks[i].rva,hooks[i].size,hooks[i].old,&unused);}return true;
 }
+
+// Allow consumers to verify this exact owned detour without accepting arbitrary hooks.
+inline bool ownsTrackingHook(const unsigned char* entry){
+ auto base=build_adapter::heldModule();
+ if(!base||entry!=base+0x6C7D50||!originalToTracking||entry[0]!=0xE9||entry[5]!=0x90||entry[6]!=0x57)return false;
+ int displacement{};memcpy(&displacement,entry+1,4);
+ const unsigned char expected[]={0x83,0xEC,0x60,0x56,0x8B,0xF1};
+ auto trampoline=reinterpret_cast<const unsigned char*>(originalToTracking);
+ int back{};memcpy(&back,trampoline+7,4);
+ return entry+5+displacement==reinterpret_cast<const unsigned char*>(&toTracking)
+  &&!memcmp(trampoline,expected,sizeof expected)&&trampoline[6]==0xE9&&trampoline+11+back==entry+6;
+}
+
 }

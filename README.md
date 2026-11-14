@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/terminal-banner.svg" alt="Filthy Casual TTR — reach your inventory, settle into the wasteland" width="100%"></p>
+<p align="center"><img src="docs/assets/terminal-banner.svg" alt="Filthy Casual TTR â€” reach your inventory, settle into the wasteland" width="100%"></p>
 
 # Filthy Casual TTR
 
@@ -7,11 +7,13 @@
 Pick a weapon. Grab a snack. Set your seated height. Keep TTR's normal interactions.
 Filthy Casuals adds comfort and control tools to an existing **Tale of Two Wastelands VR** installation.
 
-**1.7.0-dev.1 · RobCo controls candidate · updated 13 November 2026**
+**1.7.0-dev.1 Â· RobCo controls candidate Â· updated 13 November 2026**
 
-[⬇ Downloads](https://github.com/nikamigaming-create/filthy-casual-ttr/releases) · [⚙ Install](docs/INSTALL.md) · [🎮 Controls](docs/CONTROLS-EDITOR.md) · [⌨ Offline editor](tools/controls-editor.html) · [Validation](docs/VALIDATION.md)
+[â¬‡ Downloads](https://github.com/nikamigaming-create/filthy-casual-ttr/releases) Â· [âš™ Install](docs/INSTALL.md) Â· [ðŸŽ® Controls](docs/CONTROLS-EDITOR.md) Â· [âŒ¨ Offline editor](tools/controls-editor.html) Â· [Validation](docs/VALIDATION.md)
 
-[One-page illustrated field manual](docs/assets/filthy-casual-field-manual.png) covers the current local candidate, including optional vehicles and bottle impacts. The release includes the core ZIP; vehicles remain a separate optional addon with local asset preparation.
+[One-page illustrated field manual](docs/assets/filthy-casual-field-manual.png) covers the current beta, including optional vehicles and bottle impacts. The release includes the core ZIP; vehicles remain a separate optional addon with local asset preparation.
+
+This build requires **TTR 1.1.5** with the exact DLL hash in [Install](docs/INSTALL.md). For the previous TTR 1.1.2 host, use [beta 1](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.1). Update core and Vehicles together when both are installed.
 
 ## Your controls, your couch
 
@@ -38,7 +40,7 @@ TTR shares some input channels between actions: Trigger can mean fire, operate
 a part, use a scope or activate a held item. Those uses move together and are
 listed together. Holster reaches, magazine insertion, throwing and other spatial
 interactions remain native. Quest's system Home button belongs to the headset.
-[Full editor guide](docs/CONTROLS-EDITOR.md) · [Addon provider API](docs/CONTROLS-PROVIDERS.md).
+[Full editor guide](docs/CONTROLS-EDITOR.md) Â· [Addon provider API](docs/CONTROLS-PROVIDERS.md).
 
 ## Reach, touch, equip
 
@@ -136,7 +138,7 @@ of Filthy Casuals.
 ## Install in MO2
 
 1. Start with TTR already launching correctly in VR.
-2. Install `Filthy-Casual-TTR-1.8.0-beta.1.zip` using MO2's **Install a new mod from an archive**.
+2. Install `Filthy-Casual-TTR-1.8.0-beta.2.zip` using MO2's **Install a new mod from an archive**.
 3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane so it wins
    file conflicts. Keep the base mod enabled. Preserve your personal INI on update.
 4. Launch the same working TTR executable through MO2. No global OpenXR changes
@@ -146,7 +148,7 @@ The supported upstream archive labels itself **1.1.2**. Compatibility is checked
 against **TTWVR.dll SHA-256**, not its filename or version label:
 
 ```text
-7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E
+E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1
 ```
 
 Unknown builds are refused. [Installation details](docs/INSTALL.md).
@@ -164,13 +166,13 @@ mode discovery and switching, physical steering, throttle, climb and native
 landing. README pictures are populated in-game captures; both eyes were reviewed.
 This development candidate still needs physical headset comfort and arbitrary
 custom-binding testing. See [validation](docs/VALIDATION.md) for precise coverage.
-[Reload tutorial coverage](docs/WEAPON-TUTORIAL.md) · [Dropped ammo](docs/PHYSICAL_PARTS.md).
+[Reload tutorial coverage](docs/WEAPON-TUTORIAL.md) Â· [Dropped ammo](docs/PHYSICAL_PARTS.md).
 
 Original mods remain their authors' work. We link to them, never bundle their
 files. [Licenses and attribution](THIRD_PARTY.md).
 
 **No working Menu button?** Double-click `Configure Controls.cmd` to type your replacement input, combo or editor shortcut. [INI bindings and startup fallback](docs/CONTROLS-EDITOR.md#typed-ini-bindings-and-desktop-access).
 
-[Controller support, actual button names and starter INIs](docs/CONTROLLERS.md) � [Controller montage](docs/assets/controllers-montage-mobile.mp4)
+[Controller support, actual button names and starter INIs](docs/CONTROLLERS.md) · [Controller montage](docs/assets/controllers-montage-mobile.mp4)
 
 The local 1.8.0 controller candidate is prepared for final headset testing. Public 1.7.0-dev.1 is unchanged.

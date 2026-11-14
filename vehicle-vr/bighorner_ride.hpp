@@ -178,7 +178,7 @@ bool tickRide(){
   }
   if(!rideCandidate||!scene::root(rideCandidate)){rideHold=0;return false;}
   auto root=scene::root(rideCandidate);auto spine=scene::find(root,"Bip01 Spine1"),front=scene::find(root,rideCandidateDeathclaw?"Bip01 Spine2":"Bip01 Spine3");if(!spine||!front)return false;
-  auto a=scene::world(spine).p,b=scene::world(front).p;auto base=build_adapter::heldModule();auto manager=base?reinterpret_cast<void*(__cdecl*)()>(base+0x13903)():nullptr;
+  auto a=scene::world(spine).p,b=scene::world(front).p;auto base=build_adapter::heldModule();auto manager=base?reinterpret_cast<void*(__cdecl*)()>(base+0x13C73)():nullptr;
   bool closeEnough=true;for(int i=0;i<2;i++){scene::Vec p{};bool ok=vehicle_adapter::gripPoint(manager,i,p);closeEnough=closeEnough&&ok&&!vehicle_adapter::occupied(i,weaponVisible)&&rideSurface(root,p,30,rideCandidateDeathclaw);}
   if(!testDir.empty()){static ULONGLONG traceAt=0;if(now-traceAt>250){traceAt=now;std::ofstream o(testDir+"\\bighorner-contact.json");o<<"{\"hands\":[";for(int i=0;i<2;i++){scene::Vec p{};auto ok=vehicle_adapter::gripPoint(manager,i,p);if(i)o<<",";o<<"{\"grip\":"<<h[i].grip<<",\"valid\":"<<ok<<",\"distance\":"<<std::min(scene::distance(p,a),scene::distance(p,b))<<",\"occupied\":"<<vehicle_adapter::occupied(i,weaponVisible)<<",\"surface\":"<<rideSurface(root,p)<<"}";}o<<"]}";}}
   if(rideCandidateDeathclaw){

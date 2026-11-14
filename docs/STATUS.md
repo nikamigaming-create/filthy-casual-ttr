@@ -1,3 +1,52 @@
+# TTR 1.1.5 / Filthy Casuals 1.8.0-beta.2 - 2026-11-14
+
+Installed and hash-verified locally; five personal INIs preserved, game closed.
+Final core SHA-256: `8bac9a9baaefaedafaf28fe1aa954ccc9fd622e10c6dd317b08e5bdfedb769c2`.
+
+Compatibility port for upstream TTWVR.dll SHA-256
+`E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1`
+(PE timestamp `6AF8509E`). Older/unknown hosts refuse integration. Keep beta 1
+for its supported older TTR 1.1.2 DLL. Update Core and optional Vehicles together.
+
+Passed fresh isolated native-game checks with simulated XR input:
+- Weapon/aid touch selection, center deselection, native right-hand item scale,
+  automatic reload, firing, calibration and settings close without input leakage.
+- Recovered magazines: ordinary pickup, insertion, empty chamber retained until
+  native slide operation, repeated pickup and pouch return without duplicate ammo.
+- Kebab, iguana, Buffout and whiskey consumed once; mouth follows head rotation.
+- Live remapping, profile save/load, defaults and recovery; native Pause/Back and
+  physical finger curls preserved. Offline checks cover all 70 input sources.
+- Dialogue name and panel placement, stable anchors during head turns, scoped
+  weapons at three distances; exact-build scope/HUD guards passed.
+- Native driving and steering grip, takeoff/movement/climb/landing, separate car
+  and flight seat offsets, restored ground height and controls after exit.
+- Bighorner body hold, 30-second challenge, steering/run/idle and dismount.
+- Glass impact projection on desert LAND and road geometry; final-eye captures
+  reviewed. Earlier sign/fade tests are historical, not a new every-surface claim.
+
+A final-eye review caught premature bottle breakage during staged native pickup.
+The pending replacement is now excluded from impact judgment until handoff ends.
+The regression test explicitly checks the empty reference, native ownership and
+correct bottle base; consumption alone is not sufficient proof. Near-wall pickup
+and four bottle families passed in session PID 17296, including native release
+and continuous rendered physics with zero observed render stalls. Actual impact
+effects still fired after release. The session closed normally.
+
+Evidence: runtime-basic.log, runtime-combined.log, runtime-vehicles.log and
+runtime-finish.log under private work/ttr-e14567bc. Earlier vehicle failures in
+those logs were superseded by corrected adapter and fresh-state tests; final
+session PID 35224 exited normally. Public source builds independently.
+
+Limits: this is beta acceptance in the simulator, not new physical-headset comfort
+certification. Deathclaw-specific behavior and every controller family were not
+rerun physically on 1.1.5. Cockpit geometry remains the existing beta geometry.
+Pool is excluded. Original game/mod assets and the private Meta helper are not
+part of the public release.
+
+---
+
+Historical entries follow.
+
 # Current 1.8.0-beta.1 release candidate
 
 Fresh core/input/vehicle builds pass. Focused mouth, 70-input remapping, typed INI,

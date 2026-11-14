@@ -406,8 +406,8 @@ inline void* dropAmmo(void* player,void* ammo,unsigned count){
 inline unsigned stackCount(void* ref){if(!ref)return 0;auto p=scene::field<void*>(ref,0x48);unsigned guard=0;while(p&&guard++<256){if(scene::field<unsigned char>(p,4)==0x24)return unsigned(std::max(0,int(scene::field<short>(p,0xC))));p=scene::field<void*>(p,8);}return 1;}
 inline scene::Vec trackingPoint(scene::Vec point){
  auto b=build_adapter::heldModule();scene::Vec result{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
-  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x69AAC0)(manager,&result,&point);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13C73)();
+  if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x6C7D50)(manager,&result,&point);}
  return result;
 }
 // Invert the native world-to-tracking transform around a nearby point, avoiding
@@ -424,8 +424,8 @@ inline bool worldTrackingPoint(scene::Vec tracking,scene::Vec reference,scene::V
 }
 inline scene::Vec gripPoint(int hand){
  auto b=build_adapter::heldModule();scene::Vec point{};float rotation[9]{};
- if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();
-  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x6949C0)(manager,hand!=0,false,&point,rotation);}
+ if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13C73)();
+  if(manager)reinterpret_cast<bool(__thiscall*)(void*,bool,bool,scene::Vec*,float*)>(b+0x6C19F0)(manager,hand!=0,false,&point,rotation);}
  return point;
 }
 

@@ -1,11 +1,11 @@
-# Optional Filthy Casual Vehicles 1.8.0 beta
+# Optional Filthy Casual Vehicles 1.8.0 beta 2
 
 Install the core only if you want selectors, seated settings and the remapper.
 Vehicles is separate; Pool is not enabled or included.
 
 ## Required downloads (not bundled)
 
-- Working TTR 1.1.2, exact DLL SHA-256 `7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E`.
+- Working TTR 1.1.5, exact DLL SHA-256 `E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1`.
 - Cars: [Uhmatt Drivable Cars 8b](https://www.nexusmods.com/newvegas/mods/63890).
 - Flight: [Vertibird Player Home 4.18 + TTW patch 4.18c](https://www.nexusmods.com/newvegas/mods/60923) and [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171).
 - kNVSE and the original mods' requirements. Python 3.11 for local preparation.

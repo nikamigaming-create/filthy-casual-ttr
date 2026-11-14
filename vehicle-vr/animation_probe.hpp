@@ -12,11 +12,11 @@ inline void capture(const std::string& folder,void* actor,void* renderedRoot){
  auto dir=folder+"\\animation-probe";CreateDirectoryA(dir.c_str(),nullptr);
  std::ofstream index(dir+"\\index.txt");index<<std::hex<<"actor "<<actor<<" renderedRoot "<<renderedRoot<<"\n";
  auto dump=[&](const std::string& name,void* address,size_t size){std::vector<char> data(size);if(read(address,data.data(),size)){std::ofstream out(dir+"\\"+name+".bin",std::ios::binary);out.write(data.data(),size);index<<name<<" "<<address<<" "<<size<<"\n";}};
- dump("matrix-column-writer",reinterpret_cast<void*>(0x4B4660),0x100);
- dump("native-quaternion-matrix",reinterpret_cast<void*>(0x4F0180),0x300);
- dump("multitarget-update",reinterpret_cast<void*>(0xA2FBE0),0x800);
+ dump("matrix-column-writer",reinterpret_cast<void*>(0x4b4660),0x100);
+ dump("native-quaternion-matrix",reinterpret_cast<void*>(0x4f0180),0x300);
+ dump("multitarget-update",reinterpret_cast<void*>(0xa2fbe0),0x800);
  dump("player-getter",reinterpret_cast<void*>(0x950A10),0x180);dump("process-getter",reinterpret_cast<void*>(0x602150),0x100);
- dump("transform-update",reinterpret_cast<void*>(0xA3FDB0),0x600);dump("idle-play",reinterpret_cast<void*>(0x497F20),0x200);
+ dump("transform-update",reinterpret_cast<void*>(0xa3fdb0),0x600);dump("idle-play",reinterpret_cast<void*>(0x497f20),0x200);
  unsigned process=ptr(actor,0x68);unsigned vt=ptr(reinterpret_cast<void*>(process),0);dump("process-vtable",reinterpret_cast<void*>(vt),0x200);
  if(ptr(reinterpret_cast<void*>(vt),0x1B8)!=0x602150)return;
  for(int variant=0;variant<2;variant++){

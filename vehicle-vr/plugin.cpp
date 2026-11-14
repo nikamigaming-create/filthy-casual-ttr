@@ -11,7 +11,6 @@
 #include "../build_adapter.hpp"
 #include "../scene_adapter.hpp"
 #include "../layer_discovery.hpp"
-#include "../pool-vr/adapter.hpp"
 #include "adapter.hpp"
 #include "../controls_provider.hpp"
 #include "publication_adapter.hpp"
@@ -170,7 +169,7 @@ void finalizePublication(void* manager){
    // The native HMD rotation's second column is forward (exact-build VATS
    // consumer copies matrix offsets 4,16,28). Remove the native world basis
    // and latch physical boarding yaw; pitch and subsequent head turns stay free.
-   mounted_frame::Mat head;mounted_frame::originalWorldRotation(manager,&head,static_cast<unsigned char*>(manager)+0x28);
+   mounted_frame::Mat head;mounted_frame::originalWorldRotation(manager,&head,static_cast<unsigned char*>(manager)+0x2C);
    auto forward=mounted_frame::apply(mounted_frame::transpose(nativeBasis),{head.a[0][1],head.a[1][1],head.a[2][1]});
    if(!mounted_frame::headingFromForward(forward,mountedStageHeading)){invalidateMountedFrame();return;}
    mountedYawOffset=wrap(nativeYaw-yaw);mountedYawReady=true;
@@ -184,7 +183,7 @@ void finalizePublication(void* manager){
   auto eye=scene::find(body,eyeName());
   if(!eye){invalidateMountedFrame();return;}
   if(calibrating){
-   scene::Vec nativeHead;mounted_frame::originalToWorld(manager,&nativeHead,&scene::field<scene::Vec>(manager,0x1C));
+   scene::Vec nativeHead;mounted_frame::originalToWorld(manager,&nativeHead,&scene::field<scene::Vec>(manager,0x20));
    auto delta=mounted_frame::apply(correction,nativeHead-scene::field<scene::Vec>(manager,0xB04));
    mountedEyeOffset=mounted_frame::apply(mounted_frame::transpose(bodyNow),delta);
   }
@@ -254,7 +253,7 @@ void beforeContacts(void* actor){
 void recordHandFrame(){
  if(testDir.empty()||!active||!publicationCommitted||GetCurrentThreadId()!=mainThread||!player||!car)return;
  auto root=scene::root(player),body=scene::find(scene::root(car),carrierName());
- auto b=build_adapter::heldModule();auto manager=b?reinterpret_cast<void*(__cdecl*)()>(b+0x13903)():nullptr;
+ auto b=build_adapter::heldModule();auto manager=b?reinterpret_cast<void*(__cdecl*)()>(b+0x13C73)():nullptr;
  if(!root||!body||!manager)return;
  static std::ofstream out(testDir+"\\mounted-hands.jsonl",std::ios::trunc);static unsigned count=0;if(!out||count++>=16000)return;
  auto c=scene::world(body);LARGE_INTEGER qpc;QueryPerformanceCounter(&qpc);
@@ -294,7 +293,7 @@ void endPublication(){
  if(guardedPlayer&&!flying&&publicationCommitted){
   // Steering and grip constraints publish before the native contact/arm solve.
   if(!testDir.empty()&&car){static std::ofstream trace(testDir+"\\car-rig.jsonl",std::ios::trunc);static unsigned count=0;
-   auto b=build_adapter::heldModule();auto m=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();auto rt=scene::root(car);auto w=scene::find(rt,"FCSteeringWheel"),st=scene::find(rt,"Seat");
+   auto b=build_adapter::heldModule();auto m=reinterpret_cast<void*(__cdecl*)()>(b+0x13C73)();auto rt=scene::root(car);auto w=scene::find(rt,"FCSteeringWheel"),st=scene::find(rt,"Seat");
    if(m&&w&&st&&count++<12000){auto origin=scene::field<scene::Vec>(m,0xB04),anchor=scene::field<scene::Vec>(m,0xB10),seat=scene::world(st).p,wheel=scene::world(w).p;
     auto carrier=scene::find(rt,"FCWheelCarrier");auto ct=scene::world(carrier);auto relative=scene::inverseRotate(ct,wheel-seat)*(1/ct.scale);float bodyYaw=std::atan2(ct.r[0][1],ct.r[1][1]);
     trace<<"{\"bodyYaw\":"<<bodyYaw<<",\"yawOffset\":"<<mountedYawOffset<<",\"relative\":["<<relative.x<<","<<relative.y<<","<<relative.z<<"],\"sequence\":"<<publicationCalls.load()<<",\"epochPid\":"<<GetCurrentProcessId()<<",\"origin\":["<<origin.x<<","<<origin.y<<","<<origin.z<<"],\"anchor\":["<<anchor.x<<","<<anchor.y<<","<<anchor.z<<"],\"seat\":["<<seat.x<<","<<seat.y<<","<<seat.z<<"],\"wheel\":["<<wheel.x<<","<<wheel.y<<","<<wheel.z<<"],\"yaw\":"<<scene::field<float>(m,0xB3C)<<",\"mode\":"<<unsigned(scene::field<unsigned char>(m,0xB21))<<"}\n";if(count%30==0)trace.flush();
@@ -398,10 +397,10 @@ void updateSteering(){
  if(!throttle)variable("Throttle",0);if(!brake)variable("BrakeForce",0);
  if(live&&fresh[1]&&h[1].b&&!exitWas)variable("Dismount",1);exitWas=h[1].b;
  if(!testDir.empty()){
-  static ULONGLONG last=0;if(now-last>100){last=now;auto c=pooladapter::tracking(center),r=pooladapter::tracking(center+right*(10*t.scale)),u=pooladapter::tracking(center+up*(10*t.scale));
-   auto pa=pooladapter::tracking(scene::palm(rig,0)),pb=pooladapter::tracking(scene::palm(rig,1));
+  static ULONGLONG last=0;if(now-last>100){last=now;auto c=vehicle_adapter::tracking(center),r=vehicle_adapter::tracking(center+right*(10*t.scale)),u=vehicle_adapter::tracking(center+up*(10*t.scale));
+   auto pa=vehicle_adapter::tracking(scene::palm(rig,0)),pb=vehicle_adapter::tracking(scene::palm(rig,1));
    scene::Vec shoulder[2]{};float armLength[2]{};
-   for(int h=0;h<2;h++){auto a=scene::find(rig,h?"Bip01 R UpperArm":"Bip01 L UpperArm"),e=scene::find(rig,h?"Bip01 R Forearm":"Bip01 L Forearm"),w=scene::find(rig,h?"Bip01 R Hand":"Bip01 L Hand");if(a&&e&&w){shoulder[h]=pooladapter::tracking(scene::world(a).p);armLength[h]=(scene::distance(scene::world(a).p,scene::world(e).p)+scene::distance(scene::world(e).p,scene::world(w).p))/vehicle_adapter::unitsPerMetre();}}
+   for(int h=0;h<2;h++){auto a=scene::find(rig,h?"Bip01 R UpperArm":"Bip01 L UpperArm"),e=scene::find(rig,h?"Bip01 R Forearm":"Bip01 L Forearm"),w=scene::find(rig,h?"Bip01 R Hand":"Bip01 L Hand");if(a&&e&&w){shoulder[h]=vehicle_adapter::tracking(scene::world(a).p);armLength[h]=(scene::distance(scene::world(a).p,scene::world(e).p)+scene::distance(scene::world(e).p,scene::world(w).p))/vehicle_adapter::unitsPerMetre();}}
    auto px=callOn(getX,car),py=callOn(getY,car);std::ofstream o(testDir+"\\vehicle-state.json");o<<"{\"shoulders\":[["<<shoulder[0].x<<","<<shoulder[0].y<<","<<shoulder[0].z<<"],["<<shoulder[1].x<<","<<shoulder[1].y<<","<<shoulder[1].z<<"]],\"armLength\":["<<armLength[0]<<","<<armLength[1]<<"],\"active\":true,\"car\":"<<car->id<<",\"angle\":"<<wheelAngle<<",\"steer\":"<<steering<<",\"gas\":"<<throttle<<",\"actorState\":"<<vehicle_adapter::actorState(player)<<",\"controlFlags\":"<<unsigned(scene::field<unsigned char>(player,0x680))<<",\"idleOwned\":"<<seated_animation::ownsActive(player)<<",\"knees\":"<<knee_steering::weight<<",\"momentum\":"<<momentum.value.number<<",\"reverse\":"<<pedals.reverse<<",\"brake\":"<<brake<<",\"grabbed\":["<<grabbed[0]<<","<<grabbed[1]<<"],\"center\":["<<c.x<<","<<c.y<<","<<c.z<<"],\"right\":["<<r.x<<","<<r.y<<","<<r.z<<"],\"up\":["<<u.x<<","<<u.y<<","<<u.z<<"],\"palms\":[["<<pa.x<<","<<pa.y<<","<<pa.z<<"],["<<pb.x<<","<<pb.y<<","<<pb.z<<"]],\"position\":["<<px.value.number<<","<<py.value.number<<"]}";
   }
  }
@@ -541,3 +540,5 @@ extern "C" __declspec(dllexport) void* __cdecl FC_VehicleTutorialFrame(scene::Tr
 extern "C" __declspec(dllexport) unsigned __cdecl FC_RidePulse(){return ridePulse.load();}
 
 extern "C" __declspec(dllexport) int __cdecl FC_SeatContext(){return !active?0:riding?(ridingDeathclaw?4:3):flying?2:1;}
+
+extern "C" __declspec(dllexport) bool __cdecl FC_NativeTrackingHook(const unsigned char* entry){return mounted_frame::ownsTrackingHook(entry);}

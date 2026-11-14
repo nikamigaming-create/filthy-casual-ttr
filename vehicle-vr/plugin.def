@@ -16,3 +16,5 @@ FC_VehicleHandContact
 FC_RidePulse
 
 FC_SeatContext
+
+    FC_NativeTrackingHook
