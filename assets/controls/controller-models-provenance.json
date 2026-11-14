@@ -1,0 +1,152 @@
+[
+  {
+    "controller": "generic-trigger",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/generic-trigger/left.glb",
+    "sha256": "fdfab411fdca3ae8d83844bb1e1894ac6f87afcca342bb1dc1f9a30f943b01a9",
+    "license": "MIT",
+    "parts": 3,
+    "vertices": 2225
+  },
+  {
+    "controller": "generic-trigger",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/generic-trigger/right.glb",
+    "sha256": "672aa1f57bba606e1dbb9014f614c1e4ebf082b7db3d8412b30900ceae2df675",
+    "license": "MIT",
+    "parts": 3,
+    "vertices": 2225
+  },
+  {
+    "controller": "htc-vive",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/htc-vive/none.glb",
+    "sha256": "bd201855c8114b9b0e9cdd465d6f08413d18604894c839fb78d54d890c2adc94",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 17551
+  },
+  {
+    "controller": "htc-vive",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/htc-vive/none.glb",
+    "sha256": "bd201855c8114b9b0e9cdd465d6f08413d18604894c839fb78d54d890c2adc94",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 17551
+  },
+  {
+    "controller": "meta-quest-touch-plus",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/meta-quest-touch-plus/left.glb",
+    "sha256": "41a35b80221398d37029cbfaa9e39084ccd43e0206be72a5e8460f52e7882cb4",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 3342
+  },
+  {
+    "controller": "meta-quest-touch-plus",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/meta-quest-touch-plus/right.glb",
+    "sha256": "5126d638fb1d03e05d16d8eec3b31b9588df88eaa8b42cc21b857fac3bd44916",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 3340
+  },
+  {
+    "controller": "meta-quest-touch-pro",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/meta-quest-touch-pro/left.glb",
+    "sha256": "5f64ff585815292bd7e35ac0db67e269cd10dd9f215f8a5f14b29de4c83819f9",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 3305
+  },
+  {
+    "controller": "meta-quest-touch-pro",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/meta-quest-touch-pro/right.glb",
+    "sha256": "de508862ac1460814b9236441982dfe2611ac5b1002d48503186e35a09d38272",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 3305
+  },
+  {
+    "controller": "microsoft-mixed-reality",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/microsoft-mixed-reality/left.glb",
+    "sha256": "57a587a1d6dc3f91368f141ebf2f60d334875aaa04d899357bfcb4f55e08217c",
+    "license": "MIT",
+    "parts": 8,
+    "vertices": 3609
+  },
+  {
+    "controller": "microsoft-mixed-reality",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/microsoft-mixed-reality/right.glb",
+    "sha256": "e001df0d261dfe103d41d7d29e27bfd55f2d07ec4309add00a2f85c857a09b05",
+    "license": "MIT",
+    "parts": 8,
+    "vertices": 3609
+  },
+  {
+    "controller": "oculus-touch-v3",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/oculus-touch-v3/left.glb",
+    "sha256": "5a3015792dac074b31607e63eeb75743eac479540a36739e5f94b65335a7f88a",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 12107
+  },
+  {
+    "controller": "oculus-touch-v3",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/oculus-touch-v3/right.glb",
+    "sha256": "18a2e651328b684d3aeeef9f16c083af1eea9c1f98f78f9da94960432c8a021b",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 12111
+  },
+  {
+    "controller": "pico-4",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/pico-4/left.glb",
+    "sha256": "0a0cc5101dcc192e30007db6fdcf7bd1a04b2c08bd7c05add8608138f30adb53",
+    "license": "MIT",
+    "parts": 10,
+    "vertices": 3442
+  },
+  {
+    "controller": "pico-4",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/pico-4/right.glb",
+    "sha256": "5b5e334bd9b4ea764e88ddf9ed37183e7d56d01d8493bd50273d9dfae8cc5460",
+    "license": "MIT",
+    "parts": 10,
+    "vertices": 3436
+  },
+  {
+    "controller": "valve-index",
+    "hand": "left",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/valve-index/left.glb",
+    "sha256": "845de49bdd4511ddf72e10846c7290dc2d48d0c30218e700017f486a5dcfece2",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 7494
+  },
+  {
+    "controller": "valve-index",
+    "hand": "right",
+    "url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.20/dist/profiles/valve-index/right.glb",
+    "sha256": "9b0d2606ea6856958fcef98d8d119a550cb061fc31cde4c17fb1fa2251b6db81",
+    "license": "MIT",
+    "parts": 6,
+    "vertices": 7507
+  },
+  {
+    "controller": "steam-frame",
+    "source": "Original Filthy Casuals schematic based on Valve published button layout. Not a manufacturer mesh.",
+    "license": "project license",
+    "reference": "https://github.com/ValveSoftware/Unity/blob/main/com.valvesoftware.openxr.utils/Documentation~/index.md"
+  }
+]

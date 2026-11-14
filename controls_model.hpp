@@ -6,10 +6,11 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include "controller_profiles.hpp"
 namespace fc_controls {
-constexpr int sourceCount=29,nativeCount=21,actionCount=26;
+constexpr int sourceCount=70,nativeCount=21,actionCount=26;
 enum Gesture {Level,Press,Tap,Hold,DoubleTap};
-inline const char* sourceNames[]={"Left trigger","Left grip","X","Y","Left stick click","Right trigger","Right grip","A","B","Right stick click","Left Menu","Left stick left","Left stick right","Left stick down","Left stick up","Right stick left","Right stick right","Right stick down","Right stick up","Left thumb rest","Right thumb rest","Left stick touch","Right stick touch","X touch","Y touch","A touch","B touch","Left trigger touch","Right trigger touch"};
+inline const char* sourceNames[]={"LeftTrigger","LeftGrip","X","Y","LeftStickClick","RightTrigger","RightGrip","A","B","RightStickClick","LeftMenu","LeftStickLeft","LeftStickRight","LeftStickDown","LeftStickUp","RightStickLeft","RightStickRight","RightStickDown","RightStickUp","LeftThumbRest","RightThumbRest","LeftStickTouch","RightStickTouch","XTouch","YTouch","ATouch","BTouch","LeftTriggerTouch","RightTriggerTouch","RightMenu","LeftTrackpadClick","RightTrackpadClick","LeftTrackpadTouch","RightTrackpadTouch","LeftTrackpadLeft","LeftTrackpadRight","LeftTrackpadDown","LeftTrackpadUp","RightTrackpadLeft","RightTrackpadRight","RightTrackpadDown","RightTrackpadUp","LeftGripForce","RightGripForce","LeftTrackpadForce","RightTrackpadForce","LeftShoulder","RightShoulder","LeftDpadUp","LeftDpadDown","LeftDpadLeft","LeftDpadRight","RightX","RightY","LeftGripTouch","RightGripTouch","LeftShoulderTouch","RightShoulderTouch","LeftDpadUpTouch","LeftDpadDownTouch","LeftDpadLeftTouch","LeftDpadRightTouch","RightXTouch","RightYTouch","LeftMenuTouch","RightMenuTouch","LeftTriggerClick","RightTriggerClick","LeftGripClick","RightGripClick"};
 inline const char* actionNames[]={"Left trigger","Left grip","X / left primary","Y / left secondary","Left stick click","Right trigger","Right grip","A / right primary","B / right secondary","Right stick click","Left Menu","Move left","Move right","Move backward","Move forward","Turn left / scroll left","Turn right / scroll right","Crouch / scroll down","Jump / scroll up","Left thumb-rest touch","Right thumb-rest touch","Weapon wheel","Consumable wheel","Reload mode","Height / settings","Weapon tutorial"};
 inline const char* descriptions[]={
  "Fire, weapon parts, scope, heavy attack/block, stim activation; near wrist: Pip-Boy/flashlight; pouch: ammo type. Both triggers calibrate.",
@@ -39,7 +40,9 @@ inline bool valid(const Binding&b){return b.source>=-2&&b.source<sourceCount&&b.
 struct Sample {float value=0;bool active=false;int64_t time=0;};
 using Frame=std::array<Sample,sourceCount>;
 struct Profile {std::array<Binding,actionCount> bindings;Profile(){for(int i=0;i<actionCount;i++)bindings[i]=defaults(i);}};
-inline std::string bindingText(const Binding& b){if(b.source==-1)return "TTR / Filthy Casuals default";if(b.source==-2)return "Unbound";std::string s=sourceNames[b.source];if(b.modifier>=0)s=std::string(sourceNames[b.modifier])+" + "+s;s+=" / ";s+=gestureNames[b.gesture];if(b.gesture==Hold)s+=" "+std::to_string(b.delay)+"ms";return s;}
+inline std::array<std::string,sourceCount> sourceLabels{};
+inline std::string sourceLabel(int i){return sourceLabels[i].empty()?sourceNames[i]:sourceLabels[i];}
+inline std::string bindingText(const Binding& b){if(b.source==-1)return "TTR / Filthy Casuals default";if(b.source==-2)return "Unbound";std::string s=sourceLabel(b.source);if(b.modifier>=0)s=sourceLabel(b.modifier)+" + "+s;s+=" / ";s+=gestureNames[b.gesture];if(b.gesture==Hold)s+=" "+std::to_string(b.delay)+"ms";return s;}
 inline std::string encode(const Profile&p){std::ostringstream out;out<<"FilthyCasualControls 2\n";for(int i=0;i<actionCount;i++){auto b=p.bindings[i];out<<i<<' '<<b.source<<' '<<b.modifier<<' '<<int(b.gesture)<<' '<<b.delay<<'\n';}return out.str();}
 inline bool decode(const std::string&s,Profile&out){std::istringstream in(s);std::string magic;int version=0;in>>magic>>version;if(magic!="FilthyCasualControls"||(version!=1&&version!=2))return false;Profile p;int count=version==1?24:actionCount;for(int i=0;i<count;i++){int row=-1,g=-1;Binding b;if(!(in>>row>>b.source>>b.modifier>>g>>b.delay)||row!=i)return false;b.gesture=Gesture(g);if(!valid(b))return false;int destination=version==1&&i>=19?i+2:i;p.bindings[destination]=b;}std::string extra;if(in>>extra)return false;out=p;return true;}
 

@@ -4,6 +4,7 @@
 #include "reload_adapter.hpp"
 #include <cstdint>
 #include <climits>
+#include <atomic>
 #include <cstring>
 
 namespace native_worldmag_recovery {
@@ -29,6 +30,7 @@ inline DWORD ownerThread = 0;
 inline bool enabled = false, busy = false;
 inline uintptr_t normalFirst = 0, eligibleFirst = 0, normalSecond = 0, initializeSpare = 0, initializeInstalled = 0;
 inline bool commitInstalled = false;
+inline std::atomic<int> cycleRequiredHand{-1};inline void* cycleWeapon=nullptr;
 
 inline bool readable(const void* pointer, size_t bytes) noexcept {
     uintptr_t p = reinterpret_cast<uintptr_t>(pointer);
@@ -179,6 +181,10 @@ inline int commitBody(uintptr_t frame) noexcept {
     const Pending saved = pending; pending = {};
     if (!saved.candidate.id || saved.frameCookie != frame || GetTickCount64() - saved.at > 50) return 0;
     Candidate c{}; if (!readCandidate(c) || !sameCandidate(c, saved.candidate)) return 0;
+    // Native SetCurrentAmmoRounds mirrors the live clip count at F76030.
+    // A fired/empty gun can retain its chamber pose flag. Recovering its magazine
+    // must not turn that stale pose into a live chamber after native insertion.
+    const bool emptyChamber=c.installedMode==4&&global<int>(0xF76030)==0;
     int before = -1;
     if (!callbacks.inventory(c.player, c.ammo, &before) || before < 0 || before > INT_MAX - c.count) return 0;
     diagnostics.inventoryBefore = before; diagnostics.inventoryAfter = -1;
@@ -202,6 +208,10 @@ inline int commitBody(uintptr_t frame) noexcept {
     }
     diagnostics.poisoned = false; diagnostics.transferred = c.id; ++diagnostics.committed;
     commitInstalled = c.installedMode == 4;
+    if(emptyChamber){module[0xF75F50]=0;cycleWeapon=c.weapon;cycleRequiredHand=1-c.hand;}
+    // Keep the native empty-trigger auto-load fallback from cycling this recovered
+    // magazine. Off-hand trigger/physical slide remain untouched and clear the gate.
+    // A real round already in the chamber never enters this path.
     diagnostics.reason = commitInstalled ? "transferred once; entering native installed initializer" : "transferred once; entering native spare initializer";
     return c.count;
 }
@@ -334,6 +344,10 @@ inline const char* install(Callbacks supplied) {
     const uint32_t installedNode = reinterpret_cast<uint32_t>(base + 0x18B3C9C), installedCount = reinterpret_cast<uint32_t>(base + 0x18B3E40);
     memcpy(installedDestination + 7, &installedNode, 4); memcpy(installedDestination + 17, &installedCount, 4);
     if (memcmp(base + 0x350852, installedDestination, sizeof(installedDestination))) return "REFUSED: installed initializer guard";
+    unsigned char chamberRead[]={0x8A,0x0D,0,0,0,0},clipWrite[]={0xA3,0,0,0,0};
+    const uint32_t chamberAddress=reinterpret_cast<uint32_t>(base+0xF75F50),clipAddress=reinterpret_cast<uint32_t>(base+0xF76030);
+    memcpy(chamberRead+2,&chamberAddress,4);memcpy(clipWrite+1,&clipAddress,4);
+    if(memcmp(base+0x350D31,chamberRead,sizeof chamberRead)||memcmp(base+0x3337B5,clipWrite,sizeof clipWrite))return "REFUSED: native chamber/clip contract";
     struct Guard { unsigned rva; unsigned length; unsigned char bytes[8]; };
     const Guard helpers[]{
         {0x320320,5,{0xE9,0xD8,0x40,0xCF,0xFF}}, {0x315CF0,4,{0xFF,0x74,0x24,0x04}},
@@ -456,7 +470,10 @@ inline void tick(bool allow) noexcept {
     if (!ownerThread) ownerThread = GetCurrentThreadId();
     if (GetCurrentThreadId() != ownerThread || busy) return;
     pending = {}; enabled = allow && diagnostics.installed && !diagnostics.poisoned;
+    if(cycleRequiredHand.load()>=0){bool manual=false;
+      if(!module||global<void*>(0x18B3CB4)!=cycleWeapon||!build_adapter::readManualReload(manual)||!manual||module[0xF75F50]){cycleRequiredHand=-1;cycleWeapon=nullptr;}
+    }
 }
 // PreLoad/NewGame/exit: never reset poison in-process; an ambiguous Activate is terminal for this session.
-inline void reset() noexcept { enabled = false; pending = {}; }
+inline void reset() noexcept {cycleRequiredHand=-1;cycleWeapon=nullptr; enabled = false; pending = {}; }
 }

@@ -1,0 +1,38 @@
+int action
+ref chair
+ref bird
+float px
+float py
+float pz
+begin function {action}
+ let bird := GetFormFromMod "Player Vertibird.esm" "000E05"
+ let chair := GetFormFromMod "Vertibird Player Home - pilot inside.esp" "000C20"
+ if action == 2
+  bird.MoveTo player 0 1600 0
+  bird.SetAngle Z 0
+  bird.Enable
+  bird.SetVariable "ForceLand" 1
+  Call (GetFormFromMod "Player Vertibird.esm" "014E6E")
+ elseif action == 8
+  bird.SetVariable "ForceLand" 0
+  bird.SetVariable "State" 0
+  bird.PlayGroup Right 1
+ elseif action == 4
+  SetFunctionValue (bird.GetPos X)
+  return
+ elseif action == 5
+  SetFunctionValue (bird.GetPos Y)
+  return
+ elseif action == 6
+  SetFunctionValue (bird.GetPos Z)
+  return
+ elseif action == 7
+  let bird := GetFormFromMod "Player Vertibird.esm" "000AF2"
+  bird.Activate player 1
+ elseif action == 11
+  chair.Activate player 1
+ elseif action == 3
+  bird.Activate player 1
+ endif
+ SetFunctionValue 1
+end

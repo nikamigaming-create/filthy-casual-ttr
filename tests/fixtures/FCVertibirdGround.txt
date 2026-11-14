@@ -1,0 +1,7 @@
+float z
+ref bird
+begin function {z}
+ let bird := GetFormFromMod "Player Vertibird.esm" "000E05"
+ bird.SetPos Z z
+ SetFunctionValue (bird.GetPos Z)
+end

@@ -11,3 +11,10 @@ SC_Head
 
  SC_ControlsState
  SC_ControlAction
+
+ FC_NativePoseOwner
+ FC_NativePoseSubscribe
+
+ SC_Mouth
+
+SC_SeatOffset

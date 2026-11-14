@@ -1,0 +1,27 @@
+string_var baseID
+ref base
+float offsetX
+float offsetY
+float angle
+ref item
+float x
+float y
+float z
+float bottom
+float range
+begin function {baseID,offsetX,offsetY,angle}
+let base := StringToRef "$baseID"
+let x := player.GetPos X
+let y := player.GetPos Y
+let z := player.GetPos Z
+let x += offsetX
+let y += offsetY
+let z += 1000
+let bottom := z - 2000
+let range := GetP2PRayCastRange x y z x y bottom 6
+let z := bottom + range
+let item := player.PlaceAtMe base 1
+item.SetPosEx x y z
+item.SetAngle Z angle
+SetFunctionValue item
+end

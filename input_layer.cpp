@@ -39,22 +39,19 @@ namespace {
  uint32_t __cdecl optionalFilters(const char* name,int h,int kind,float x,float y){
   auto module=GetModuleHandleW(L"SeatedControls.dll");auto fn=module?reinterpret_cast<Filter>(GetProcAddress(module,"SC_Input")):nullptr;
   HMODULE extra[]={GetModuleHandleW(L"FilthyCasualPool.dll"),GetModuleHandleW(L"FilthyCasualVehicles.dll")};
-  const char* activeName[]={"FC_PoolActive","FC_VehicleActive"};const char* inputName[]={"FC_PoolInput","FC_VehicleInput"};
-  // Pool permits the normal wheels/settings; only vehicle driving owns this gate.
-  if(!strcmp(name,"fc_controls"))for(int i=1;i<2;i++)if(extra[i]){
-   auto active=reinterpret_cast<bool(__cdecl*)()>(GetProcAddress(extra[i],activeName[i]));
-   if(active&&active()){if(fn)fn(name,h,0,0,0);return 0;}
-  }
+  const char* inputName[]={"FC_PoolInput","FC_VehicleInput"};
+  // Mounted players retain the same deliberate wheels/settings shortcuts.
   // Raw inputs reach articulation first; only native actions are consumed.
   auto seated=fn?fn(name,h,kind,x,y):0;
   for(int i=0;i<2;i++)if(extra[i])if(auto filter=reinterpret_cast<Filter>(GetProcAddress(extra[i],inputName[i]))){// A seated UI consumes B before pool can treat it as leave-match.
    const bool uiOwnsB=i==0&&seated&&h==1&&!strcmp(name,"secondary_click");
-   auto mode=filter(name,h,kind,uiOwnsB?0.f:x,y);if(mode)return mode;}
+   const bool uiOwnsVehicle=i==1&&seated==1;
+   auto mode=filter(name,h,kind,(uiOwnsB||uiOwnsVehicle)?0.f:x,uiOwnsVehicle?0.f:y);if(mode)return mode;}
   return seated;
  }
  Filter bridge(){return optionalFilters;}
  void gestureReport(int hand,bool active,bool thumb,bool index){if(auto fn=bridge())fn("fc_gestures",hand,active?8:0,thumb?1.f:0.f,index?1.f:0.f);}
- void controlsReport(unsigned mask,bool active){fc_controls::Sample menu{(mask&4)?1.f:0.f,active,0};if(controls_runtime::route(10,menu)){mask=(mask&~4u)|(menu.value>.55f?4u:0u);}if(auto fn=bridge())fn("fc_controls",0,active?8:0,float(mask),0);}
+ void controlsReport(unsigned mask,bool active){fc_controls::Sample menu{(mask&4)?1.f:0.f,active,0};if(controls_runtime::route(10,menu)){mask=(mask&~4u)|(menu.value>.55f?4u:0u);active=menu.active;}if(auto fn=bridge())fn("fc_controls",0,active?8:0,float(mask),0);}
  void gestureDiagnostic(const char* stage,int result){if(auto fn=bridge()){std::string name=std::string("fc_diag:")+stage;fn(name.c_str(),0,0,float(result),0);}}
  std::string actionName(XrAction a){std::lock_guard<std::mutex> lock(mapMutex);auto i=names.find(a);return i==names.end()?"":i->second;}
  int hand(XrPath p){
@@ -152,7 +149,13 @@ namespace {
   if(!layerInfo||!layerInfo->nextInfo||!instance)return XR_ERROR_INITIALIZATION_FAILED;
   const auto* n=layerInfo->nextInfo;nextGipa=n->nextGetInstanceProcAddr;
   XrApiLayerCreateInfo chained=*layerInfo;chained.nextInfo=n->next;
-  auto r=n->nextCreateApiLayerInstance(info,&chained,instance);
+  std::vector<const char*> extensions(info->enabledExtensionNames,info->enabledExtensionNames+info->enabledExtensionCount);
+  PFN_xrEnumerateInstanceExtensionProperties enumerate=nullptr;
+  if(XR_SUCCEEDED(nextGipa(XR_NULL_HANDLE,"xrEnumerateInstanceExtensionProperties",reinterpret_cast<PFN_xrVoidFunction*>(&enumerate)))&&enumerate){uint32_t count=0;if(XR_SUCCEEDED(enumerate(nullptr,0,&count,nullptr))&&count<4096){std::vector<XrExtensionProperties> available(count,{XR_TYPE_EXTENSION_PROPERTIES});if(XR_SUCCEEDED(enumerate(nullptr,count,&count,available.data())))for(auto&p:controller_profiles::profiles)if(*p.extension&&std::none_of(extensions.begin(),extensions.end(),[&](const char*e){return !strcmp(e,p.extension);})&&std::any_of(available.begin(),available.end(),[&](const auto&e){return !strcmp(e.extensionName,p.extension);}))extensions.push_back(p.extension);}}
+  XrInstanceCreateInfo expanded=*info;expanded.enabledExtensionCount=uint32_t(extensions.size());expanded.enabledExtensionNames=extensions.data();
+  auto r=n->nextCreateApiLayerInstance(&expanded,&chained,instance);
+  if(XR_FAILED(r)&&extensions.size()!=info->enabledExtensionCount){extensions.assign(info->enabledExtensionNames,info->enabledExtensionNames+info->enabledExtensionCount);r=n->nextCreateApiLayerInstance(info,&chained,instance);}
+  gesture_input::enabledExtensions.clear();for(auto e:extensions)gesture_input::enabledExtensions.insert(e);
   if(XR_SUCCEEDED(r)){
    currentInstance=*instance;nextGipa(*instance,"xrPathToString",(PFN_xrVoidFunction*)&pathString);
    gesture_input::diagnostic=gestureDiagnostic;

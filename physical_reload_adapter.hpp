@@ -410,6 +410,18 @@ inline scene::Vec trackingPoint(scene::Vec point){
   if(manager)reinterpret_cast<scene::Vec*(__thiscall*)(void*,scene::Vec*,const scene::Vec*)>(b+0x69AAC0)(manager,&result,&point);}
  return result;
 }
+// Invert the native world-to-tracking transform around a nearby point, avoiding
+// large-world cancellation. Uses the host mapping, including seated/vehicle offsets.
+inline bool worldTrackingPoint(scene::Vec tracking,scene::Vec reference,scene::Vec& world){
+ auto o=trackingPoint(reference);
+ auto x=trackingPoint(reference+scene::Vec{70,0,0})-o;
+ auto y=trackingPoint(reference+scene::Vec{0,70,0})-o;
+ auto z=trackingPoint(reference+scene::Vec{0,0,70})-o;
+ auto dot=[](scene::Vec a,scene::Vec b){return a.x*b.x+a.y*b.y+a.z*b.z;};
+ float det=dot(x,scene::cross(y,z));if(!std::isfinite(det)||std::abs(det)<.0001f)return false;
+ auto d=tracking-o;world=reference+scene::Vec{dot(d,scene::cross(y,z))*70/det,dot(d,scene::cross(z,x))*70/det,dot(d,scene::cross(x,y))*70/det};
+ return std::isfinite(world.x)&&std::isfinite(world.y)&&std::isfinite(world.z);
+}
 inline scene::Vec gripPoint(int hand){
  auto b=build_adapter::heldModule();scene::Vec point{};float rotation[9]{};
  if(b){auto manager=reinterpret_cast<void*(__cdecl*)()>(b+0x13903)();

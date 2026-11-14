@@ -1,0 +1,4 @@
+numpy==2.4.6
+Pillow==12.2.0
+PyFFI==2.2.3
+bethesda-structs==0.1.4

@@ -1,0 +1,15 @@
+string_var id
+int op
+ref animal
+begin function {id,op}
+let animal := StringToRef "$id"
+if op == 0
+SetFunctionValue (animal.IsInCombat)
+elseif op == 1
+SetFunctionValue (animal.GetDetected player)
+elseif op == 2
+SetFunctionValue (animal.GetPos X)
+elseif op == 3
+SetFunctionValue (animal.GetPos Y)
+endif
+end

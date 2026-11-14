@@ -259,3 +259,46 @@ Installed-held pouch basis 18B3E80/local center 18B3E84; nativeGripTracking cont
 Exact hash/byte tests and C++ identity/arithmetic guards passed. Live pistol/carbine
 normal pickup, insertion, pouch return: 4 commits, 0 failures, exact ammo deltas.
 No native spawn/drop/save hooks, clip count writes, or native registry writes.
+
+2026-11-13 mounted hand/input correction (private current TTR 7EB72860)
+- Native corrected-grip consumer RVA694BAF reads manager19FC+hand*12.
+- RVA694A1F computes rotation manager1A14+hand*36. 19F8 belongs to native
+  input, reset at RVA68B9C8. Previous four-byte-earlier transport corrupted it.
+- vehicle_contact verifies those exact instruction bytes before any hooks.
+  Bounded transport unit leaves sentinels19F8/1A5C unchanged.
+- JIP public ln_fn_gamepad.h exposes execute AND eval for axes/triggers/buttons.
+  Both entries now bridge only the mounted dependency reference; other contexts
+  call through. xNVSE CommandInfo layout and eval calling convention checked.
+- Upstream PVHVertibirdCreatureScript issues default DisablePlayerControls every
+  tick. Only that exact script, while piloting, uses default locks with fighting
+  excluded. Explicit/custom calls and all other scripts pass through untouched.
+- Bottle handoff reads raw right-grip694CD0, guarded exact prefix and build hash.
+  SetAngleEx/SetPosEx publishes replacement pose through native reference/Havok
+  before native pickup. No old body/ref pointers copied, no per-frame held pin.
+
+2026-11-13 tutorial publication: uses existing exact-7EB72860 native_pose_dispatch
+completed callback at 3F52D0. No new native offsets. FC_VehicleTutorialFrame
+exports the current FCCockpitCarrier/FCWheelCarrier transform only on the main
+thread with a committed mounted publication. Card uses carrier-local anchor;
+part boxes use the completed native weapon nodes in that same transaction.
+No game commands, asset attachment or inventory changes inside the callback.
+
+2026-11-13 mounted selector: FC_VehicleTutorialFrame now returns a copy of the
+carrier transform captured at completed native publication, rather than reading
+a mutable scene transform from a later MainLoop call. Selector opening records
+local item/basis/head coordinates; each completed publication reconstructs the
+native scene previews with that carrier. Native hand and preview tracking
+diagnostics are sampled together. No new native offsets or instruction hooks.
+
+2026-11-13 controllers: OpenXR public input-profile bindings only; no new game offsets. Supported upstream hash remains 7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E. Extra physical hardware unverified; community test.
+
+2026-11-13 creature duration configuration: game-start INI read and pure challenge
+state change only; no new native offsets/hooks. 30/60 defaults, 0 immediate control
+after existing valid-mount gate. Focused test and x86 build pass; no fresh headset
+acceptance for this timing revision. See docs/CREATURE-RIDES.md.
+
+2026-11-13 installed food/glass candidate: native runtime PID15460 with personal
+66.5cm offset; four ingestibles each consumed once. LAND projected Block (3, 0)
+4v/2t, road 9v/7t; final stereo 2s/12s reviewed. Existing adapter correction,
+no additional offsets introduced during installation repair. Frozen payload
+manifest in outputs/food-glass-candidate-20261113; installed hashes recorded there.

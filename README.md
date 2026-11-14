@@ -11,6 +11,8 @@ Filthy Casuals adds comfort and control tools to an existing **Tale of Two Waste
 
 [⬇ Downloads](https://github.com/nikamigaming-create/filthy-casual-ttr/releases) · [⚙ Install](docs/INSTALL.md) · [🎮 Controls](docs/CONTROLS-EDITOR.md) · [⌨ Offline editor](tools/controls-editor.html) · [Validation](docs/VALIDATION.md)
 
+[One-page illustrated field manual](docs/assets/filthy-casual-field-manual.png) covers the current local candidate, including optional vehicles and bottle impacts. The release includes the core ZIP; vehicles remain a separate optional addon with local asset preparation.
+
 ## Your controls, your couch
 
 ![Actual in-game RobCo controller editor with populated bindings](docs/assets/robco-controls.png)
@@ -44,15 +46,15 @@ interactions remain native. Quest's system Home button belongs to the headset.
 
 Hold the opposite thumb on its **separate thumbrest** and double-tap the right
 thumbrest for weapons, or the left for consumables. These are the small resting
-pads, not the sticks. The selector stays where you opened it. Touch a compact
+pads, not the sticks. On foot, the selector stays where you opened it. In a vehicle, it travels with the cabin. Touch a compact
 preview with either hand: the native item replaces what is in your **right hand**
 at its normal size. Touch the center cap to select nothing; B closes the wheel.
 
 ![Populated consumable selector in game](docs/assets/robco-aid.png)
 
 Selection does not consume an item. Stimpaks retain TTR's trigger-and-body-stab
-interaction. In our sticky holding mode, ordinary food can be brought to the
-mouth and held there briefly; A/X returns it to inventory. Squeeze the right grip
+interaction. In our sticky holding mode, food, drinks and other ingestibles can
+be brought from away from your face to your mouth and held there for about 0.65 seconds; A/X returns it to inventory. Squeeze the right grip
 once to return the item to native holding, release, throw and backpack behavior.
 Native interactions and your normal save system continue to own the item.
 
@@ -71,16 +73,36 @@ Left Menu intentionally replaces its native gameplay shortcut; it passes through
 in native menus. Conflicting custom assignments are shown, never silently stolen.
 
 Recovered compatible native magazines can be inserted into the gun again or
-returned to the native ammo pouch. [Setup and tested coverage](docs/PHYSICAL_PARTS.md).
+returned to the native ammo pouch. In manual mode, inserting into an empty gun does not chamber a round: cycle its native slide or bolt before firing. [Setup and tested coverage](docs/PHYSICAL_PARTS.md).
 
 ## Set your height once
 
 ![Seated height panel with saved offset and actual controls](docs/assets/robco-height.png)
 
 Sit comfortably, hold left Menu, press A to calibrate and B to save. Right stick
-adjusts the offset. **Your seated height is restored next launch.** Y toggles
+adjusts the offset. **Your seated height is restored next launch.** Ground, car, flight, Bighorner and Deathclaw offsets are saved separately. **** Y toggles
 routine popup hints; height messages remain available. Height, selector labels,
 reload notifications, controls and tutorial cards share the RobCo motif.
+
+## Empty bottles and impact breakage
+
+Drinking a supported bottled drink in sticky-hand mode leaves its original-game
+empty bottle in the right hand. Squeeze to return to normal TTR handling, then
+pick up, drop, throw or backpack it normally. Native drink effects are unchanged.
+Whiskey, Scotch, Nuka-Cola variants and Sunset Sarsaparilla use their matching
+owned-game empty models; unknown containers keep their native behavior.
+
+Tracked empty bottles break only after a real Havok contact with a sufficiently
+strong relative velocity change. Airborne speed alone, gentle drops and held
+bottles do not qualify. The local candidate uses original glass decal artwork
+with native projection/fading, a small native particle puff and positional glass
+sound. The glass fades out through the native timed-decal path after about
+10 seconds. Gentle drop, hard ground throw, three sign impacts and fade-out are
+recorded with real game audio. Not in public 1.7.0-dev.1 yet. A headset report exposed a consumed-bottle
+render/physics handoff failure; the correction is now installed locally and passes four-family simulator checks.
+Your real headset throw remains the final acceptance check.
+Enable the included `Filthy Casual Glass.esp` in MO2's Plugins tab for this build.
+See [bottle impact details](docs/bottle-impacts.md).
 
 ## Driving and flight are optional
 
@@ -88,13 +110,14 @@ reload notifications, controls and tutorial cards share the RobCo motif.
 
 ![Flight bindings configured while on foot](docs/assets/robco-flight.png)
 
-The separate Vehicles development addon advertises car and aircraft controls.
+The separate Vehicles beta addon advertises car and aircraft controls.
 The core seated mod needs neither Vehicles nor Pool. When installed, its modes
 appear before entering a vehicle; the active profile follows boarding and exit.
 
-- **Roadster:** physical two-hand steering, right-trigger throttle, left-trigger
-  brake, X reverse, B exit.
-- **Vertibird:** left-stick movement, right-stick heading, A climb, X descend,
+- **Roadster:** left stick up/down drives forward/reverse;
+  right stick left/right steers. Pulling against motion brakes before reversing. Neutral slows the car. Either/both hands can
+  grip the rim; both triggers remain native for guns and items. B exits.
+- **Vertibird:** right-stick movement, left-stick heading, A climb, X descend,
   B land, Y aircraft HUD, triggers for aircraft weapons and stick-click selectors.
 
 Vehicle source and local asset-import instructions are in [vehicle-vr](vehicle-vr/README.md).
@@ -113,7 +136,7 @@ of Filthy Casuals.
 ## Install in MO2
 
 1. Start with TTR already launching correctly in VR.
-2. Install `Filthy-Casual-TTR-1.7.0-dev.1.zip` using MO2's **Install a new mod from an archive**.
+2. Install `Filthy-Casual-TTR-1.8.0-beta.1.zip` using MO2's **Install a new mod from an archive**.
 3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane so it wins
    file conflicts. Keep the base mod enabled. Preserve your personal INI on update.
 4. Launch the same working TTR executable through MO2. No global OpenXR changes
@@ -145,3 +168,9 @@ custom-binding testing. See [validation](docs/VALIDATION.md) for precise coverag
 
 Original mods remain their authors' work. We link to them, never bundle their
 files. [Licenses and attribution](THIRD_PARTY.md).
+
+**No working Menu button?** Double-click `Configure Controls.cmd` to type your replacement input, combo or editor shortcut. [INI bindings and startup fallback](docs/CONTROLS-EDITOR.md#typed-ini-bindings-and-desktop-access).
+
+[Controller support, actual button names and starter INIs](docs/CONTROLLERS.md) � [Controller montage](docs/assets/controllers-montage-mobile.mp4)
+
+The local 1.8.0 controller candidate is prepared for final headset testing. Public 1.7.0-dev.1 is unchanged.

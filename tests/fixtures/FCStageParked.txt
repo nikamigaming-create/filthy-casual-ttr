@@ -1,0 +1,12 @@
+ref bird
+begin function {}
+ let bird := GetFormFromMod "Player Vertibird.esm" "000E05"
+ if bird.GetVariable "State" != 1
+  SetFunctionValue 0
+  return
+ endif
+ bird.MoveTo player 0 1600 0
+ bird.SetAngle Z 0
+ bird.Enable
+ SetFunctionValue 1
+end

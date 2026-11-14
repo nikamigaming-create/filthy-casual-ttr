@@ -41,3 +41,4 @@ struct DataInterface {u32 version;void*(__cdecl* singleton)(u32);void*(__cdecl* 
 struct InventoryRef {Form* type;void* entry;void* extra;Form* container;Form* temp;unsigned char pad[24];bool validate,removed;unsigned char tail[2];};
 static_assert(sizeof(InventoryRef)==0x30&&offsetof(InventoryRef,removed)==0x2D);
 enum { PostLoad=0,ExitGame=1,ExitMenu=2,LoadGame=3,SaveGame=4,PreLoadGame=6,PostLoadGame=8,PostPostLoad=9,NewGame=14,DeferredInit=18,MainLoop=20 };
+

@@ -34,19 +34,28 @@ inline bool verified(){
  auto b=build_adapter::heldModule();if(!b)return false;
  const unsigned char clear[]={0x55,0x8B,0xEC,0x83,0xE4,0xF0,0x81,0xEC,0x98,0x08,0,0};
  const unsigned char previous[]={0x80,0x7F,0x1C,0x00},yaw[]={0xF3,0x0F,0x10,0x9E,0x3C,0x0B,0,0};
- return !memcmp(b+0x154630,clear,sizeof clear)&&!memcmp(b+0x156F8D,previous,sizeof previous)&&!memcmp(b+0x160CD5,yaw,sizeof yaw)&&b[0x160CFD]==0xF3&&b[0x160CFE]==0x0F&&b[0x160CFF]==0x5C&&b[0x160D00]==0x0D&&scene::field<unsigned char*>(b,0x160D01)==b+0x122BDDC;
+ // Native grip query reads translation 19FC+h*12 and rotation 1A14+h*36.
+ // 19F8 is an INPUT field, not part of either hand pose. Never transport it.
+ const unsigned char translation[]={0xF3,0x0F,0x10,0x94,0x8E,0xFC,0x19,0,0};
+ const unsigned char rotation[]={0x8D,0x14,0xC5,0x85,0x06,0,0,0x03,0xD0};
+ return !memcmp(b+0x694BAF,translation,sizeof translation)&&!memcmp(b+0x694A1F,rotation,sizeof rotation)&&!memcmp(b+0x154630,clear,sizeof clear)&&!memcmp(b+0x156F8D,previous,sizeof previous)&&!memcmp(b+0x160CD5,yaw,sizeof yaw)&&b[0x160CFD]==0xF3&&b[0x160CFE]==0x0F&&b[0x160CFF]==0x5C&&b[0x160D00]==0x0D&&scene::field<unsigned char*>(b,0x160D01)==b+0x122BDDC;
+}
+inline void carryManager(void* manager,const Delta& d){
+ for(int h=0;h<2;h++){
+  auto& p=scene::field<Vec>(manager,0x19FC+h*12);p=d.vector(p);
+  auto& r=scene::field<Mat>(manager,0x1A14+h*36);r=mounted_frame::mul(d.orientation(r),mounted_frame::transpose(d.r));
+ }
 }
 inline bool carry(void* manager,const Delta& d){
  auto b=build_adapter::heldModule();if(!b||!manager)return false;
- for(int h=0;h<2;h++)if(!validState(b+0x1229240+h*0x81C)||!finite(scene::field<Vec>(manager,0x19F8+h*12))||!finite(scene::field<Mat>(manager,0x1A10+h*36)))return false;
+ for(int h=0;h<2;h++)if(!validState(b+0x1229240+h*0x81C)||!finite(scene::field<Vec>(manager,0x19FC+h*12))||!finite(scene::field<Mat>(manager,0x1A14+h*36)))return false;
  // The same native snap-turn block carries optional held-item world history.
  if(b[0x122923C])for(unsigned i=0;i<320;i++)if(!finite(scene::field<Vec>(b,0x122BDE0+i*12)))return false;
  if(b[0x122DD1C]&&(!finite(scene::field<Vec>(b,0x122DD20))||!finite(scene::field<Mat>(b,0x122DD2C))))return false;
  for(int h=0;h<2;h++){
   carryState(b+0x1229240+h*0x81C,d);
-  auto& p=scene::field<Vec>(manager,0x19F8+h*12);p=d.vector(p);
-  auto& r=scene::field<Mat>(manager,0x1A10+h*36);r=mounted_frame::mul(d.orientation(r),mounted_frame::transpose(d.r));
  }
+ carryManager(manager,d);
  if(b[0x122923C])for(unsigned i=0;i<320;i++){auto& p=scene::field<Vec>(b,0x122BDE0+i*12);p=d.point(p);}
  if(b[0x122DD1C]){auto& p=scene::field<Vec>(b,0x122DD20);p=d.point(p);auto& r=scene::field<Mat>(b,0x122DD2C);r=d.orientation(r);}
  return true;

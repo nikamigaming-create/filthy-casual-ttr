@@ -1,0 +1,4 @@
+ref target
+begin function {target}
+SetFunctionValue (target.GetVariable "Reverse")
+end

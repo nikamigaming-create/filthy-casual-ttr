@@ -1,5 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+#include "empty_bottles.hpp"
+#include "held_pose_adapter.hpp"
 #include <windows.h>
 #include <cstddef>
 #include <cstdio>
@@ -23,12 +25,15 @@
 #include "reload_trace_adapter.hpp"
 #include "scene_adapter.hpp"
 #include "physical_reload_adapter.hpp"
+#include "bottle_impact_adapter.hpp"
+#include "glass_decal_adapter.hpp"
 #include "wrist_controls.hpp"
 #include "finger_adapter.hpp"
 #include "hold_controls.hpp"
 #include "reload_tutorial.hpp"
 #include "tutorial_adapter.hpp"
 #include "tutorial_visual.hpp"
+#include "native_pose_dispatch.hpp"
 #include "sticky_food.hpp"
 #include "presentation_adapter.hpp"
 #include "layer_discovery.hpp"
@@ -43,6 +48,9 @@ namespace {
  std::atomic<bool> enabled{false},selectorOpen{false},heightMenu{false},showSelectorPopups{false};
  std::atomic<bool> weaponTransition{false};
  std::atomic<int> weaponHand{-1},aidHand{-1};std::atomic<float> heightOffset{0},physicalHeight{0};
+ std::atomic<float> seatOffsets[5]{};int seatContext=0;
+ constexpr const char* seatKeys[]={"HeightOffsetCm","CarSeatOffsetCm","FlightSeatOffsetCm","BighornerSeatOffsetCm","DeathclawSeatOffsetCm"};
+ constexpr const char* seatNames[]={"GROUND","CAR","VERTIBIRD","BIGHORNER","DEATHCLAW"};
  std::atomic<unsigned> uiEpoch{0};bool controlDrain[2][6]{};
  char settingsPath[MAX_PATH]{};float desiredHeight=1.65f;bool automaticReload=true;
  bool reloadPreferenceApplied=false;
@@ -58,6 +66,9 @@ namespace {
  reload_tutorial::Step tutorialStep=reload_tutorial::Step::Hidden;
  reload_tutorial::Mechanism tutorialMechanism=reload_tutorial::Mechanism::Generic;
  bool tutorialAnchorValid=false;scene::Vec tutorialAnchor{},tutorialAnchorEye{};
+ bool tutorialPublished=false;DWORD tutorialThread=0;unsigned tutorialPublications=0;
+ void* tutorialRig=nullptr;void* tutorialCarrier=nullptr;
+ scene::Vec tutorialLocalAnchor{},tutorialLocalEye{};
  tutorial_adapter::Snapshot tutorialNative;
  const tutorial_data::Weapon* tutorialWeapon=nullptr;unsigned tutorialForm=0;
  Script *tutorialEditorQuery=nullptr,*tutorialRoundsQuery=nullptr,*tutorialCapacityQuery=nullptr;
@@ -77,12 +88,17 @@ namespace {
  const char* wristAttachment="FCWristMount|FilthyCasual\\wrist-controls-auto.nif";
 
  struct Hand {bool active=false,stick=false,primary=false,secondary=false;float grip=0,trigger=0,x=0,y=0;};
- struct Input {Hand h[2];scene::Vec head;bool headValid=false;ULONGLONG time=0;} input,previous;
+ struct Input {Hand h[2];scene::Vec head,mouth;ULONGLONG mouthTime=0;bool headValid=false;ULONGLONG time=0;} input,previous;
  bool ready=false,loaded=false,waitingRelease=false;int openHand=-1,page=0,selected=-1;
  struct Settings {float forward=42,below=10,radius=14,reach=2.1f,size=16,capSize=8.4f,walkAway=85;} settings;
  ULONGLONG heldSince[2]{},lastLoop=0,lastAnnounce=0;
  constexpr int slots=6,capSlot=slots,previewCount=slots+1;constexpr float pi=3.14159265359f;
  using Vec=scene::Vec;
+ void publishTutorial(bool completed);
+ void cullNode(void* node,bool hidden);
+ Vec selectorPalms[2]{};
+ void* wheelCarrier=nullptr;bool wheelCarrierLost=false;scene::Transform wheelCarrierFrame{},wheelLocalBasis{};
+ Vec wheelLocalHead{},wheelLocalRoot{};
  Vec wheelHead, wheelRoot,wheelXRHead;bool wheelXRValid=false;scene::Transform wheelBasis{};void* wheelCell=nullptr;
  ULONGLONG openedAt=0,touchSince=0,chordSince=0,heightStepAt=0;int touchSlot=-1,touchHand=-1;bool chordLatch=false,triggerArmed=false;
  struct Item {Form* form=nullptr;u32 id=0;std::string name,model;int count=0;float scale=.25f;};
@@ -94,14 +110,14 @@ namespace {
  Item pendingWeapon;int pendingHand=-1,pendingStage=0;ULONGLONG pendingAt=0;
  u32 selectedWeaponID=0;ULONGLONG redrawAfter=0;
  Script *dialogueTarget=nullptr,*dialoguePartner=nullptr,*combatDisabled=nullptr,*playerDead=nullptr;
- struct Preview {std::string holder,attachment;bool inserted=false,attached=false;scene::WorldPin pin;std::vector<scene::Box> mesh;};
+ struct Preview {std::string holder,attachment;bool inserted=false,attached=false;scene::WorldPin pin;scene::Transform carrierLocal{};Vec trackingCenter{};std::vector<scene::Box> mesh;};
  Preview previews[previewCount];
  bool touchMustLeave[2][previewCount]{};
  Script* getCap=nullptr;
  Script *getPlayer=nullptr,*getMenu=nullptr,*getWeapons=nullptr,*getAid=nullptr,*getName=nullptr,*getModel=nullptr,*getCount=nullptr,*getDimension=nullptr,*rootScale=nullptr,*getEquipped=nullptr,*weaponOut=nullptr,*holster=nullptr,*draw=nullptr;
  Script *insert=nullptr,*removeNode=nullptr,*attach=nullptr,*detach=nullptr,*translate=nullptr,*scale=nullptr,*position=nullptr,*equip=nullptr,*notice=nullptr;
  Script *getInventoryRefs=nullptr,*moveRef=nullptr,*takeRef=nullptr;
- Script* isFood=nullptr;
+ 
  void log(const char* fmt,...){std::lock_guard<std::mutex> lock(logMutex);if(!logfile)return;fprintf(logfile,"[%llu] ",GetTickCount64());va_list ap;va_start(ap,fmt);vfprintf(logfile,fmt,ap);va_end(ap);fputc('\n',logfile);fflush(logfile);}
  void release(Element& e){if(e.type==3&&e.value.string)build_adapter::freeGameString(e.value.string);e={};}
  template<typename... Args> bool call(Script* s,Element& out,Args... args){if(!s)return false;return scripts->call(s,nullptr,nullptr,&out,sizeof...(args),args...);}
@@ -142,6 +158,8 @@ namespace {
   auto pouchValue=[&](const char* key,float def,float lo,float hi){char text[40],fallback[40];sprintf_s(fallback,"%.1f",def);GetPrivateProfileStringA("Weapons",key,fallback,text,sizeof(text),path);float v=float(atof(text));return (std::isfinite(v)?std::clamp(v,lo,hi):def)*.01f;};
   pouchForward=pouchValue("PouchForwardCm",40,10,70);pouchSide=pouchValue("PouchSideCm",-18,-60,60);pouchBelow=pouchValue("PouchBelowEyesCm",45,20,120);
   char tmp[40]{};GetPrivateProfileStringA("Seated","HeightOffsetCm","0",tmp,sizeof(tmp),path);heightOffset=std::clamp(float(atof(tmp))*.01f,-.5f,1.2f);
+  seatOffsets[0]=heightOffset.load();
+  for(int i=1;i<5;i++){GetPrivateProfileStringA("Seated",seatKeys[i],"0",tmp,sizeof(tmp),path);float v=float(atof(tmp))*.01f;seatOffsets[i]=std::isfinite(v)?std::clamp(v,-.5f,.5f):0;}
   GetPrivateProfileStringA("Seated","TargetEyeHeightCm","165",tmp,sizeof(tmp),path);desiredHeight=std::clamp(float(atof(tmp))*.01f,1.1f,2.1f);
  }
  bool enableInputLayer(){
@@ -175,7 +193,6 @@ namespace {
   getName=compile("name","ref item\nbegin function {item}\nSetFunctionValue (GetName item)\nend");
   getModel=compile("model","ref item\nbegin function {item}\nSetFunctionValue (GetModelPath item)\nend");
   getCount=compile("count","ref item\nbegin function {item}\nSetFunctionValue (player.GetItemCount item)\nend");
-  isFood=compile("food flag","ref item\nbegin function {item}\nSetFunctionValue (GetIngestibleFlag item 2)\nend");
   getDimension=compile("dimensions","ref item\nbegin function {item}\nSetFunctionValue (GetObjectDimensions X item + GetObjectDimensions Y item + GetObjectDimensions Z item)\nend");
   insert=compile("insert","string_var n\nbegin function {n}\nSetFunctionValue (InsertNode player 3 \"%z\" n)\nend");
   removeNode=compile("remove node","string_var n\nbegin function {n}\nSetFunctionValue (InsertNode player 2 \"%z\" n)\nend");
@@ -184,7 +201,10 @@ namespace {
   equip=compile("equip or consume","ref item\nint weapon\nbegin function {item,weapon}\nif player.GetItemCount item > 0\nplayer.EquipItemAlt item 0 1\nif weapon\nplayer.SetWeaponOut 1\nendif\nSetFunctionValue 1\nelse\nSetFunctionValue 0\nendif\nend");
   notice=compile("notice","string_var text\nbegin function {text}\nMessageExAlt 2 \"%z\" text\nSetFunctionValue 1\nend");
   getInventoryRefs=compile("owned item instances","ref item\nbegin function {item}\nSetFunctionValue (player.GetInvRefsForItem item)\nend");
-  moveRef=compile("position selected item","ref target\nfloat x\nfloat y\nfloat z\nbegin function {target,x,y,z}\ntarget.MoveTo player\ntarget.SetPos X x\ntarget.SetPos Y y\ntarget.SetPos Z z\nSetFunctionValue 1\nend");
+  // Selected refs are already in the player cell. MoveTo queues relocation and
+  // can strand their rendered root after a native grab/release. SetPosEx performs
+  // one synchronous reference + collision placement before native pickup.
+  moveRef=compile("position selected item","ref target\nfloat x\nfloat y\nfloat z\nbegin function {target,x,y,z}\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");
   takeRef=compile("return selected item","ref target\nbegin function {target}\ntarget.Activate player\nSetFunctionValue 1\nend");
   ready=getPlayer&&getMenu&&getWeapons&&getAid&&getName&&getModel&&getCount&&insert&&removeNode&&attach&&detach&&equip&&notice&&rootScale&&getEquipped&&weaponOut&&holster&&draw&&getInventoryRefs&&inventoryRef&&moveRef&&takeRef;
   log("script initialization %s",ready?"READY":"FAILED; controls left unchanged");return ready;
@@ -484,8 +504,49 @@ namespace {
  void clearPhysicalMags(){for(auto& m:physicalMags)if(m.visual)scene::release(m.visual);physicalMags.clear();partDiscoverAt=0;physical_reload_adapter::lastRefID=0;}
 
 
+
+ struct FragileBottle {unsigned id=0,base=0;bottle_impact::Sample previous{};};
+ std::vector<FragileBottle> fragileBottles;
+ unsigned bottleBreaks=0;bool bottleTrace=false;Vec lastGlassPoint{};
+ bool emptyBottleBase(unsigned id){return id==0x5B6CE||id==0x5B6CD||id==0x22103||id==0x103B1B;}
+ void trackBottle(Form* ref){
+  if(!ref)return;auto base=scene::field<Form*>(ref,0x20);if(!base||!emptyBottleBase(base->id))return;
+  for(auto& b:fragileBottles)if(b.id==ref->id)return;
+  if(fragileBottles.size()>=64)fragileBottles.erase(fragileBottles.begin());
+  fragileBottles.push_back({ref->id,base->id,{}});
+ }
+ void clearBottleImpacts(){glass_decal_adapter::clearProbes();fragileBottles.clear();}
+ bool glassAt(Vec point,Vec normal,void* surface,Form* ref){
+  static Script* texture=nullptr;static Script* destroy=nullptr;static Script* sound=nullptr;
+  if(!texture)texture=compile("glass decal texture","GetFormFromMod \"Filthy Casual Glass.esp\" \"000800\"",true);
+  if(!destroy)destroy=compile("broken empty bottle","ref item\nbegin function {item}\nitem.Disable\nitem.MarkForDelete\nSetFunctionValue 1\nend");
+  if(!sound)sound=compile("glass impact sound","PlaySound FXMeleeGenericGlass",true);
+  if(!texture||!destroy)return false;
+  Element value;Form* tx=nullptr;if(call(texture,value)&&value.type==2)tx=value.value.form;release(value);
+  auto node=glass_decal_adapter::raySurface(point,normal,scene::root(ref));if(!node)node=glass_decal_adapter::parentNode(surface);auto before=glass_decal_adapter::attempts();
+
+  auto cell=glass_decal_adapter::impactCell(point);bool ok=glass_decal_adapter::add(point,normal,node,cell,tx,scene::root(ref));
+  log("BOTTLE DECAL accepted=%d tx=%p surface=%p node=%p name=%s active=%u attempts=%u/%u normal=%.3f %.3f %.3f pos=%.2f %.2f %.2f",ok,tx,surface,node,node?scene::name(node):"",glass_decal_adapter::count(),before,glass_decal_adapter::attempts(),normal.x,normal.y,normal.z,point.x,point.y,point.z);
+  if(!ok)return false;
+  bool audioOK=glass_decal_adapter::smashSound(point);log("BOTTLE EFFECTS puff=%d sound=%d stage=%d bytes=%08X/%08X/%08X",glass_decal_adapter::puff(point,normal,cell),audioOK,glass_decal_adapter::soundStage,scene::field<unsigned>((void*)0xAE5870,0),scene::field<unsigned>((void*)0xAD8B60,0),scene::field<unsigned>((void*)0xAD8830,0));Element audio;if(!audioOK&&sound){call(sound,audio);release(audio);}
+  if(number(destroy,ref)!=1)return false;lastGlassPoint=point;++bottleBreaks;return true;
+ }
+ void tickBottleImpacts(bool usable){
+  glass_decal_adapter::inspect([](const char* fmt,auto... args){log(fmt,args...);});
+  auto now=GetTickCount64();
+  if(!usable){for(auto& b:fragileBottles)b.previous={};return;}
+  auto held=static_cast<Form*>(build_adapter::grabbedItem());if(held)trackBottle(held);
+  for(auto i=fragileBottles.begin();i!=fragileBottles.end();){
+   auto ref=static_cast<Form*>(physical_reload_adapter::lookup(i->id));auto base=ref?scene::field<Form*>(ref,0x20):nullptr;
+   if(!ref||!base||base->id!=i->base||(ref->flags&0x820)||!scene::root(ref)){i=fragileBottles.erase(i);continue;}
+   void* surface=nullptr;auto sample=bottle_impact_adapter::sample(scene::root(ref),held==ref,now*.001,&surface);auto change=sample.velocity-i->previous.velocity;auto speed=bottle_impact::length(change);Vec normal=speed>.001f?Vec{change.x/speed,change.y/speed,change.z/speed}:Vec{0,0,1};auto verdict=bottle_impact::judge(i->previous,sample);if(bottleTrace)log("BOTTLE SAMPLE ref=%08X valid=%d held=%d contact=%d velocity=%.3f %.3f %.3f surface=%.3f %.3f %.3f closing=%.3f delta=%.3f",i->id,sample.valid,sample.held,sample.contact,sample.velocity.x,sample.velocity.y,sample.velocity.z,sample.surfaceVelocity.x,sample.surfaceVelocity.y,sample.surfaceVelocity.z,verdict.closingSpeed,verdict.velocityChange);i->previous=sample;
+   if(bottleTrace){auto root=scene::root(ref);auto b=bottle_impact_adapter::body(root);auto wp=scene::world(root).p;auto rp=scene::field<Vec>(ref,0x30);Vec hp{};unsigned mt=0;if(b){hp=scene::field<Vec>(b,0x120);mt=scene::field<unsigned char>(b,0xE8);}log("BOTTLE POSE ref=%08X held=%d root=%.3f %.3f %.3f refpos=%.3f %.3f %.3f body=%p hk=%.3f %.3f %.3f motion=%u nodeflags=%08X collision=%04X local=%.3f %.3f %.3f",i->id,sample.held,wp.x,wp.y,wp.z,rp.x,rp.y,rp.z,b,hp.x,hp.y,hp.z,mt,scene::field<unsigned>(root,0x30),scene::field<void*>(root,0x1C)?scene::field<unsigned short>(scene::field<void*>(root,0x1C),0xC):0,scene::local(root).p.x,scene::local(root).p.y,scene::local(root).p.z);}
+   if(verdict.smash){log("BOTTLE IMPACT ref=%08X contact=%d closing=%.3f deltaV=%.3f",i->id,sample.contact,verdict.closingSpeed,verdict.velocityChange);if(glassAt(scene::world(scene::root(ref)).p,normal,surface,ref)){i=fragileBottles.erase(i);continue;}}
+   ++i;
+  }
+ }
  void clearPreviews(){for(auto& p:previews){p.pin.restore();if(p.attached)number(detach,p.attachment.c_str());if(p.inserted)number(removeNode,p.holder.c_str());p={};}}
- void forgetHeldAid(){stickyAidButtons=false;mouthGate.reset();mouthDistance=-1;heldFood=false;aidHand=-1;aidGripLatch=false;aidDropPending=false;selectedRef=nullptr;heldAid={};}
+ void forgetHeldAid(){held_pose_adapter::pending=false;stickyAidButtons=false;mouthGate.reset();mouthDistance=-1;heldFood=false;aidHand=-1;aidGripLatch=false;aidDropPending=false;selectedRef=nullptr;heldAid={};}
  void clearAid(){
   if(aidHand>=0){
    if(heldAid.id==0x15169)build_adapter::clearStim(playerForm());
@@ -494,7 +555,7 @@ namespace {
   }
   forgetHeldAid();
  }
- void close(){clearPreviews();selectorOpen=false;openHand=-1;selected=-1;items.clear();touchSlot=-1;touchHand=-1;touchSince=0;uiEpoch++;}
+ void close(){clearPreviews();wheelCarrier=nullptr;wheelCarrierLost=false;selectorOpen=false;openHand=-1;selected=-1;items.clear();touchSlot=-1;touchHand=-1;touchSince=0;uiEpoch++;}
  InventoryRef* ownedInstance(Form* item){
   InventoryRef* result=nullptr;Element e;
   if(call(getInventoryRefs,e,item)&&e.type==4&&e.value.array){Element first,key;key.type=1;key.value.number=0;
@@ -503,7 +564,9 @@ namespace {
  }
  bool holdAid(const Item& item){
   heldAid=item;aidHand=1;aidGripLatch=true;
-  mouthGate.reset();mouthDistance=-1;heldFood=item.form&&item.form->type==47&&isFood&&number(isFood,item.form)!=0;
+  // All native ingestibles use their normal inventory-use effect. Food flags
+  // describe subcategories, not whether a selected consumable may be used.
+  mouthGate.reset();mouthDistance=-1;heldFood=item.form&&item.form->type==47&&item.id!=0x15169;
   if(item.id==0x15169){if(!build_adapter::selectStim(playerForm())){clearAid();return false;}log("NATIVE STIM selected right count=%.0f",number(getCount,item.form));return true;}
   auto instance=ownedInstance(item.form);if(!instance){clearAid();return false;}
   double count=number(getCount,item.form);selectedRef=static_cast<Form*>(build_adapter::dropOneAid(playerForm(),item.form,instance->extra));
@@ -513,11 +576,35 @@ namespace {
   auto palm=scene::palm(scene::root(playerForm()),1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));
   log("NATIVE AID dropped %08X ref=%08X for right hand",item.id,selectedRef->id);return true;
  }
+ // An ordinary game-owned empty reference, handed to native TTR once. No
+ // replacement physics, persistent hand latch, custom save records or cloning.
+ unsigned lastEmptyBottle=0;
+ void leaveEmptyBottle(Form* base,double inventoryBefore,const scene::Transform* heldPose){
+  if(!base||weaponTransition)return;auto player=playerForm();Form* ref=nullptr;
+  // Reuse one empty already returned by another consumption mod, if present.
+  if(number(getCount,base)>inventoryBefore){if(auto instance=ownedInstance(base)){ref=static_cast<Form*>(build_adapter::dropOneAid(player,base,instance->extra));if(ref)instance->removed=true;}}
+  else {
+   static Script* spawn=nullptr;if(!spawn)spawn=compile("empty drink bottle","ref item\nbegin function {item}\nSetFunctionValue (player.PlaceAtMe item 1)\nend");
+   Element made;if(spawn&&call(spawn,made,base)&&made.type==2)ref=made.value.form;release(made);
+  }
+  if(!ref)return;
+  if(heldPose){held_pose_adapter::localPose=*heldPose;held_pose_adapter::pending=true;}
+  // Use the same staged native pickup as selecting an ordinary inventory item:
+  // publish squeeze ownership before grabbing, and allow the new 3D to load.
+  heldAid={};heldAid.form=base;heldAid.id=base->id;heldAid.name=string(getName,base);
+  trackBottle(ref);selectedRef=ref;lastEmptyBottle=ref->id;aidHand=1;aidGripLatch=true;aidDropPending=true;heldFood=false;
+  pendingWeapon=heldAid;pendingAid=true;pendingStage=3;pendingAt=GetTickCount64()+150;aidDeadline=pendingAt+2000;weaponTransition=true;
+  auto palm=scene::palm(scene::root(player),1);number(moveRef,ref,bits(palm.x),bits(palm.y),bits(palm.z));
+  log("EMPTY BOTTLE staged native pickup ref=%08X base=%08X",ref->id,base->id);
+ }
  void eatStickyFood(){
   if(!heldFood||!aidGripLatch||!selectedRef||build_adapter::grabbedItem()!=selectedRef)return;
   // Clear native grab ownership before activation can delete its world ref.
   // Consume through the engine inventory-use path, retaining all normal effects.
+  scene::Transform oldPose{};bool preservePose=held_pose_adapter::capture(selectedRef);if(preservePose)oldPose=held_pose_adapter::localPose;
   Item food=heldAid;double before=number(getCount,food.form);
+  unsigned emptyID=empty_bottles::baseForModel(string(getModel,food.form));auto empty=emptyID?static_cast<Form*>(physical_reload_adapter::lookup(emptyID)):nullptr;
+  if(empty&&empty->type!=31)empty=nullptr;double emptyBefore=empty?number(getCount,empty):0;
   if(auto b=build_adapter::heldModule())log("FOOD stow input wanted=%p primary=(%u,%p,%p,%d) secondary=(%u,%p,%p,%d)",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<void**>(b+0x1417414),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<void**>(b+0x1416850),*reinterpret_cast<int*>(b+0x1416848));
   if(!build_adapter::stowSelectedGrab(playerForm(),selectedRef)){
    if(auto b=build_adapter::heldModule())log("FOOD stow refused wanted=%p primary=(%u,%p,%d) secondary=(%u,%p,%d) swap=%02X%02X%02X%02X",selectedRef,b[0x1416775],*reinterpret_cast<void**>(b+0x1417410),*reinterpret_cast<int*>(b+0xF6B520),b[0x1416844],*reinterpret_cast<void**>(b+0x141684C),*reinterpret_cast<int*>(b+0x1416848),b[0x1A95A0],b[0x1A95A1],b[0x1A95A2],b[0x1A95A3]);
@@ -529,7 +616,7 @@ namespace {
   double result=number(equip,food.form,0);
   double after=number(getCount,food.form);
   log("FOOD mouth %08X native-use=%.0f inventory %.0f -> %.0f -> %.0f",food.id,result,before,returned,after);
-  if(after==before)tell("Ate: "+food.name);
+  if(after==before){tell(std::string(empty?"Drank: ":"Ate: ")+food.name);if(empty)leaveEmptyBottle(empty,emptyBefore,preservePose?&oldPose:nullptr);}
  }
  void selectItem(int index){
   constexpr int hand=1; // Either hand may touch; selected items always go right.
@@ -548,8 +635,40 @@ namespace {
   clearAid();build_adapter::clearStim(playerForm());build_adapter::stowGrab(playerForm());
   weaponHand=-1;number(holster);log("TOUCH NEUTRAL: native holster/stow");tell("Hands empty");
  }
+ bool mountedVehicle(){
+  auto m=GetModuleHandleW(L"FilthyCasualVehicles.dll");
+  auto fn=m?reinterpret_cast<bool(__cdecl*)()>(GetProcAddress(m,"FC_VehicleActive")):nullptr;
+  return fn&&fn();
+ }
+ void* mountedUIFrame(scene::Transform& frame){
+  auto m=GetModuleHandleW(L"FilthyCasualVehicles.dll");
+  auto fn=m?reinterpret_cast<void*(__cdecl*)(scene::Transform*)>(GetProcAddress(m,"FC_VehicleTutorialFrame")):nullptr;
+  return fn?fn(&frame):nullptr;
+ }
+ scene::Vec cabinPoint(const scene::Transform& f,scene::Vec p){return f.p+scene::rotate(f,p)*f.scale;}
+ scene::Transform cabinLocal(const scene::Transform& f,const scene::Transform& world){
+  auto t=held_pose_adapter::relative(f,world);t.p=t.p*(1/f.scale);t.scale/=f.scale;return t;
+ }
+ scene::Transform cabinWorld(const scene::Transform& f,const scene::Transform& local){
+  scene::Transform t{};t.p=cabinPoint(f,local.p);t.scale=f.scale*local.scale;
+  for(int i=0;i<3;i++)for(int j=0;j<3;j++)for(int k=0;k<3;k++)t.r[i][j]+=f.r[i][k]*local.r[k][j];return t;
+ }
+ void publishSelector(){
+  if(!selectorOpen||!wheelCarrier)return;
+  scene::Transform frame{};
+  if(mountedUIFrame(frame)!=wheelCarrier){
+   wheelCarrierLost=true;for(auto& p:previews)if(p.pin.node)cullNode(p.pin.node,true);return;
+  }
+  auto rig=scene::root(playerForm());for(int h=0;h<2;h++)selectorPalms[h]=physical_reload_adapter::trackingPoint(scene::palm(rig,h));
+  wheelCarrierFrame=frame;wheelHead=cabinPoint(frame,wheelLocalHead);wheelRoot=cabinPoint(frame,wheelLocalRoot);wheelBasis=cabinWorld(frame,wheelLocalBasis);
+  for(auto& p:previews)if(p.pin.node){scene::setWorld(p.pin.node,cabinWorld(frame,p.carrierLocal));p.trackingCenter=physical_reload_adapter::trackingPoint(p.mesh.empty()?scene::world(p.pin.node).p:scene::boxCenter(p.mesh));}
+ }
  bool buildPage(){
   clearPreviews();for(auto& hand:touchMustLeave)for(auto& slot:hand)slot=true;auto root=scene::root(playerForm());if(!root)return false;int displayed=0;
+  // The seated native arm solve has a shorter forward reach than standing.
+  // Keep previews on the cabin side of the dashboard, without changing the
+  // user's on-foot spacing or increasing invisible touch hitboxes.
+  const float forward=wheelCarrier?std::min(settings.forward,30.f):settings.forward;
   Item cap;Element e;if(call(getCap,e)&&e.type==2&&e.value.form){cap.form=e.value.form;cap.id=cap.form->id;cap.model=string(getModel,cap.form);}release(e);
   for(int i=0;i<previewCount;i++){
    bool neutral=i==capSlot;int index=page*slots+i;if(!neutral&&index>=int(items.size()))continue;auto& item=neutral?cap:items[index];if(item.model.empty())continue;
@@ -558,9 +677,9 @@ namespace {
    p.attached=number(attach,p.attachment.c_str())!=0;if(!p.attached)continue;
    auto node=scene::find(root,p.holder.c_str());if(!node)continue;
    float angle=2*pi*float(i)/slots;auto desired=wheelBasis;
-   desired.p=wheelHead+scene::rotate(wheelBasis,{settings.radius*std::sin(angle),settings.forward,0})+Vec{0,0,-settings.below+settings.radius*std::cos(angle)};
+   desired.p=wheelHead+scene::rotate(wheelBasis,{settings.radius*std::sin(angle),forward,0})+Vec{0,0,-settings.below+settings.radius*std::cos(angle)};
    if(neutral){
-    desired.p=wheelHead+scene::rotate(wheelBasis,{0,settings.forward,0})+Vec{0,0,-settings.below};
+    desired.p=wheelHead+scene::rotate(wheelBasis,{0,forward,0})+Vec{0,0,-settings.below};
     // The cap is authored flat on Z. Present its top toward the player (-Y).
     for(int r=0;r<3;r++){desired.r[r][1]=wheelBasis.r[r][2];desired.r[r][2]=-wheelBasis.r[r][1];}
    }
@@ -571,6 +690,7 @@ namespace {
    }
    if(!p.mesh.empty()){auto centered=desired;centered.p=centered.p+desired.p-scene::boxCenter(p.mesh);if(!scene::setWorld(node,centered))continue;}
    if(!p.pin.attach(node))continue;
+   if(wheelCarrier)p.carrierLocal=cabinLocal(wheelCarrierFrame,scene::world(node));
    // Preview lifetime is retained explicitly, separate from the moving player.
    log("PIN %d %08X world=%.3f %.3f %.3f parent=%s",i,item.id,desired.p.x,desired.p.y,desired.p.z,scene::name(p.pin.anchor));displayed++;
   }
@@ -580,6 +700,15 @@ namespace {
   if(openHand>=0)close();items.clear();auto player=playerForm();auto root=scene::root(player);if(!root)return;
   Vec head;if(!pos("Bip01 Head",1,head))return;wheelHead=head;wheelRoot=scene::world(root).p;wheelBasis=scene::world(root);wheelBasis.scale=1;wheelCell=scene::cell(player);
   {std::lock_guard<std::mutex> lock(inputMutex);wheelXRHead=input.head;wheelXRValid=input.headValid;}
+  wheelCarrierLost=false;wheelCarrier=mountedUIFrame(wheelCarrierFrame);
+  if(wheelCarrier){
+   wheelLocalHead=scene::inverseRotate(wheelCarrierFrame,wheelHead-wheelCarrierFrame.p)*(1/wheelCarrierFrame.scale);
+   wheelLocalRoot=scene::inverseRotate(wheelCarrierFrame,wheelRoot-wheelCarrierFrame.p)*(1/wheelCarrierFrame.scale);
+   wheelLocalBasis=cabinLocal(wheelCarrierFrame,wheelBasis);
+   tutorialThread=GetCurrentThreadId();
+   if(!tutorialPublished)tutorialPublished=native_pose_dispatch::subscribe(nullptr,publishTutorial);
+   if(!tutorialPublished){wheelCarrier=nullptr;tell("Vehicle selector unavailable");return;}
+  }
   Element e;if(!call(hand==1?getWeapons:getAid,e)||(e.type!=4&&!(e.type==1&&e.value.number==0))){release(e);tell("Inventory unavailable");return;}
   // JIP returns a null array (or numeric zero) for an empty category. The cap
   // remains usable without any outer items; no owned cap is required either.
@@ -592,8 +721,8 @@ namespace {
   }release(e);std::sort(items.begin(),items.end(),[](const Item&a,const Item&b){return a.name<b.name;});
   openHand=hand;page=0;uiEpoch++;selectorOpen=true;if(!buildPage())close();
  }
- void heightText(){char text[320];sprintf_s(text,"SEATED HEIGHT: %+d cm | Popups: %s\nRight stick adjusts | A calibrates to %d cm\nX resets | Y toggles popups | Left stick: Controls\nB saves and closes",int(std::round(heightOffset*100)),showSelectorPopups?"ON":"OFF",int(std::round(desiredHeight*100)));tell(text,true);}
- void saveHeight(){char value[32];sprintf_s(value,"%.1f",heightOffset*100);WritePrivateProfileStringA("Seated","HeightOffsetCm",value,settingsPath);log("HEIGHT saved offset=%s cm",value);}
+ void heightText(){if(seatContext){char text[320];sprintf_s(text,"%s SEAT: %+d cm\nRight stick adjusts | A/X resets this seat\nY toggles popups | Left stick: Controls\nB saves this seat and closes",seatNames[seatContext],int(std::round(heightOffset*100)));tell(text,true);return;}char text[320];sprintf_s(text,"%s HEIGHT: %+d cm | Popups: %s\nRight stick adjusts | A calibrates to %d cm\nX resets | Y toggles popups | Left stick: Controls\nB saves and closes",seatNames[seatContext],int(std::round(heightOffset*100)),showSelectorPopups?"ON":"OFF",int(std::round(desiredHeight*100)));tell(text,true);}
+ void saveHeight(){char value[32];sprintf_s(value,"%.1f",heightOffset*100);seatOffsets[seatContext]=heightOffset.load();WritePrivateProfileStringA("Seated",seatKeys[seatContext],value,settingsPath);log("HEIGHT saved context=%s offset=%s cm",seatNames[seatContext],value);}
  void toggleReload(){
    bool manual=false;
    if(build_adapter::readManualReload(manual)&&build_adapter::setManualReload(!manual)){
@@ -654,7 +783,7 @@ namespace {
   return wristTouch.update(wristFrame,now,!selectorOpen&&!heightMenu&&!weaponTransition);
  }
  void clearTutorialVisual(){
-  tutorialAnchorValid=false;
+  tutorialAnchorValid=false;tutorialCarrier=nullptr;tutorialRig=nullptr;
   tutorial_visual::clear();
   if(tutorialAttached)number(detach,"FCTutorialMount|FilthyCasual\\tutorial.nif");
   if(tutorialInserted)number(removeNode,"FCTutorialMount");
@@ -670,7 +799,7 @@ namespace {
  }
  void drawTutorial(){
   if(tutorialStep==reload_tutorial::Step::Hidden||!tutorialNative.valid||!tutorialWeapon){tutorial_visual::hide();return;}
-  if(!ensureTutorialVisual())return;
+  if(!tutorial_visual::pin.node||!tutorialRig)return;
   tutorial_visual::begin();auto& r=tutorialNative.reload;auto frame=scene::world(r.weaponRoot);
   auto point=[&](tutorial_data::Vec p){return tutorial_adapter::position(r.weaponRoot,p);};
   if(tutorialWeapon->charger.present&&!tutorialWeapon->charger.values.empty()){
@@ -697,21 +826,44 @@ namespace {
    if(r.spareCenterValid)p=p+scene::rotate(pouch,{r.spareLocalCenter[0],r.spareLocalCenter[1],r.spareLocalCenter[2]})*pouch.scale;
    tutorial_visual::box(2,p,4.0f,pouch);
   }
-  auto head=scene::find(scene::root(playerForm()),"Bip01 Head");if(!head)return;
+  auto head=scene::find(tutorialRig,"Bip01 Head");if(!head)return;
   const auto eye=scene::world(head).p;
   // A reading card stays in its world zone; manipulating the gun must not
   // pull it into the face or across the action. Only the part outlines follow.
   float units=r.metresToUnits;
   if(!std::isfinite(units)||units<1)return;
+  // Cabin-local anchor uses the same completed native pose as the gun.
+  // On foot the reading card retains its original stable world zone.
+  using Carrier=void*(__cdecl*)(scene::Transform*);
+  auto module=GetModuleHandleW(L"FilthyCasualVehicles.dll");
+  auto query=module?reinterpret_cast<Carrier>(GetProcAddress(module,"FC_VehicleTutorialFrame")):nullptr;
+  scene::Transform carrierFrame{};auto carrier=query?query(&carrierFrame):nullptr;
+  if(carrier!=tutorialCarrier){tutorialAnchorValid=false;tutorialCarrier=carrier;}
+  if(carrier&&tutorialAnchorValid){
+   tutorialAnchor=carrierFrame.p+scene::rotate(carrierFrame,tutorialLocalAnchor)*carrierFrame.scale;
+   tutorialAnchorEye=carrierFrame.p+scene::rotate(carrierFrame,tutorialLocalEye)*carrierFrame.scale;
+  }
   if(!tutorialAnchorValid||scene::distance(eye,tutorialAnchorEye)>.8f*units){
    // Reuse the selector's established player-facing frame. A weapon may
    // still be at the hip when drawn, so its direction cannot place the card.
-   auto body=scene::world(scene::root(playerForm()));
+   auto body=scene::world(tutorialRig);
    tutorialAnchor=eye+scene::rotate(body,{-.10f*units,.72f*units,0});tutorialAnchor.z+=.15f*units;
    tutorialAnchorEye=eye;tutorialAnchorValid=true;
+   if(carrier){
+    tutorialLocalAnchor=scene::inverseRotate(carrierFrame,tutorialAnchor-carrierFrame.p)*(1/carrierFrame.scale);
+    tutorialLocalEye=scene::inverseRotate(carrierFrame,tutorialAnchorEye-carrierFrame.p)*(1/carrierFrame.scale);
+   }
   }
   tutorial_visual::card(reload_tutorial::card(tutorialStep,tutorialMechanism),tutorialAnchor,tutorialAnchorEye);
   scene::update(tutorial_visual::pin.node); // Recompute aggregate bounds after moving children.
+ }
+ void publishTutorial(bool completed){
+  if(GetCurrentThreadId()!=tutorialThread)return;
+  if(!completed){tutorial_visual::hide();if(wheelCarrier){wheelCarrierLost=true;for(auto& p:previews)if(p.pin.node)cullNode(p.pin.node,true);}return;}
+  publishSelector();
+  if(tutorialStep==reload_tutorial::Step::Hidden||!tutorial_visual::pin.node)return;
+  tutorialNative=tutorial_adapter::read();
+  drawTutorial();++tutorialPublications;
  }
  void setTutorial(bool want){
   if(want&&!tutorialDataLoaded){
@@ -750,10 +902,18 @@ namespace {
    ((tutorialInput.h[0].primary||tutorialInput.h[1].primary)&&(tutorialInput.h[0].grip>.55f||tutorialInput.h[1].grip>.55f));
   next=reload_tutorial::settle(tutorialStep,next,cyclingControls);
   if(next!=tutorialStep)log("TUTORIAL step=%s rounds=%d installed=%d held=%d chamber=%d",reload_tutorial::name(next),state.rounds,state.installed,state.held,state.chambered);
-  tutorialStep=next;drawTutorial();
+  tutorialStep=next;
+  tutorialThread=GetCurrentThreadId();tutorialRig=scene::root(playerForm());
+  if(next!=reload_tutorial::Step::Hidden){
+   ensureTutorialVisual();
+   if(!tutorialPublished)tutorialPublished=native_pose_dispatch::subscribe(nullptr,publishTutorial);
+   if(!tutorialPublished)tutorial_visual::hide();
+  }else tutorial_visual::hide();
  }
  void tutorialDiagnostics(std::ostream& out){
   auto anchor=physical_reload_adapter::trackingPoint(tutorialAnchor);
+  out<<",\"tutorialPublications\":"<<tutorialPublications<<",\"tutorialMounted\":"<<(tutorialCarrier?"true":"false");
+  out<<",\"tutorialCardLocal\":["<<tutorialLocalAnchor.x<<","<<tutorialLocalAnchor.y<<","<<tutorialLocalAnchor.z<<"]";
   out<<",\"tutorialCardWorld\":["<<tutorialAnchor.x<<","<<tutorialAnchor.y<<","<<tutorialAnchor.z<<"]";
   out<<",\"tutorialCardAnchor\":["<<anchor.x<<","<<anchor.y<<","<<anchor.z<<"]";
 
@@ -799,7 +959,14 @@ namespace {
   }
   out<<"]}";
  }
+ void updateSeatContext(){
+  seatOffsets[seatContext]=heightOffset.load();
+  using Context=int(__cdecl*)();auto mod=GetModuleHandleW(L"FilthyCasualVehicles.dll");auto fn=mod?reinterpret_cast<Context>(GetProcAddress(mod,"FC_SeatContext")):nullptr;
+  int next=fn?fn():0;if(next<0||next>4)next=0;
+  if(next!=seatContext){seatContext=next;heightOffset=seatOffsets[next].load();mouthGate.reset();if(heightMenu)heightText();}
+ }
  void tick(){
+  updateSeatContext();
   native_worldmag_recovery::tick(ready&&loaded&&gestureGameplayAllowed&&!selectorOpen&&!heightMenu&&!weaponTransition&&!controlsEditor);
   if(!ready||!loaded){enabled=false;gestureGameplayAllowed=false;return;}auto now=GetTickCount64();if(now-lastLoop<10)return;lastLoop=now;
   if(presentation_adapter::base){
@@ -817,6 +984,7 @@ namespace {
   Input current;{std::lock_guard<std::mutex> lock(inputMutex);current=input;}
   if(!reloadPreferenceApplied&&build_adapter::setManualReload(!automaticReload)){reloadPreferenceApplied=true;log("RELOAD preference applied: %s",automaticReload?"automatic":"manual");}
   auto player=playerForm();auto root=scene::root(player);bool usable=root&&number(getMenu)==0&&now-current.time<500&&current.h[0].active&&current.h[1].active;
+  tickBottleImpacts(usable);
   enabled=usable;
   gestureGameplayAllowed=usable&&!weaponTransition;
   native_worldmag_recovery::tick(usable&&!selectorOpen&&!heightMenu&&!weaponTransition&&!controlsEditor);
@@ -853,8 +1021,18 @@ namespace {
       else if(pendingWeapon.id==0x15169){weaponTransition=false;tell("Stimpak ready in right hand");}
       else {pendingStage=3;pendingAt=now+150;aidDeadline=now+2000;}
      }else{
+      // Keep the replacement in the previous bottle's hand-relative frame
+      // while its native 3D loads. The pickup then owns it normally.
+      scene::Transform replacement{};if(held_pose_adapter::target(replacement)){
+       // Set the actual reference/Havok pose, not just the visible NiNode;
+       // native grab derives its attachment from the rigid body.
+       static Script* placeEmpty=nullptr;if(!placeEmpty)placeEmpty=compile("empty bottle pose","ref target\nfloat x\nfloat y\nfloat z\nfloat ax\nfloat ay\nfloat az\nbegin function {target,x,y,z,ax,ay,az}\ntarget.SetAngleEx ax ay az 1\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");
+       constexpr float deg=57.295779513f;auto& r=replacement.r;
+       auto ax=std::atan2(r[2][1],r[2][2])*deg,ay=-std::asin(std::clamp(r[2][0],-1.f,1.f))*deg,az=std::atan2(r[1][0],r[0][0])*deg;
+       if(placeEmpty)number(placeEmpty,selectedRef,bits(replacement.p.x),bits(replacement.p.y),bits(replacement.p.z),bits(ax),bits(ay),bits(az));
+      }
       Vec head;int result=0;if(pos("Bip01 Head",1,head))result=build_adapter::grabSelected(playerForm(),&head.x,selectedRef);
-      if(build_adapter::grabbedItem()==selectedRef&&build_adapter::grabbedHand()==1){aidDropPending=false;weaponTransition=false;stickyAidButtons=true;log("NATIVE AID handoff %08X result=%d",heldAid.id,result);tell(heldAid.name+" in right hand");}
+      if(build_adapter::grabbedItem()==selectedRef&&build_adapter::grabbedHand()==1){aidDropPending=false;weaponTransition=false;held_pose_adapter::pending=false;if(current.h[1].grip>.65f)aidGripLatch=false;stickyAidButtons=aidGripLatch.load();log("NATIVE AID handoff %08X result=%d",heldAid.id,result);tell(heldAid.name+" in right hand");}
       else if(now>=aidDeadline){clearAid();weaponTransition=false;tell("Item returned to inventory; native handoff unavailable");}
       else {pendingAt=now+100;auto palm=scene::palm(root,1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));}
      }
@@ -894,16 +1072,16 @@ namespace {
    if(current.h[0].stick&&!previous.h[0].stick){auto m=GetModuleHandleW(L"SeatedInput.dll");using Open=void(__cdecl*)();auto fn=m?reinterpret_cast<Open>(GetProcAddress(m,"SC_OpenControls")):nullptr;if(fn){heightMenu=false;fn();previous=current;return;}}
    if(b){heightMenu=false;saveHeight();tell("Seated height saved",true);}
    else if(y){showSelectorPopups=!showSelectorPopups.load();WritePrivateProfileStringA("UI","ShowSelectorPopups",showSelectorPopups?"1":"0",settingsPath);heightText();}
-   else if(a&&physicalHeight>.2f){heightOffset=std::clamp(desiredHeight-physicalHeight.load(),-.5f,1.2f);heightText();}
+   else if(a&&physicalHeight>.2f){heightOffset=seatContext?0:std::clamp(desiredHeight-physicalHeight.load(),-.5f,1.2f);heightText();}
    else if(x){heightOffset=0;heightText();}
-   else if(std::abs(r.y)>.65f&&(std::abs(oldR.y)<=.65f||now-heightStepAt>300)){heightOffset=std::clamp(heightOffset+(r.y>0?.05f:-.05f),-.5f,1.2f);heightStepAt=now;heightText();}
+   else if(std::abs(r.y)>.65f&&(std::abs(oldR.y)<=.65f||now-heightStepAt>300)){heightOffset=std::clamp(heightOffset+(r.y>0?.05f:-.05f),-.5f,seatContext?.5f:1.2f);heightStepAt=now;heightText();}
    previous=current;return;
   }
   if(b&&selectorOpen){close();tell("Selector closed");previous=current;return;}
   if(selectorOpen){
    if(wheelXRValid&&current.headValid&&scene::distance(current.head,wheelXRHead)>1.2f){close();tell("Selector dismissed");previous=current;return;}
-   if(l.x*l.x+l.y*l.y>.16f){close();tell("Selector dismissed");previous=current;return;}
-   if(scene::cell(player)!=wheelCell||scene::distance(scene::world(root).p,wheelRoot)>settings.walkAway){close();tell("Selector dismissed");previous=current;return;}
+   if(!wheelCarrier&&l.x*l.x+l.y*l.y>.16f){close();tell("Selector dismissed");previous=current;return;}
+   if(wheelCarrierLost||(wheelCarrier?!mountedVehicle():(scene::cell(player)!=wheelCell||scene::distance(scene::world(root).p,wheelRoot)>settings.walkAway))){close();tell("Selector dismissed");previous=current;return;}
    Vec head;if(!pos("Bip01 Head",1,head)||scene::distance(head,wheelHead)>settings.walkAway){close();tell("Selector dismissed");previous=current;return;}
    if(a||x){int pages=std::max(1,int((items.size()+slots-1)/slots));page=(page+(a?1:pages-1))%pages;if(!buildPage())close();previous=current;return;}
    int pick=-1,hand=-1;float nearest=settings.reach;
@@ -919,15 +1097,16 @@ namespace {
   }else if(aidHand>=0){
    bool held=heldAid.id==0x15169?build_adapter::stimHand()==1:build_adapter::grabbedItem()==selectedRef;
    if(!held)forgetHeldAid();
-   else if(r.grip>.65f&&oldR.grip<=.65f){aidGripLatch=false;stickyAidButtons=false;mouthGate.reset();log("Aid grip: native control resumed");}
+   else if(aidGripLatch&&r.grip>.65f){aidGripLatch=false;stickyAidButtons=false;mouthGate.reset();log("Aid grip: native control resumed");}
    else if(aidGripLatch&&heldAid.id!=0x15169){
     stickyAidButtons=true;
     if(a||x){if(build_adapter::stowSelectedGrab(player,selectedRef)){forgetHeldAid();tell("Item returned to inventory");}else mouthGate.reset();}
     else {
      auto head=scene::find(root,"Bip01 Head");auto itemRoot=scene::root(selectedRef);
      mouthDistance=-1;
-     if(heldFood&&head&&itemRoot){
-      Vec mouth=scene::world(head).p;mouth.z-=7.f;foodMouthPoint=mouth;
+     Vec mouth{};
+     if(heldFood&&head&&itemRoot&&current.mouthTime&&now-current.mouthTime<250&&physical_reload_adapter::worldTrackingPoint(current.mouth,scene::world(head).p,mouth)){
+      foodMouthPoint=mouth;
       std::vector<scene::Box> mesh;scene::boxes(itemRoot,mesh);
       mouthDistance=mesh.empty()?scene::distance(scene::world(itemRoot).p,mouth):scene::touchDistance(mesh,mouth);
      }
@@ -952,6 +1131,9 @@ namespace {
   float targetThumb=g.thumb?(.20f+.80f*grip):.12f;
   float targetIndex=g.index?std::max(grip,.20f+.80f*trigger):trigger;
   float targetLift=g.thumb?0.f:grip;
+  auto contact=vehicleModule?reinterpret_cast<bool(__cdecl*)(int)>(GetProcAddress(vehicleModule,"FC_VehicleHandContact")):nullptr;
+  if(contact&&contact(hand)){targetThumb=.62f;targetIndex=.65f+.25f*trigger;targetLift=0;freeGrip=.72f;}
+
   float dt=g.blendTime?std::min(float(now-g.blendTime)*.001f,.1f):.016f;g.blendTime=now;
   float blend=1.f-std::exp(-dt/0.09f);
   g.thumbCurl+=(targetThumb-g.thumbCurl)*blend;g.indexCurl+=(targetIndex-g.indexCurl)*blend;
@@ -985,9 +1167,11 @@ namespace {
    if(cmd=="sc_controls"||cmd=="sc_controls_state"){
     auto m=GetModuleHandleW(L"SeatedInput.dll");if(m){if(cmd=="sc_controls"){using F=void(__cdecl*)();auto f=reinterpret_cast<F>(GetProcAddress(m,"SC_OpenControls"));if(f)f();}else{using F=void(__cdecl*)(char*,unsigned);auto f=reinterpret_cast<F>(GetProcAddress(m,"SC_ControlsDebug"));if(f){char data[4096]{};f(data,sizeof(data));std::ofstream out(std::string(dir)+"\\controls-state.json");out<<data;}}}
    }
+   else if(cmd.rfind("sc_track_bottle ",0)==0){unsigned id=0;sscanf_s(cmd.c_str()+16,"%x",&id);trackBottle(static_cast<Form*>(physical_reload_adapter::lookup(id)));bottleTrace=true;glass_decal_adapter::diagnostics=true;}
+   else if(cmd=="sc_glass_state"){auto center=lastGlassPoint;auto t=physical_reload_adapter::trackingPoint(center);std::ofstream out(std::string(dir)+"\\glass-state.json");out<<"[{\"world\":["<<center.x<<","<<center.y<<","<<center.z<<"],\"tracking\":["<<t.x<<","<<t.y<<","<<t.z<<"]}]";}
    else if(cmd=="sc_state"){
     std::ofstream state(std::string(dir)+"\\addon-state.json");auto rig=scene::root(playerForm());
-    state<<"{\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
+    state<<"{\"seatContext\":"<<seatContext<<",\"groundHeightOffset\":"<<seatOffsets[0].load()<<",\"pid\":"<<GetCurrentProcessId()<<",\"openHand\":"<<openHand<<",\"aidHand\":"<<aidHand.load()<<",\"weaponHand\":"<<weaponHand.load()<<",\"heightMenu\":"<<(heightMenu?"true":"false")<<",\"heightOffset\":"<<heightOffset.load()<<",\"physicalHeight\":"<<physicalHeight.load()<<",\"menu\":"<<number(getMenu)<<",\"uiEpoch\":"<<uiEpoch.load();
     state<<",\"dialoguePlacements\":"<<presentation_adapter::placements.load()<<",\"dialogueTargetDistance\":"<<presentation_adapter::lastDistance.load()<<",\"dialogueSideDegrees\":"<<presentation_adapter::lastAngle.load();
     tutorialDiagnostics(state);presentation_adapter::diagnostics(state);reload_trace_adapter::diagnostics(state);physical_reload_adapter::diagnostics(state);
     {const auto d=native_worldmag_recovery::readInsertion();state<<",\"insertion\":{\"valid\":"<<(d.valid?"true":"false");
@@ -1009,8 +1193,9 @@ namespace {
     }state<<"]";
     auto engineGrab=scene::field<Form*>(playerForm(),0x638);state<<",\"engineGrabRef\":"<<(engineGrab?engineGrab->id:0);
     auto grab=static_cast<Form*>(build_adapter::grabbedItem());auto grabRoot=scene::root(grab);
-    state<<",\"nativeStimHand\":"<<build_adapter::stimHand()<<",\"nativeGrabHand\":"<<build_adapter::grabbedHand()<<",\"nativeGrabRef\":"<<(grab?grab->id:0)<<",\"nativeGrabScale\":"<<(grabRoot?scene::world(grabRoot).scale:0)<<",\"aidGripLatch\":"<<(aidGripLatch?"true":"false");
-    state<<",\"heldFood\":"<<(heldFood?"true":"false")<<",\"mouthDistance\":"<<mouthDistance<<",\"mouthArmed\":"<<(mouthGate.armed?"true":"false")<<",\"freePoseWeight\":["<<finger_adapter::freePoseWeight[0].load()<<","<<finger_adapter::freePoseWeight[1].load()<<"]";
+    state<<",\"nativeStimHand\":"<<build_adapter::stimHand()<<",\"nativeGrabHand\":"<<build_adapter::grabbedHand()<<",\"nativeGrabRef\":"<<(grab?grab->id:0)<<",\"nativeGrabBase\":"<<(grab&&scene::field<Form*>(grab,0x20)?scene::field<Form*>(grab,0x20)->id:0)<<",\"nativeGrabScale\":"<<(grabRoot?scene::world(grabRoot).scale:0)<<",\"aidGripLatch\":"<<(aidGripLatch?"true":"false");
+    if(grabRoot&&grab->id==lastEmptyBottle&&lastEmptyBottle){scene::Transform grip{};if(held_pose_adapter::grip(grip)){auto pose=held_pose_adapter::relative(grip,scene::world(grabRoot));float rotationError=0;for(int i=0;i<3;i++)for(int j=0;j<3;j++)rotationError=std::max(rotationError,std::abs(pose.r[i][j]-held_pose_adapter::localPose.r[i][j]));state<<",\"emptyPoseError\":"<<scene::distance(pose.p,held_pose_adapter::localPose.p)<<",\"emptyRotationError\":"<<rotationError;}}
+    state<<",\"bottleBreaks\":"<<bottleBreaks<<",\"glassPending\":"<<glass_decal_adapter::count()<<",\"trackedBottles\":"<<fragileBottles.size()<<",\"emptyBottleRef\":"<<lastEmptyBottle<<",\"heldFood\":"<<(heldFood?"true":"false")<<",\"mouthDistance\":"<<mouthDistance<<",\"mouthArmed\":"<<(mouthGate.armed?"true":"false")<<",\"freePoseWeight\":["<<finger_adapter::freePoseWeight[0].load()<<","<<finger_adapter::freePoseWeight[1].load()<<"]";
     {native_worldmag_recovery::WorldRef refs[256]{};unsigned count=native_worldmag_recovery::readWorldRefs(refs,256);
      state<<",\"nativeWorldMags\":[";
      for(unsigned i=0;i<count;i++){const auto& r=refs[i];if(i)state<<",";
@@ -1022,6 +1207,7 @@ namespace {
       state<<"}";}
      state<<"]";}
     {const auto& d=native_worldmag_recovery::diagnostics;
+     auto chamber=tutorial_adapter::read();state<<",\"chamberKnown\":"<<(chamber.chamberKnown?"true":"false")<<",\"chambered\":"<<(chamber.chambered?"true":"false");
      state<<",\"worldmagRecovery\":{\"installed\":"<<int(d.installed)<<",\"poisoned\":"<<int(d.poisoned)
           <<",\"candidate\":"<<d.candidate<<",\"transferred\":"<<d.transferred<<",\"rounds\":"<<d.rounds<<",\"hand\":"<<d.hand
           <<",\"firstEntries\":"<<d.firstEntries<<",\"secondEntries\":"<<d.secondEntries<<",\"prepared\":"<<d.prepared
@@ -1042,8 +1228,8 @@ namespace {
      state<<"}";
     }
     auto vec=[&](Vec p){state<<"["<<p.x<<","<<p.y<<","<<p.z<<"]";};
-    state<<",\"mouthPoint\":";vec(foodMouthPoint);state<<",\"heldCenter\":";
-    {std::vector<scene::Box> mesh;if(grabRoot)scene::boxes(grabRoot,mesh);vec(mesh.empty()?Vec{}:scene::boxCenter(mesh));}
+    state<<",\"trackedHead\":";{std::lock_guard<std::mutex> lock(inputMutex);vec(input.head);}state<<",\"mouthPoint\":";vec(foodMouthPoint);state<<",\"heldCenter\":";
+    {std::vector<scene::Box> mesh;if(grabRoot)scene::boxes(grabRoot,mesh);auto center=mesh.empty()?Vec{}:scene::boxCenter(mesh);vec(center);state<<",\"heldTracking\":";vec(physical_reload_adapter::trackingPoint(center));state<<",\"mouthTracking\":";vec(physical_reload_adapter::trackingPoint(foodMouthPoint));}
     state<<",\"wrist\":{\"attached\":"<<(wristNode?"true":"false")<<",\"valid\":"<<(wristFrame.valid?"true":"false")<<",\"facing\":"<<(wristFrame.facing?"true":"false")<<",\"tip\":";vec(wristFrame.fingertip);state<<",\"origin\":";vec(wristFrame.world.p);state<<",\"normal\":";vec(wrist_controls::axis(wristFrame.world,2));state<<",\"targets\":[";for(int i=0;i<4;i++){if(i)state<<",";vec(wrist_controls::buttonWorld(wristFrame,i));}state<<"]}";
     state<<",\"wristEye\":";vec(wristFrame.eye);
     state<<",\"leftFingertips\":[";const char* fingers[]={"Bip01 L Thumb12","Bip01 L Finger12","Bip01 L Finger22","Bip01 L Finger32","Bip01 L Finger42"};
@@ -1053,7 +1239,7 @@ namespace {
      for(int f=0;f<5;f++){if(f)state<<",";char name[40];sprintf_s(name,"Bip01 %c %s",h?'R':'L',f==0?"Thumb12":f==1?"Finger12":f==2?"Finger22":f==3?"Finger32":"Finger42");auto n=scene::find(rig,name);auto w=scene::find(rig,h?"Bip01 R Hand":"Bip01 L Hand");vec(n&&w?scene::inverseRotate(scene::world(w),scene::world(n).p-scene::world(w).p):Vec{});}state<<"]}";}}state<<"]";
     state<<",\"wristPlungers\":[";for(int i=0;i<5;i++){if(i)state<<",";auto& p=wristPlungers[i];state<<"{\"found\":"<<(p.node?"true":"false")<<",\"depression\":"<<p.depression<<",\"localZ\":"<<(p.node?scene::local(p.node).p.z:0)<<"}";}state<<"]";
     state<<",\"hands\":[";for(int h=0;h<2;h++){if(h)state<<",";auto wrist=scene::find(rig,h?"Bip01 R Hand":"Bip01 L Hand");vec(wrist?scene::world(wrist).p:Vec{});}state<<"],\"palms\":[";vec(scene::palm(rig,0));state<<",";vec(scene::palm(rig,1));
-    state<<"],\"previews\":[";bool first=true;for(int i=0;i<previewCount;i++){auto& p=previews[i];if(!p.pin.node)continue;if(!first)state<<",";first=false;state<<"{\"slot\":"<<i<<",\"form\":"<<(i==capSlot?15:items[page*slots+i].id)<<",\"center\":";Vec extent;vec(p.mesh.empty()?scene::world(p.pin.node).p:scene::boxCenter(p.mesh,&extent));state<<",\"extent\":";vec(extent);state<<"}";}state<<"]";
+    state<<"],\"selectorMounted\":"<<(wheelCarrier?"true":"false")<<",\"selectorPalms\":[";vec(selectorPalms[0]);state<<",";vec(selectorPalms[1]);state<<"],\"previews\":[";bool first=true;for(int i=0;i<previewCount;i++){auto& p=previews[i];if(!p.pin.node)continue;if(!first)state<<",";first=false;state<<"{\"slot\":"<<i<<",\"form\":"<<(i==capSlot?15:items[page*slots+i].id)<<",\"center\":";Vec extent;vec(p.mesh.empty()?scene::world(p.pin.node).p:scene::boxCenter(p.mesh,&extent));state<<",\"tracking\":";vec(p.trackingCenter);state<<",\"extent\":";vec(extent);state<<"}";}state<<"]";
     {std::lock_guard<std::mutex> lock(displayMutex);state<<",\"selectorPopups\":"<<(showSelectorPopups?"true":"false")<<",\"popupVisible\":"<<(!displayText.empty()&&(selectorOpen||heightMenu||GetTickCount64()<=displayUntil)?"true":"false");}
     state<<"}";log("TEST STATE captured");
    }
@@ -1075,7 +1261,7 @@ namespace {
   if(m->type==NewGame){clearPhysicalMags();clearWrist();loaded=true;forgetHeldAid();log("NewGame");return;}
   // Native TTWVR owns held-item save/load and teardown. Only discard addon
   // pointers here; never activate/stow a native object during lifecycle events.
-  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearTutorialVisual();tutorialStep=reload_tutorial::Step::Hidden;tutorialForm=0;tutorialWeapon=nullptr;clearPhysicalMags();clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
+  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){clearBottleImpacts();lastEmptyBottle=0;clearTutorialVisual();tutorialStep=reload_tutorial::Step::Hidden;tutorialForm=0;tutorialWeapon=nullptr;clearPhysicalMags();clearWrist();enabled=false;gestureGameplayAllowed=false;weaponHand=-1;selectedWeaponID=0;weaponTransition=false;pendingWeapon={};if(selectorOpen)close();forgetHeldAid();heightMenu=false;loaded=false;return;}
   if(m->type==MainLoop){testMailbox();tick();if(loaded){tickPhysicalMags();tickTutorial();}}
  }
 }
@@ -1110,10 +1296,12 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_Input(const char* name,int hand,
  int control=stick?0:!strcmp(name,"primary_click")?1:!strcmp(name,"secondary_click")?2:!strcmp(name,"squeeze")?3:!strcmp(name,"trigger")?4:!strcmp(name,"thumbstick")?5:-1;
  if(control<0)return 0;
  bool pressed=kind==2?(x*x+y*y>.09f):x>.15f;
- bool locomotion=selectorOpen.load()&&!heightMenu.load()&&hand==0&&control==5;
- bool owned=(modal&&!locomotion)||(stickyAidButtons.load()&&aidGripLatch.load()&&control==1);
+ bool vehicleMotion=control==5&&mountedVehicle()&&!heightMenu.load()&&!controlsEditor.load();
+ bool locomotion=vehicleMotion||(selectorOpen.load()&&!heightMenu.load()&&hand==0&&control==5);
+ bool owned=(modal&&!locomotion)||(stickyAidButtons.load()&&aidGripLatch.load()&&control==1)||(control==4&&native_worldmag_recovery::cycleRequiredHand.load()==hand);
  bool suppress=owned;
  {std::lock_guard<std::mutex> lock(inputMutex);auto& drain=controlDrain[hand][control];
+  if(vehicleMotion)drain=false;
   if(owned&&pressed)drain=true;if(drain){suppress=true;if(!pressed)drain=false;}}
  if(active&&weaponHand.load()==hand&&control==3)return 2;
  return suppress?1:lootHorizontal?3:0;
@@ -1145,10 +1333,19 @@ extern "C" __declspec(dllexport) u32 __cdecl SC_UI(char* text,u32 capacity){
  strncpy_s(text,capacity,displayText.c_str(),_TRUNCATE);return 1;
 }
 
-extern "C" __declspec(dllexport) float __cdecl SC_Height(float rawHeadHeight){if(rawHeadHeight>0)physicalHeight=rawHeadHeight;return heightOffset.load();}
+extern "C" __declspec(dllexport) float __cdecl SC_Height(float rawHeadHeight){if(rawHeadHeight>0)physicalHeight=rawHeadHeight;return seatOffsets[0].load();}
+extern "C" __declspec(dllexport) float __cdecl SC_SeatOffset(int mode){return mode>0&&mode<5?seatOffsets[mode].load():0;}
 extern "C" __declspec(dllexport) bool __cdecl SC_DialogueAnchor(DialogueAnchor* out){return out&&presentation_adapter::readSpeaker(*out);}
 extern "C" __declspec(dllexport) void __cdecl SC_Head(float x,float y,float z){std::lock_guard<std::mutex> lock(inputMutex);input.head={x,y,z};input.headValid=std::isfinite(x)&&std::isfinite(y)&&std::isfinite(z);}
 extern "C" __declspec(dllexport) unsigned __cdecl SC_UIState(){return (uiEpoch.load()<<2)|(selectorOpen.load()?1:0)|(heightMenu.load()?2:0);}
 
 extern "C" __declspec(dllexport) void __cdecl SC_ControlsState(unsigned modal,unsigned overrides){controlsEditor=modal!=0;controlsOverrides=overrides;}
 extern "C" __declspec(dllexport) void __cdecl SC_ControlAction(int action){if(action>=0&&action<=4&&!controlsEditor.load())pendingControl=action;}
+
+extern "C" __declspec(dllexport) bool __cdecl FC_NativePoseOwner(){return native_pose_dispatch::original!=nullptr;}
+extern "C" __declspec(dllexport) bool __cdecl FC_NativePoseSubscribe(native_pose_dispatch::Callback before,native_pose_dispatch::Completed after){return native_pose_dispatch::local(before,after);}
+
+extern "C" __declspec(dllexport) void __cdecl SC_Mouth(float x,float y,float z){
+ std::lock_guard<std::mutex> lock(inputMutex);
+ if(std::isfinite(x)&&std::isfinite(y)&&std::isfinite(z)){input.mouth={x,y,z};input.mouthTime=GetTickCount64();}else input.mouthTime=0;
+}

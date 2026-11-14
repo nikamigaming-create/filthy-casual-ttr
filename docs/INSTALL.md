@@ -1,4 +1,4 @@
-# Install Filthy Casual TTR 1.7.0-dev.1
+# Install Filthy Casual TTR 1.8.0-beta.1
 
 Start with TTR already working in VR through Mod Organizer 2, including its
 xNVSE, JIP LN NVSE and other upstream requirements. This addon does not install
@@ -24,7 +24,7 @@ Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\TTWVR.dll'
 
 1. Quit the game. Back up your personal `SeatedControls.ini` when updating.
 2. In MO2 choose **Install a new mod from an archive**, selecting
-   `Filthy-Casual-TTR-1.7.0-dev.1.zip`.
+   `Filthy-Casual-TTR-1.8.0-beta.1.zip`.
 3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane, so the
    addon wins its own file conflicts. Leave base TTR and its dependencies enabled.
 4. Preserve the personal INI, especially height and reload preferences.
@@ -73,3 +73,12 @@ The folder also contains `catalog.json` for offline editing. [Full instructions]
 
 Graphics, DLSS, Link/Air Link and texture settings are separate from this addon.
 The installer does not alter them. [Validation](VALIDATION.md).
+
+## Tested local bottle build
+
+This local update includes `Filthy Casual Glass.esp` and original glass textures.
+Enable that plugin alongside Filthy Casual TTR. It adds only a texture-set record
+and depends on FalloutNV.esm; no third-party game assets are bundled.
+Existing INI preferences are retained during the local upgrade. Gentle impacts
+leave tracked empties intact. Hard collisions shatter them with native sound,
+particles and a timed glass decal. Public 1.8.0-beta.1 does not yet include this update.

@@ -7,7 +7,7 @@ from pyffi.formats.nif import NifFormat as N
 sys.path.insert(0,r'D:\code\fnvvr\local\pydeps')
 from bethesda_structs.archive.bsa import BSAArchive
 p=argparse.ArgumentParser();p.add_argument('--game-data',type=Path,required=True);p.add_argument('--dependency-data',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
-out=a.output;out.mkdir(parents=True,exist_ok=True);local=out/'Data';needed={'meshes/vehicles/vertibirdground01.nif','meshes/furniture/enclavechair01.nif'}
+out=a.output;out.mkdir(parents=True,exist_ok=True);local=out/'Data';needed={'meshes/vehicles/vertibirdground01.nif','meshes/furniture/enclavechair01.nif','meshes/clutter/junk/motorhandle01.nif'}
 def extract(needed):
  for archive in ('Fallout - Meshes.bsa','Fallout - Textures.bsa','Fallout - Textures2.bsa'):
   with (a.game_data/archive).open('rb') as f:
@@ -22,7 +22,7 @@ def extract(needed):
       expected=struct.unpack('<I',payload[:4])[0];payload=zlib.decompress(payload[4:]);assert len(payload)==expected
      dest=local/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(payload)
 extract(needed)
-sources={'chair':local/'meshes/furniture/enclavechair01.nif','exterior':local/'meshes/vehicles/vertibirdground01.nif','interior':a.dependency_data/'Meshes/PlayerVertibird/vertibirdinterior.nif','console':a.dependency_data/'Meshes/PlayerVertibird/vertibirdinterior_console.nif'}
+sources={'handle':local/'meshes/clutter/junk/motorhandle01.nif','chair':local/'meshes/furniture/enclavechair01.nif','exterior':local/'meshes/vehicles/vertibirdground01.nif','interior':a.dependency_data/'Meshes/PlayerVertibird/vertibirdinterior.nif','console':a.dependency_data/'Meshes/PlayerVertibird/vertibirdinterior_console.nif'}
 meshes=[];provenance=[]
 for group,path in sources.items():
  d=N.Data()

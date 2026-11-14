@@ -30,7 +30,7 @@ inline bool paint(const controls_runtime::View&v){
  auto dc=CreateCompatibleDC(nullptr);if(!dc)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=width;bi.bmiHeader.biHeight=-height;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;void* data=nullptr;auto bitmap=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&data,nullptr,0);if(!bitmap){DeleteDC(dc);return false;}auto old=SelectObject(dc,bitmap);
  if(loadArtwork())memcpy(data,artwork.data(),artwork.size());else box(dc,0,0,width,height,RGB(13,24,23),RGB(137,158,123));
  text(dc,"CONTROL CONFIGURATION",75,110,900,50,38,RGB(165,238,133));text(dc,"PROFILE "+std::to_string(v.slot)+(v.dirty?" *":""),1060,115,250,40,28,RGB(165,238,133));
- text(dc,"QUEST TOUCH PLUS",75,185,410,40,28,RGB(145,191,158));
+ text(dc,v.deviceTitles[0]==v.deviceTitles[1]?(v.deviceTitles[0]=="Steam Frame"?"Steam Frame / diagram":v.deviceTitles[0]):"MIXED CONTROLLERS",75,185,410,40,26,RGB(145,191,158));
  text(dc,v.title+(v.automatic?" / AUTO":" / EDIT"),75,228,410,38,25);
  for(int i=0;i<3;i++){box(dc,75+i*130,268,120,38,RGB(15,40,18),RGB(106,168,86));text(dc,i==0?"< MODE":i==1?"MODE >":"AUTO",83+i*130,273,115,32,21);}
 
@@ -39,7 +39,7 @@ inline bool paint(const controls_runtime::View&v){
  auto list=v.displayedRows;int page=controls_runtime::position(list,v.selected)/6;for(int k=0;k<6;k++){int index=page*6+k;if(index>=int(list.size()))break;int row=list[index];int y=184+k*76;bool chosen=row==v.selected;
   box(dc,500,y,820,69,chosen?RGB(28,55,27):RGB(8,25,13),(chosen||hover==row)?RGB(198,229,134):RGB(59,79,62));
   std::string label=row<fc_controls::actionCount?v.labels[row]:row==fc_controls::actionCount?"Save to profile "+std::to_string(v.slot):row==fc_controls::actionCount+1?"Load profile "+std::to_string(v.slot):row==fc_controls::actionCount+2?"Reset this mode to defaults":"Close controls";
-  text(dc,label,520,y+4,780,34,27,chosen?RGB(173,245,139):RGB(168,221,144));if(row<fc_controls::actionCount)text(dc,fc_controls::bindingText(v.profile.bindings[row]),520,y+37,780,30,23,RGB(156,188,165));
+  text(dc,label,520,y+4,780,34,27,chosen?RGB(173,245,139):RGB(168,221,144));if(row<fc_controls::actionCount)text(dc,[&](){auto b=v.profile.bindings[row];if(b.source<0)return fc_controls::bindingText(b);auto label=[&](int i){return v.sourceLabels[i].empty()?std::string(fc_controls::sourceNames[i]):v.sourceLabels[i];};return (b.modifier>=0?label(b.modifier)+" + ":std::string{})+label(b.source)+" / "+fc_controls::gestureNames[b.gesture];}(),520,y+37,780,30,23,RGB(156,188,165));
  }
  text(dc,"PAGE "+std::to_string(page+1)+" / "+std::to_string((list.size()+5)/6),865,656,240,40,23,RGB(145,191,158));
  box(dc,505,650,95,42,RGB(15,40,18),RGB(106,168,86));text(dc,"<",540,653,50,38,28);

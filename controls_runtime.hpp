@@ -1,13 +1,17 @@
 #pragma once
 #include "controls_model.hpp"
 #include "controls_catalog.hpp"
+#include "controls_ini.hpp"
 #include <mutex>
 #include <fstream>
 #include <filesystem>
 namespace controls_runtime {
 using namespace fc_controls;
 inline std::mutex mutex;
-inline Engine engine;
+inline Engine engine,accessEngine;
+inline controls_ini::Config iniBindings;inline std::set<std::string> iniApplied;inline bool accessDown=false,startupEditorPending=false;
+inline std::string iniStatus;
+inline std::array<std::string,2> devicePaths{},deviceTitles{},deviceAssets{};
 inline Profiles profiles;inline std::string bank="onfoot",liveMode="onfoot";inline bool followMode=true;
 inline Frame physical{},previous{};
 inline int pointerRow=-1,pointerHand=1;inline float pointerX=0,pointerY=0;inline uint64_t pointerAt=0;
@@ -41,12 +45,21 @@ inline bool atomicWrite(const std::string&p,const std::string&data){
 
 inline bool storeBank(){if(!profiles.modes.count(bank)&&profiles.modes.size()>=32){status="Profile contains 32 modes. Load a new slot before adding another.";return false;}profiles.get(bank)=engine.profile;return true;}
 inline bool fits(const Profiles& p){size_t count=p.modes.size();for(auto& m:controls_catalog::modes)if(!p.modes.count(m.id))++count;return count<=32;}
-inline void changeBank(const std::string& id){if(bank==id)return;storeBank();bank=id;selected=0;engine.profile=profiles.modes.count(bank)||profiles.modes.size()<32?profiles.get(bank):Profile{};engine.reset();draining=true;for(auto& v:addonPrevious)v=false;phase=0;captureAt=0;captured=false;pluginState();}
+inline Profile& configuredBank(const std::string&id){auto& p=profiles.get(id);if(iniApplied.insert(id).second)iniBindings.apply(id,p);return p;}
+inline void readIniBindings(){
+ char path[MAX_PATH]{};auto module=GetModuleHandleW(L"SeatedControls.dll");
+ if(module&&GetModuleFileNameA(module,path,MAX_PATH)){auto dot=strrchr(path,'.');if(dot)strcpy_s(dot,5,".ini");}
+ char test[MAX_PATH]{};if(GetEnvironmentVariableA("SEATED_TEST_DIR",test,MAX_PATH)){auto p=std::string(test)+"\\controls-test.ini";strncpy_s(path,p.c_str(),_TRUNCATE);}
+ controls_ini::Config candidate;if(!controls_ini::decode(read(path),candidate)){iniStatus="INI bindings rejected; saved controls retained. Check spelling and values.";return;}
+ iniBindings=candidate;startupEditorPending=iniBindings.openOnStart;accessEngine.profile.bindings[0]=iniBindings.editor;accessEngine.reset();iniApplied.clear();
+ if(!candidate.global.empty()||!candidate.modes.empty())iniStatus="INI overrides applied. INI takes precedence on launch and Load.";
+}
+inline void changeBank(const std::string& id){if(bank==id)return;storeBank();bank=id;selected=0;engine.profile=profiles.modes.count(bank)||profiles.modes.size()<32?configuredBank(bank):Profile{};engine.reset();draining=true;for(auto& v:addonPrevious)v=false;phase=0;captureAt=0;captured=false;pluginState();}
 inline std::vector<int> displayed(const std::string& id){std::vector<int> out;auto& m=controls_catalog::find(id);for(int i=0;i<actionCount;i++)if(m.labels[i]!="Unused channel")out.push_back(i);for(int i=actionCount;i<rows;i++)out.push_back(i);return out;}
 inline int position(const std::vector<int>& list,int row){auto p=std::find(list.begin(),list.end(),row);return p==list.end()?0:int(p-list.begin());}
 inline std::string jsonString(const std::string& value){std::string out="\"";for(unsigned char c:value){if(c=='"'||c=='\\'){out+='\\';out+=char(c);}else if(c<32){const char* hex="0123456789abcdef";out+="\\u00";out+=hex[c>>4];out+=hex[c&15];}else out+=char(c);}return out+'"';}
 inline std::string catalogJson(){std::ostringstream o;o<<"{\"version\":1,\"sources\":[";for(int i=0;i<sourceCount;i++){if(i)o<<',';o<<jsonString(sourceNames[i]);}o<<"],\"modes\":[";bool first=true;for(auto& m:controls_catalog::modes){if(!first)o<<',';first=false;o<<"{\"id\":"<<jsonString(m.id)<<",\"title\":"<<jsonString(m.title)<<",\"available\":"<<(m.available?"true":"false")<<",\"actions\":[";for(int i=0;i<actionCount;i++){if(i)o<<',';o<<jsonString(m.labels[i]);}o<<"]}";}o<<"]}";return o.str();}
-inline void pollMode(uint64_t now){auto before=controls_catalog::scanned;controls_catalog::discover(now);if(before!=controls_catalog::scanned){for(auto& m:controls_catalog::modes)if(profiles.modes.count(m.id)||profiles.modes.size()<32)profiles.get(m.id);static std::string written;auto json=catalogJson();if(json!=written&&atomicWrite(directory+"\\catalog.json",json))written=json;}
+inline void pollMode(uint64_t now){auto before=controls_catalog::scanned;controls_catalog::discover(now);if(before!=controls_catalog::scanned){for(auto& m:controls_catalog::modes)if(profiles.modes.count(m.id)||profiles.modes.size()<32)configuredBank(m.id);static std::string written;auto json=catalogJson();if(json!=written&&atomicWrite(directory+"\\catalog.json",json))written=json;}
  liveMode=controls_catalog::current();if(!visible||followMode)changeBank(liveMode);}
 inline void init(){if(initialized)return;initialized=true;controls_catalog::discover(GetTickCount64());char root[MAX_PATH]{};
  if(GetEnvironmentVariableA("SEATED_TEST_DIR",root,MAX_PATH))directory=std::string(root)+"\\controls-profiles";
@@ -54,27 +67,30 @@ inline void init(){if(initialized)return;initialized=true;controls_catalog::disc
  std::error_code error;std::filesystem::create_directories(directory,error);
  auto active=read(directory+"\\active.txt");if(active.size()==1&&active[0]>='1'&&active[0]<='8')slot=active[0]-'0';
  auto data=read(path(slot));originals[slot]=data;observed[slot]=true;Profiles p;if(!data.empty()){if(decode(data,p)&&fits(p)){profiles=p;engine.profile=profiles.get(bank);}else status="Profile rejected; using native defaults. Saved file was not changed.";}
- pluginState();
+ readIniBindings();engine.profile=configuredBank(bank);if(!iniStatus.empty())status=iniStatus;pluginState();
 }
-inline void open(){followMode=true;changeBank(liveMode);visible=true;draining=true;phase=1;captured=false;openRequested=false;engine.reset();++epoch;status="Release buttons, then choose a binding. Changes stay temporary until saved.";pluginState();}
+inline void open(){followMode=true;changeBank(liveMode);visible=true;draining=true;phase=1;captured=false;openRequested=false;engine.reset();++epoch;status="Release buttons, then choose a binding. Changes stay temporary until saved. "+iniStatus;pluginState();}
 inline void close(){changeBank(liveMode);visible=false;draining=true;phase=0;engine.reset();status=dirty?"Unsaved changes remain active this session.":"Profile active.";pluginState();}
-inline bool neutral(const Frame&f){for(int i=0;i<19;i++)if(f[i].active&&std::abs(f[i].value)>.15f)return false;return true;}
+inline bool neutral(const Frame&f){for(int i=0;i<sourceCount;i++)if(!controller_profiles::touch(i)&&f[i].active&&std::abs(f[i].value)>.15f)return false;return true;}
 inline void load(){auto data=read(path(slot));Profiles p;if(data.empty()||!decode(data,p)||!fits(p)){status="No valid saved profile in this slot. Current controls kept.";return;}
- profiles=p;engine.profile=profiles.get(bank);engine.reset();originals[slot]=data;observed[slot]=true;dirty=false;draining=true;status="Profile "+std::to_string(slot)+" loaded. Release controls to apply.";atomicWrite(directory+"\\active.txt",std::to_string(slot));pluginState();}
+ profiles=p;iniApplied.clear();engine.profile=configuredBank(bank);engine.reset();originals[slot]=data;observed[slot]=true;dirty=false;draining=true;status="Profile "+std::to_string(slot)+" loaded. Release controls to apply. "+iniStatus;atomicWrite(directory+"\\active.txt",std::to_string(slot));pluginState();}
 inline void save(){auto existing=read(path(slot));if(!observed[slot]){originals[slot]=existing;if(!existing.empty()){status="This slot contains a profile. Load it first before overwriting.";return;}observed[slot]=true;}
  if(existing!=originals[slot]){status="Profile changed on disk; load it before saving. Nothing overwritten.";return;}
  if(!storeBank())return;auto data=encode(profiles);Profiles checked;if(!decode(data,checked)){status="Profile validation failed; saved file kept.";return;}if(!atomicWrite(path(slot),data)){status="Save failed. Current bindings kept; check profile folder permissions.";return;}
  originals[slot]=data;dirty=false;status="Saved profile "+std::to_string(slot)+" for next launch.";if(!atomicWrite(directory+"\\active.txt",std::to_string(slot)))status="Profile saved; could not select it for next launch.";
 }
 inline int conflicts(const Binding&b,int row){int n=0;if(b.source<0)return n;for(int i=0;i<actionCount;i++)if(i!=row){auto other=engine.profile.bindings[i];if(other.source==b.source&&other.modifier==b.modifier)++n;}return n;}
-inline void invalidate(){std::lock_guard<std::mutex> lock(mutex);available=false;visible=false;draining=false;openRequested=false;phase=0;captureAt=0;recoveryAt=0;recoveryArmed=false;engine.reset();physical={};previous={};for(auto& v:addonPrevious)v=false;status="Input session interrupted; release controls before using a profile.";pluginState();}
+inline void invalidate(){std::lock_guard<std::mutex> lock(mutex);available=false;visible=false;draining=false;openRequested=false;phase=0;captureAt=0;recoveryAt=0;recoveryArmed=false;engine.reset();accessEngine.reset();accessDown=false;physical={};previous={};for(auto& v:addonPrevious)v=false;status="Input session interrupted; release controls before using a profile.";pluginState();}
 inline void update(const Frame&f,uint64_t now){std::lock_guard<std::mutex> lock(mutex);init();pollMode(now);physical=f;
  if(auto module=GetModuleHandleW(L"SeatedControls.dll")){using Raw=unsigned(__cdecl*)(const char*,int,int,float,float);auto fn=reinterpret_cast<Raw>(GetProcAddress(module,"SC_Input"));if(fn)for(int h=0;h<2;h++)fn("fc_physical",h,f[h*5].active?8:0,f[h*5+1].value,f[h*5].value);}
  bool pointing=pointerAt&&now-pointerAt<180&&pointerRow>=0;
  auto down=[&](int i){return f[i].active&&f[i].value>.55f;};auto press=[&](int i){return down(i)&&(!previous[i].active||previous[i].value<=.55f);};
- bool focused=f[0].active&&f[5].active;if(!available&&focused){available=true;draining=true;engine.reset();pluginState();}bool recovery=down(10)&&down(9);
+ bool focused=f[0].active||f[5].active;if(!available&&focused){available=true;draining=true;engine.reset();pluginState();}bool recovery=down(10)&&down(9);
  if(!recovery){recoveryAt=0;recoveryFired=false;recoveryArmed=true;}
  if(recovery&&recoveryArmed&&!recoveryFired){if(!recoveryAt)recoveryAt=now;if(now-recoveryAt>=1000){recoveryFired=true;if(visible)close();else open();}}
+ accessEngine.update(f,now,!focused);bool access=accessEngine.output[0].active&&accessEngine.output[0].value>.55f;
+ if(access&&!accessDown){if(visible)close();else open();}accessDown=access;
+ if(startupEditorPending&&focused){startupEditorPending=false;open();}
  if(openRequested&&focused)open();
  if(!focused){engine.reset();draining=true;recoveryAt=0;recoveryArmed=false;if(visible){phase=1;captured=false;status="Tracking paused. Release controls when focus returns.";}}
  if(draining&&focused&&neutral(f)&&!recovery){draining=false;if(visible&&phase==1)phase=0;pluginState();}
@@ -110,7 +126,8 @@ inline void update(const Frame&f,uint64_t now){std::lock_guard<std::mutex> lock(
   }else if(phase==2){
    for(int i=0;i<sourceCount;i++)if(press(i)){
     // A button contact sensor is not a second input for its own click.
-    if(i>=21&&!captureTouches)continue;
+    if(controller_profiles::touch(i)&&i!=19&&i!=20&&!captureTouches)continue;
+    if(captured){auto*cp=controller_profiles::find(devicePaths[controller_profiles::hands[i]]);if(cp&&proposal.source>=0&&*cp->paths[i]&&std::string(cp->paths[i])==cp->paths[proposal.source])continue;}
     if(!captured){proposal.source=i;captured=true;captureAt=now;}
     else if(i!=proposal.source&&proposal.modifier<0&&now-captureAt<350)proposal.modifier=i;
    }
@@ -126,7 +143,7 @@ inline void update(const Frame&f,uint64_t now){std::lock_guard<std::mutex> lock(
  if(visible&&!draining&&phase==0&&proposal.source==-2&&captureAt&&now>=captureAt){phase=2;captureAt=now;proposal.source=-3;}
  if(phase!=1&&phase!=2)captureAt=0;
  engine.update(f,now,visible||draining||!focused);
- for(int i=0;i<5;i++){auto v=engine.output[nativeCount+i];bool on=v.active&&v.value>.55f;if(on&&!addonPrevious[i]&&!visible&&!draining&&liveMode=="onfoot"){auto m=GetModuleHandleW(L"SeatedControls.dll");using Fn=void(__cdecl*)(int);auto fn=m?reinterpret_cast<Fn>(GetProcAddress(m,"SC_ControlAction")):nullptr;if(fn)fn(i);}addonPrevious[i]=on;}
+ for(int i=0;i<5;i++){auto v=engine.output[nativeCount+i];bool on=v.active&&v.value>.55f;if(on&&!addonPrevious[i]&&!visible&&!draining){auto m=GetModuleHandleW(L"SeatedControls.dll");using Fn=void(__cdecl*)(int);auto fn=m?reinterpret_cast<Fn>(GetProcAddress(m,"SC_ControlAction")):nullptr;if(fn)fn(i);}addonPrevious[i]=on;}
  previous=f;
 }
 inline bool route(int destination,Sample&sample){std::lock_guard<std::mutex> lock(mutex);if(destination<0||destination>=nativeCount)return false;
@@ -137,9 +154,9 @@ inline bool route(int destination,Sample&sample){std::lock_guard<std::mutex> loc
  if(engine.profile.bindings[destination].source<0){sample.value=0;return true;}
  sample=engine.output[destination];return true;
 }
-struct View {bool visible=false;unsigned epoch=0;int selected=0,slot=1,phase=0;bool dirty=false;Profile profile;Binding proposal;Frame physical;std::string status;std::string mode,title,description,live;bool automatic;std::array<std::string,actionCount> labels;std::vector<int> displayedRows;};
+struct View {bool visible=false;unsigned epoch=0;int selected=0,slot=1,phase=0;bool dirty=false;Profile profile;Binding proposal;Frame physical;std::string status;std::string mode,title,description,live;bool automatic;std::array<std::string,actionCount> labels;std::vector<int> displayedRows;std::array<std::string,2> devicePaths,deviceTitles,deviceAssets;std::array<std::string,sourceCount> sourceLabels;};
 inline void pointer(int row,int hand,float x,float y){std::lock_guard<std::mutex> lock(mutex);pointerRow=row;pointerHand=hand;pointerX=x;pointerY=y;pointerAt=row>=0?GetTickCount64():0;}
-inline View snapshot(){std::lock_guard<std::mutex> lock(mutex);if(controls_catalog::modes.empty())controls_catalog::modes.push_back(controls_catalog::native());return {visible,epoch,selected,slot,phase,dirty,engine.profile,proposal,physical,status,bank,controls_catalog::find(bank).title,controls_catalog::find(bank).description,liveMode,followMode,controls_catalog::find(bank).labels,displayed(bank)};}
+inline View snapshot(){std::lock_guard<std::mutex> lock(mutex);if(controls_catalog::modes.empty())controls_catalog::modes.push_back(controls_catalog::native());return {visible,epoch,selected,slot,phase,dirty,engine.profile,proposal,physical,status,bank,controls_catalog::find(bank).title,controls_catalog::find(bank).description,liveMode,followMode,controls_catalog::find(bank).labels,displayed(bank),devicePaths,deviceTitles,deviceAssets,fc_controls::sourceLabels};}
 inline void request(){std::lock_guard<std::mutex> lock(mutex);openRequested=true;}
-inline std::string diagnostics(){std::lock_guard<std::mutex> lock(mutex);std::ostringstream out;out<<"{\"mode\":\""<<bank<<"\",\"liveMode\":\""<<liveMode<<"\",\"modeCount\":"<<controls_catalog::modes.size()<<",\"visible\":"<<(visible?"true":"false")<<",\"draining\":"<<(draining?"true":"false")<<",\"phase\":"<<phase<<",\"selected\":"<<selected<<",\"pointerRow\":"<<pointerRow<<",\"slot\":"<<slot<<",\"bindings\":[";for(int i=0;i<actionCount;i++){if(i)out<<',';auto b=engine.profile.bindings[i];out<<'['<<b.source<<','<<b.modifier<<','<<b.gesture<<']';}out<<"],\"outputs\":[";for(int i=0;i<actionCount;i++){if(i)out<<',';out<<engine.output[i].value;}out<<"]}";return out.str();}
+inline std::string diagnostics(){std::lock_guard<std::mutex> lock(mutex);std::ostringstream out;out<<"{\"mode\":\""<<bank<<"\",\"liveMode\":\""<<liveMode<<"\",\"modeCount\":"<<controls_catalog::modes.size()<<",\"visible\":"<<(visible?"true":"false")<<",\"draining\":"<<(draining?"true":"false")<<",\"phase\":"<<phase<<",\"selected\":"<<selected<<",\"pointerRow\":"<<pointerRow<<",\"slot\":"<<slot<<",\"bindings\":[";for(int i=0;i<actionCount;i++){if(i)out<<',';auto b=engine.profile.bindings[i];out<<'['<<b.source<<','<<b.modifier<<','<<b.gesture<<']';}out<<"],\"outputs\":[";for(int i=0;i<actionCount;i++){if(i)out<<',';out<<engine.output[i].value;}out<<"],\"physical\":[";for(int i=0;i<sourceCount;i++){if(i)out<<',';out<<physical[i].value;}out<<"],\"devices\":["<<jsonString(devicePaths[0])<<','<<jsonString(devicePaths[1])<<"]}";return out.str();}
 }

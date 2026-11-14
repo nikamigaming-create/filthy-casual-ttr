@@ -26,5 +26,8 @@ int main(){
  changeBank("vehicles.driving");engine.profile.bindings[5]={3,-1,Level,600};close();assert(bank=="onfoot");assert(profiles.get("vehicles.driving").bindings[5].source==3);assert(draining);
  visible=draining=false;engine.profile.bindings[0]={-1,-1,Level,600};Sample nativeDefault{.8f,true,20};assert(!route(0,nativeDefault)&&nativeDefault.value==.8f);available=false;assert(!route(0,nativeDefault));assert(jsonString("a\"b\\c\n")=="\"a\\\"b\\\\c\\u000a\"");
  Profiles many;for(int i=0;i<31;i++)many.get("absent."+std::to_string(i));auto currentProfiles=profiles;auto currentBank=bank;profiles=many;bank="new.mode";assert(!storeBank());assert(profiles.modes.size()==32);profiles=currentProfiles;bank=currentBank;
+ // Every advertised source routes, serializes and releases, including extra controls.
+ for(int src=0;src<sourceCount;src++){Engine test;test.profile.bindings[5]={src,-1,Level,600};Frame f{};f[src].active=true;test.update(f,100,false);f[src].value=.75f;test.update(f,200,false);assert(test.output[5].value==.75f);f[src].active=false;test.update(f,300,false);assert(!test.output[5].active&&test.output[5].value==0);Profile copy;assert(decode(encode(test.profile),copy)&&copy.bindings[5].source==src);}
+ puts("PASS: all 70 input sources route, release and survive profile roundtrip");
  puts("PASS: strict profiles, atomic save protection, analog, release barriers, holds, combos, double taps, live UI capture/apply/cancel, addon bindings, inactive input, unbind activity");
 }

@@ -1,21 +1,31 @@
-# Filthy Casual TTR 1.7.0-dev.1
+# Filthy Casuals 1.8.0 beta 1
 
-RobCo controls in game and offline, real 3D Quest Touch Plus controllers,
-eight saved profiles, independent on-foot/driving/flight banks and discoverable
-addon providers. Shared native actions remain grouped; spatial interactions
-stay native. Height, selector labels and tutorial cards share the RobCo style.
+Touch-select weapons and consumables, saved seated height, expressive hands,
+RobCo runtime/offline remapping, optional weapon tutorials and native magazine recovery.
 
-Recovered compatible native magazines can re-enter native insertion or ammo-pouch
-handling. Tested on 10mm pistol and assault carbine with exact remaining rounds.
-Add `[Reload] RecoverWorldMagazines=1` when keeping an older personal INI.
+## Updated in this build
 
-Open controls: hold left Menu, then click left stick in Height/settings.
-Fixed recovery: hold physical left Menu + right-stick click for one second.
+- Head-relative mouth target with a wider entry radius and stable dwell handling.
+- Separate saved ground, car, flight, Bighorner and Deathclaw height adjustments.
+- In manual mode, recovered magazines do not automatically chamber an empty gun.
+  Use the normal slide/bolt. Repeated recovery and returning a magazine to the pouch preserve ammo counts.
+- Matched core/input/glass payload fixes the previously installed-file mismatch.
+- Optional creature riding uses native running/idle animations and corrected lower-body placement.
+- Controller profiles, typed INI remapping and offline editor access, including fallback access when a Menu button is unavailable.
 
-Install the ZIP in MO2 after an already working TTR setup. Preserve your personal
-INI. Exact supported upstream hash and populated screenshots are in the README.
-Pool stays separate and optional. Vehicles are an optional source/development
-integration, not included in this core ZIP. No game or dependency assets bundled.
+## Download choices
 
-The simulator checks passed; physical headset comfort and unrestricted custom
-binding combinations still need user testing. See docs/VALIDATION.md for coverage.
+- `Filthy-Casual-TTR-1.8.0-beta.1.zip`: install the core in MO2 over working TTR.
+- `Filthy-Casual-Vehicles-1.8.0-beta.1.zip`: separate optional addon. Follow its README to generate private wheel/cockpit overrides from your owned dependency files.
+- Showcase MP4 and post kit: illustrated PNG/PDF, actual gameplay PNGs and copy/paste announcement.
+
+Preserve your personal INI and control profiles when updating. Launch through your existing working TTR MO2 entry.
+Pool stays separate and is not enabled. Meta Link helper and local graphics settings are separate too.
+
+Exact supported TTWVR.dll SHA-256:
+`7EB72860D209D9B9BDD774607220EE63323367AA9FA525F6EB1B23184F30F91E`.
+
+Original games, TTR and vehicle dependency files are linked, never bundled. The optional local importer was checked against the installed geometry.
+The fresh core, remapping, mouth, manual magazine, car/flight seat, driving, flight and Bighorner checks passed in the simulator.
+Final physical headset acceptance remains with the owner. Non-Quest profiles welcome community testing; arbitrary surface glass and gentle native physics placement are not certified.
+See docs/CURRENT-BETA.md for coverage. Credit to KUPOkinz and the original dependency authors.

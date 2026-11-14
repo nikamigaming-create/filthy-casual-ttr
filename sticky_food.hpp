@@ -11,7 +11,8 @@ struct MouthGate {
   if(!eligible||!std::isfinite(distance)){reset();return false;}
   if(distance>=17.5f){armed=true;since=0;return false;}
   if(!armed)return false;
-  if(distance>8.4f){since=0;return false;}
+  // Enter within 16cm; tolerate small natural movement to 19cm during dwell.
+  if(distance>(since?13.3f:11.2f)){since=0;return false;}
   if(!since){since=now;return false;}
   if(now-since<650)return false;
   reset();return true;

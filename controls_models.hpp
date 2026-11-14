@@ -13,7 +13,7 @@ using Microsoft::WRL::ComPtr;
 constexpr UINT panelWidth=1400,panelHeight=1000;
 inline std::filesystem::path assets(){wchar_t path[MAX_PATH]{};auto m=GetModuleHandleW(L"SeatedInput.dll");GetModuleFileNameW(m,path,MAX_PATH);return std::filesystem::path(path).parent_path()/L"Controls";}
 struct ModelVertex {float position[3],normal[3],uv[2];};
-struct ModelPart {ComPtr<ID3D11Buffer> vertices,indices;UINT count{};uint32_t inputs{};};
+struct ModelPart {ComPtr<ID3D11Buffer> vertices,indices;UINT count{};uint64_t inputs{};};
 struct Model {std::vector<ModelPart> parts;ComPtr<ID3D11ShaderResourceView> texture;};
 bool textureFile(ID3D11Device* device,const std::filesystem::path& path,ComPtr<ID3D11ShaderResourceView>& output){
     const auto initialized=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
@@ -34,11 +34,11 @@ bool textureFile(ID3D11Device* device,const std::filesystem::path& path,ComPtr<I
 bool modelFile(ID3D11Device* device,const std::filesystem::path& path,Model& model){
     std::ifstream file(path,std::ios::binary);char magic[4]{};uint32_t version{},count{};
     file.read(magic,4);file.read(reinterpret_cast<char*>(&version),4);file.read(reinterpret_cast<char*>(&count),4);
-    if(!file||std::string_view(magic,4)!="M5CT"||version!=1||count>16)return false;
+    if(!file||std::string_view(magic,4)!="M5CT"||(version!=1&&version!=2)||count>128)return false;
     for(uint32_t p=0;p<count;++p){
         ModelPart part;uint32_t vertices{},indices{};
-        file.read(reinterpret_cast<char*>(&part.inputs),4);file.read(reinterpret_cast<char*>(&vertices),4);file.read(reinterpret_cast<char*>(&indices),4);
-        if(!file||!vertices||vertices>10000||!indices||indices>50000)return false;
+        file.read(reinterpret_cast<char*>(&part.inputs),version==2?8:4);file.read(reinterpret_cast<char*>(&vertices),4);file.read(reinterpret_cast<char*>(&indices),4);
+        if(!file||!vertices||vertices>250000||!indices||indices>250000)return false;
         std::vector<ModelVertex> vertex(vertices);std::vector<uint32_t> index(indices);
         file.read(reinterpret_cast<char*>(vertex.data()),static_cast<std::streamsize>(vertex.size()*sizeof(ModelVertex)));
         file.read(reinterpret_cast<char*>(index.data()),static_cast<std::streamsize>(index.size()*sizeof(uint32_t)));
@@ -63,7 +63,7 @@ Pixel modelVs(Vertex v){Pixel o;float3 p=v.p,n=v.n;
  float3 normal=float3(n.x*pose.x+n.z*pose.y,n.y,-n.x*pose.y+n.z*pose.x);
  o.n=float3(normal.x,normal.y*pose.z-normal.z*pose.w,normal.y*pose.w+normal.z*pose.z);o.uv=v.uv;return o;}
 float4 modelPs(Pixel v):SV_Target{float3 base=image.Sample(linearClamp,v.uv).rgb;
- float light=.60+.40*saturate(dot(normalize(v.n),normalize(float3(-.3,.6,1))));
+ base=max(base,float3(.09,.09,.09)); float light=.80+.40*saturate(dot(normalize(v.n),normalize(float3(-.3,.6,1))));
  return float4(lerp(base*light,tint.rgb,tint.a),1);}
 Pixel panelVs(uint id:SV_VertexID){Pixel o;o.uv=float2((id<<1)&2,id&2);o.p=float4(o.uv*float2(2,-2)+float2(-1,1),0,1);o.n=0;return o;}
 float4 panelPs(Pixel v):SV_Target{return image.Sample(linearClamp,v.uv);}
@@ -82,7 +82,7 @@ struct Renderer {
     ComPtr<ID3D11RasterizerState> raster;
     std::array<Model,2> models;
     ComPtr<ID3D11DeviceContext> deferred;
-    bool ready{},failed{};
+    bool ready{},failed{};std::array<std::string,2> loadedAssets{};
     UINT samples{1};
     std::array<float,2> yaw{},pitch{};
     bool initialize(ID3D11Device* device,const std::filesystem::path& game){
@@ -114,13 +114,13 @@ struct Renderer {
         if(FAILED(device->CreateDepthStencilState(&z,&depthOff)))return false;
         D3D11_RASTERIZER_DESC rs{};rs.FillMode=D3D11_FILL_SOLID;rs.CullMode=D3D11_CULL_NONE;rs.DepthClipEnable=TRUE;rs.MultisampleEnable=TRUE;
         if(FAILED(device->CreateRasterizerState(&rs,&raster)))return false;
-        for(size_t hand=0;hand<2;++hand)if(!modelFile(device,game/(hand?L"right.mesh":L"left.mesh"),models[hand]))return false;
+        (void)game;
         if(FAILED(device->CreateDeferredContext(0,&deferred)))return false;ready=true;return true;
     }
 };
 inline Renderer renderer;
-inline uint32_t sourceMask(int source){if(source<0)return 0;static constexpr int index[]={9,7,2,3,5,10,8,0,1,6,4,11,12,13,14,15,16,17,18,19,20,25,26,23,24,21,22,27,28};return 1u<<index[source];}
-inline uint32_t modelMask(const fc_controls::Frame&f){uint32_t mask=0;for(int i=0;i<fc_controls::sourceCount;i++)if(f[i].active&&f[i].value>.15f)mask|=sourceMask(i);return mask;}
+inline uint64_t sourceMask(int source){if(source<0||source>=70)return 0;static constexpr int index[]={9,7,2,3,5,10,8,0,1,6,4,11,12,13,14,15,16,17,18,19,20,25,26,23,24,21,22,27,28,29,30,31,30,31,30,30,30,30,31,31,31,31,7,8,30,31,32,33,34,35,36,37,38,39,7,8,32,33,34,35,36,37,38,39,4,29,9,10,7,8};return 1ull<<index[source];}
+inline uint64_t modelMask(const fc_controls::Frame&f,bool touchOnly=false){uint64_t mask=0;for(int i=0;i<fc_controls::sourceCount;i++)if(f[i].active&&f[i].value>.15f&&controller_profiles::touch(i)==touchOnly)mask|=sourceMask(i);return mask;}
 inline void cleanup(){renderer=Renderer{};}
 inline ID3D11Texture2D* draw(ID3D11Device*device,ID3D11DeviceContext*immediate,const controls_runtime::View&f,const std::vector<unsigned char>&pixels){
  auto&p=renderer;if(p.failed)return nullptr;if(!p.ready&&!p.initialize(device,assets())){p.failed=true;return nullptr;}
@@ -133,21 +133,22 @@ inline ID3D11Texture2D* draw(ID3D11Device*device,ID3D11DeviceContext*immediate,c
     auto* sampler=p.sampler.Get();context->PSSetSamplers(0,1,&sampler);auto* image=p.backgroundView.Get();context->PSSetShaderResources(0,1,&image);context->Draw(3,0);
     context->OMSetDepthStencilState(p.depthOn.Get(),0);context->IASetInputLayout(p.layout.Get());context->VSSetShader(p.modelVs.Get(),nullptr,0);context->PSSetShader(p.modelPs.Get(),nullptr,0);
     auto* constants=p.constants.Get();context->VSSetConstantBuffers(0,1,&constants);context->PSSetConstantBuffers(0,1,&constants);
-    const auto active=modelMask(f.physical);uint32_t assigned=0;
+    const auto pressedMask=modelMask(f.physical),touchMask=modelMask(f.physical,true),active=pressedMask|touchMask;uint64_t assigned=0;
     if(f.selected<fc_controls::actionCount){auto b=f.phase==3?f.proposal:f.profile.bindings[f.selected];assigned=sourceMask(b.source)|sourceMask(b.modifier);}
     for(size_t hand=0;hand<2;++hand){
+        auto asset=f.deviceAssets[hand];if(p.loadedAssets[hand]!=asset){p.models[hand]=Model{};p.loadedAssets[hand]=asset;if(!asset.empty()){auto path=assets()/asset/(hand?L"right.mesh":L"left.mesh");if(!modelFile(device,path,p.models[hand]))p.models[hand]=Model{};}}
         viewport={hand?245.f:25.f,245,255,405,0,1};context->RSSetViewports(1,&viewport);
         const auto shownInputs=assigned|active;
         // Squeeze normals face inward (+X left, -X right). Turn that actual
         // contact surface toward the player rather than behind the housing.
-        const float targetYaw=(shownInputs&(1u<<(7+hand)))?(hand?.95f:-.95f):hand?-.20f:.20f;
-        const float targetPitch=(shownInputs&(1u<<(9+hand)))?.75f:0.f;
+        const float targetYaw=(shownInputs&(1ull<<(7+hand)))?(hand?.95f:-.95f):hand?-.20f:.20f;
+        const float targetPitch=(shownInputs&(1ull<<(9+hand)))?.22f:0.f;
         p.yaw[hand]+=(targetYaw-p.yaw[hand])*.15f;
         p.pitch[hand]+=(targetPitch-p.pitch[hand])*.15f;
         image=p.models[hand].texture.Get();context->PSSetShaderResources(0,1,&image);
         for(const auto& part:p.models[hand].parts){
-            const bool pressed=(part.inputs&active&((1u<<19)-1))!=0,touched=(part.inputs&active&~((1u<<19)-1))!=0,chosen=(part.inputs&assigned)!=0;
-            if(part.inputs&&(part.inputs&(1u<<4|1u<<19|1u<<20))&&!pressed&&!touched&&!chosen)continue;
+            const bool pressed=(part.inputs&pressedMask)!=0,touched=(part.inputs&touchMask)!=0,chosen=(part.inputs&assigned)!=0;
+            
             std::array<float,8> params{std::cos(p.yaw[hand]),std::sin(p.yaw[hand]),std::cos(p.pitch[hand]),std::sin(p.pitch[hand]),1,1,1,0};
             if(pressed){params[4]=.12f;params[5]=.85f;params[6]=.55f;params[7]=.72f;}
             else if(touched){params[4]=.15f;params[5]=.65f;params[6]=1;params[7]=.55f;}

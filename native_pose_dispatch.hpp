@@ -39,7 +39,7 @@ inline bool local(Callback before,Completed after){
 }
 inline bool subscribe(Callback before,Completed after){
  using Owner=bool(__cdecl*)();using Add=bool(__cdecl*)(Callback,Completed);
- for(auto name:{L"FilthyCasualPool.dll",L"FilthyCasualVehicles.dll"})if(auto m=GetModuleHandleW(name)){
+ for(auto name:{L"FilthyCasualPool.dll",L"FilthyCasualVehicles.dll",L"SeatedControls.dll"})if(auto m=GetModuleHandleW(name)){
   auto owner=reinterpret_cast<Owner>(GetProcAddress(m,"FC_NativePoseOwner"));
   auto add=reinterpret_cast<Add>(GetProcAddress(m,"FC_NativePoseSubscribe"));
   if(owner&&add&&owner())return add(before,after);

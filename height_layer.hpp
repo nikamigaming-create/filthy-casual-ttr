@@ -47,11 +47,24 @@ inline XrResult XRAPI_CALL onWaitFrame(XrSession s,const XrFrameWaitInfo* i,XrFr
 inline XrResult XRAPI_CALL onLocateSpace(XrSpace space,XrSpace base,XrTime time,XrSpaceLocation* out){std::lock_guard<std::recursive_mutex> lock(mutex);return locateSpace(resolve(space),resolve(base),time,out);}
 inline XrResult XRAPI_CALL onLocateViews(XrSession s,const XrViewLocateInfo* info,XrViewState* state,uint32_t cap,uint32_t* count,XrView* views){
  std::lock_guard<std::recursive_mutex> lock(mutex);auto translated=*info;translated.space=resolve(info->space);auto result=locateViews(s,&translated,state,cap,count,views);
- if(XR_SUCCEEDED(result)&&cap>=2&&*count>=2&&(state->viewStateFlags&XR_VIEW_STATE_POSITION_VALID_BIT)){
+ auto base=refs.find(info->space);bool gameplayBase=base!=refs.end()&&adjustable(base->second);
+ if(gameplayBase&&XR_SUCCEEDED(result)&&cap>=2&&*count>=2&&(state->viewStateFlags&XR_VIEW_STATE_POSITION_VALID_BIT)){
   lastHead=views[0].pose;lastHead.position.x=(views[0].pose.position.x+views[1].pose.position.x)*.5f;lastHead.position.y=(views[0].pose.position.y+views[1].pose.position.y)*.5f;lastHead.position.z=(views[0].pose.position.z+views[1].pose.position.z)*.5f;lastBase=info->space;
   auto r=refs.find(info->space);if(r!=refs.end()&&adjustable(r->second))if(auto f=bridge())f(lastHead.position.y-applied);
   using Head=void(__cdecl*)(float,float,float);auto module=GetModuleHandleA("SeatedControls.dll");auto publish=module?reinterpret_cast<Head>(GetProcAddress(module,"SC_Head")):nullptr;
   if(publish)publish(lastHead.position.x,lastHead.position.y,lastHead.position.z);
+  auto mouth=module?reinterpret_cast<Head>(GetProcAddress(module,"SC_Mouth")):nullptr;
+  if(mouth&&(state->viewStateFlags&XR_VIEW_STATE_ORIENTATION_VALID_BIT)){
+   // Approximate mouth below and slightly forward of the actual stereo midpoint.
+   const auto q=lastHead.orientation;const XrVector3f v{0,-.11f,-.04f};
+   XrVector3f t{2*(q.y*v.z-q.z*v.y),2*(q.z*v.x-q.x*v.z),2*(q.x*v.y-q.y*v.x)};
+   mouth(lastHead.position.x+v.x+q.w*t.x+q.y*t.z-q.z*t.y,
+         lastHead.position.y+v.y+q.w*t.y+q.z*t.x-q.x*t.z,
+         lastHead.position.z+v.z+q.w*t.z+q.x*t.y-q.y*t.x);
+  }else if(mouth)mouth(NAN,NAN,NAN);
+ }else if(gameplayBase){
+  using Head=void(__cdecl*)(float,float,float);auto module=GetModuleHandleA("SeatedControls.dll");
+  if(auto mouth=module?reinterpret_cast<Head>(GetProcAddress(module,"SC_Mouth")):nullptr)mouth(NAN,NAN,NAN);
  }return result;
 }
 inline XrResult XRAPI_CALL onEndFrame(XrSession s,const XrFrameEndInfo* info){

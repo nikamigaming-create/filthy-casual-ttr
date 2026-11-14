@@ -1,9 +1,9 @@
 from pathlib import Path
-import time,hashlib,json
+import time,hashlib,json,os
 time.clock=time.perf_counter
 from pyffi.formats.nif import NifFormat as N
-source=Path(r'D:\TTWVR\MO2\mods\Uhmatt Drivable Cars 8b\Meshes\Creatures\MkTRoadster\Roadster.nif')
-out=Path(r'D:\TTWVR\MO2\mods\Filthy Casual Vehicles - Development\Meshes\Creatures\MkTRoadster\Roadster.nif')
+source=Path(os.environ.get('FC_CAR_DATA',r'D:\TTWVR\MO2\mods\Uhmatt Drivable Cars 8b'))/'Meshes/Creatures/MkTRoadster/Roadster.nif'
+out=Path(os.environ.get('FC_OUTPUT_DATA',r'D:\TTWVR\MO2\mods\Filthy Casual Vehicles - Development'))/'Meshes/Creatures/MkTRoadster/Roadster.nif'
 d=N.Data()
 with source.open('rb') as f:d.read(f)
 root=d.roots[0];wheel=next(b for b in d.get_global_iterator() if isinstance(b,N.NiGeometry) and b.name==b'SteeringWheelA')
@@ -66,5 +66,5 @@ seat.translation.z=57.53+6.99-36.85
 out.parent.mkdir(parents=True,exist_ok=True)
 with out.open('wb') as f:d.write(f)
 with out.with_name('Skeleton.nif').open('wb') as f:skel.write(f)
-Path('work/vehicles/local-wheel-import.json').write_text(json.dumps({'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'output_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'note':'Locally derived dependency mesh. Never redistribute.'},indent=2))
+Path(os.environ.get('FC_IMPORT_REPORT','work/vehicles/local-wheel-import.json')).write_text(json.dumps({'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'output_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'note':'Locally derived dependency mesh. Never redistribute.'},indent=2))
 print(out)

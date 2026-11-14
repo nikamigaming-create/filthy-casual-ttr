@@ -8,3 +8,11 @@ FC_VehicleActive
  FC_NativePoseSubscribe
 
 FC_ControlsProviderV1
+
+FC_VehicleHandContact
+
+ FC_VehicleTutorialFrame
+
+FC_RidePulse
+
+FC_SeatContext

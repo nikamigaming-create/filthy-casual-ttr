@@ -38,8 +38,12 @@ inline void blendRotation(scene::Transform& target,const scene::Transform& nativ
 }
 inline void __cdecl pose(void* root,int hand,float amount,unsigned posedObject,void* object,float approachWeight){
  reinterpret_cast<Pose>(module+0x1D8D00)(root,hand,amount);
- if(!root||hand<0||hand>1||!query||(posedObject&255))return;
+ if(!root||hand<0||hand>1||!query)return;
+ auto vehicle=GetModuleHandleW(L"FilthyCasualVehicles.dll");auto contactFn=vehicle?reinterpret_cast<bool(__cdecl*)(int)>(GetProcAddress(vehicle,"FC_VehicleHandContact")):nullptr;
+ bool vehicleContact=contactFn&&contactFn(hand);
+ if((posedObject&255)&&!vehicleContact)return;
  float freeWeight=std::isfinite(approachWeight)?std::clamp(approachWeight,0.f,1.f):0.f;
+ if(vehicleContact)freeWeight=1.f;
  freePoseWeight[hand]=freeWeight;
  // The object argument is shared by BOTH hands. Ask TTR which hand actually
  // owns a weapon/support pose, and retain its per-hand item/transition checks.

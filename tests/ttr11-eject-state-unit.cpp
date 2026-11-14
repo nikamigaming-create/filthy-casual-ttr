@@ -20,5 +20,5 @@ int main(){
  ejectBCommitted=true;ejectBStateEntry();assert(*current==4&&!ejectBCommitted&&*old==0xABCDEF01);
  *current=99;ejectBCommitted=false;ejectBStateEntry();assert(*current==5&&*old==0xABCDEF01);
  VirtualFree(module,0,MEM_RELEASE);module=nullptr;
- puts("PASS: real assembly branch writes TTR1.1.2 installed state4/5; old1.0 field untouched; commit flag cleared");
+ puts("PASS: real assembly branch writes TTR1.1 installed state4/5; old1.0 field untouched; commit flag cleared");
 }

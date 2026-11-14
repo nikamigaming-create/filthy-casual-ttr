@@ -78,12 +78,22 @@ Driving and flight are advertised by the optional Vehicles DLL; they are not
 pretended to be part of the core mod. Unused destination channels are omitted.
 Installing another provider grows the catalog without changing the editor.
 
-The car provider exposes brake, throttle, reverse, exit and both wheel grips.
-Steering remains physical hand movement on the rim. The flight provider exposes
-movement, heading, climb, descend, land, HUD and aircraft weapon channels.
-The addon wheel/reload/tutorial shortcuts are inactive while mounted; native
-flight weapons remain native. All source buttons, stick directions and touch
-sensors can be assigned to any exposed destination, including a two-input combo.
+The car provider exposes left-stick forward/reverse, right-stick steering, exit
+and both physical wheel grips. The flight provider exposes movement, heading,
+climb, descend, land, HUD and aircraft weapon channels. Both advertise the addon
+wheel/reload/settings/tutorial shortcuts, which remain available while mounted.
+All source buttons, stick directions and touch sensors can be assigned to any
+exposed destination, including a two-input combo.
+
+## Settings coverage
+
+The left Menu input and the addon Height/settings action are remappable. The
+physical recovery chord remains fixed; the headset's system Home is unavailable.
+This is a binding editor, not a general INI editor. Height, reload preference and
+routine popup hints have their existing in-game controls. Selector geometry,
+pouch placement offsets, finger-animation enablement and the OpenXR runtime path
+still use configuration files; some require restarting the game. Never imply that
+every INI setting can currently be changed live from this panel.
 
 ## Edit offline, without the headset
 
@@ -105,3 +115,66 @@ profile save/load, default native Pause/Back, recovery, release barriers and phy
 finger separation. Both-eye captures verify the 3D panel. Physical headset ergonomics
 and every native interaction after arbitrary user-created profiles remain unproven.
 Shared-source conflicts are intentionally visible, not silently resolved.
+
+## Typed INI bindings and desktop access
+
+Double-click **Configure Controls.cmd** (beside the README). The desktop editor
+has a prominent YOUR MENU BUTTON section: type an input, a combo, or a hold.
+Load your installed `NVSE/Plugins/SeatedControls.ini`, download the updated copy,
+then back up and replace the installed file while the game is closed. Without
+loading an INI it downloads a snippet to merge, not a replacement settings file.
+
+For example, replace Menu with right-stick click and remove its old Favorites
+assignment (this intentionally changes that native shortcut):
+
+```ini
+[Bindings]
+MenuButton=RightStickClick
+RightStickClick=Off
+OpenControls=RightGrip+LeftGrip,Hold,1000
+OpenControlsOnStart=0
+```
+
+`MenuButton` retains the existing tap/hold Menu behavior. `OpenControls` toggles
+the binding editor directly, independent of Menu. Set `OpenControlsOnStart=1`
+to open it on the next focused input session. The original recovery chord stays.
+A combo's component inputs can still perform native actions before the editor
+opens; choose or reassign controls to suit your play style.
+
+Any exposed destination can be specified under `[Bindings]` for all modes, or
+under `[Bindings.onfoot]`, `[Bindings.vehicles.driving]` or
+`[Bindings.vehicles.flight]` for that mode. Mode-specific values win. These
+explicit INI overrides win over saved profiles at startup and when loading a
+profile. In-game edits work for the current session. Remove an override or use
+`Default` to return ownership to the profile. `Off` disables the destination.
+No INI means existing profiles and controls remain unchanged.
+
+Binding syntax: `Input`, or `Input+Modifier,Hold,1000`. Gestures: Direct, Press,
+Tap, Hold, DoubleTap. Delay: 200–2000 ms. Names ignore spaces, case and underscores.
+Invalid bindings reject the whole INI override transaction and retain the saved
+profile; the editor reports the error. Restart after editing the INI.
+
+Destination keys:
+```
+LeftTrigger LeftGrip LeftPrimary LeftSecondary LeftStickClick
+RightTrigger RightGrip RightPrimary RightSecondary RightStickClick MenuButton
+MoveLeft MoveRight MoveBackward MoveForward TurnLeft TurnRight Crouch Jump
+LeftThumbRest RightThumbRest WeaponWheel ConsumableWheel ReloadMode
+HeightSettings WeaponTutorial
+```
+Input names:
+```
+LeftTrigger LeftGrip X Y LeftStickClick RightTrigger RightGrip A B
+RightStickClick LeftMenu LeftStickLeft LeftStickRight LeftStickDown LeftStickUp
+RightStickLeft RightStickRight RightStickDown RightStickUp
+LeftThumbRest RightThumbRest LeftStickTouch RightStickTouch
+XTouch YTouch ATouch BTouch LeftTriggerTouch RightTriggerTouch
+```
+Primary/secondary aliases are accepted. An input must actually be supplied by
+the runtime: this does not create missing sensors or expose the headset Home
+button. Known profiles now include Touch/Plus/Pro, Index, Vive, WMR, Pico 4 and Steam Frame.
+See [controller profiles and input names](CONTROLLERS.md) for community-test status. Native
+actions sharing a channel remain grouped. Provider labels in the editor explain
+what each channel does in driving and flight.
+
+Additional input tokens and hardware names are in `inputs.json` and the desktop editor's controller picker. [Full controller coverage](CONTROLLERS.md).

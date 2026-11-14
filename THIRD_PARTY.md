@@ -29,3 +29,7 @@ The D3D11 model loader/shaders in `controls_models.hpp` are adapted from MIT
 MGS5VR `src/controls_panel_renderer.cpp`; both license files ship with the assets.
 The RobCo-style terminal artwork was generated with the built-in image_gen tool
 for this addon. It is not extracted from Fallout. See the asset provenance JSON.
+
+## Controller expansion
+
+WebXR Input Profiles assets v1.0.20: MIT, copyright Amazon. Controller model source URLs and SHA-256 hashes are in `assets/controls/controller-models-provenance.json`; license in `assets/controls/LICENSE-webxr-controllers.md`. Steam Frame uses an original labelled layout diagram, not a redistributed Valve model.

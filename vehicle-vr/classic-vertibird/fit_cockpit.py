@@ -1,13 +1,13 @@
 """Fit a classic transparent canopy and cockpit to the original animated rig.
 All derived NIFs stay local; source game/dependency assets are never redistributable.
 """
-import time,json,hashlib,subprocess,sys,copy,math,shutil
+import time,json,hashlib,subprocess,sys,copy,math,shutil,os
 from pathlib import Path
 import numpy as np
 time.clock=time.perf_counter
 from pyffi.formats.nif import NifFormat as N
-ROOT=Path(__file__).resolve().parents[2];W=ROOT/'work/vertibird/classic';OUT=W/'runtime';OUT.mkdir(exist_ok=True)
-DEP=Path(r'D:\TTWVR\MO2\mods\Vertibird Player Home 4.18');MOD=Path(r'D:\TTWVR\MO2\mods\Filthy Casual Vehicles - Development')
+ROOT=Path(__file__).resolve().parents[2];W=Path(os.environ.get('FC_IMPORT_WORK',str(ROOT/'work/vertibird/classic')));OUT=W/'runtime';OUT.mkdir(exist_ok=True)
+DEP=Path(os.environ.get('FC_FLIGHT_DATA',r'D:\TTWVR\MO2\mods\Vertibird Player Home 4.18'));MOD=Path(os.environ.get('FC_OUTPUT_DATA',r'D:\TTWVR\MO2\mods\Filthy Casual Vehicles - Development'))
 def read(p):
  d=N.Data()
  with p.open('rb') as f:d.read(f)

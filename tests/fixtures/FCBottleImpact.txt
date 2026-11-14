@@ -1,0 +1,58 @@
+string_var refId
+int op
+float height
+float speed
+float offsetX
+float offsetY
+ref item
+float x
+float y
+float z
+float result
+float hx
+float hy
+float hz
+begin function {refId,op,height,speed,offsetX,offsetY}
+if op == 0
+let item := player.PlaceAtMe WhiskeyBottle01Empty01 1
+let x := player.GetPos X
+let y := player.GetPos Y
+let z := player.GetPos Z
+let x += offsetX
+let y += offsetY
+let z += 1000
+let hz := z - 2000
+let result := GetP2PRayCastRange x y z x y hz 6
+let z := hz + result + height
+item.SetPosEx x y z
+SetFunctionValue item
+elseif op == 3
+let item := player.PlaceAtMe SignStop01 1
+let x := player.GetPos X
+let y := player.GetPos Y
+let z := player.GetPos Z
+let x += offsetX
+let y += offsetY
+let z += 150
+let hz := z - 1000
+let result := GetP2PRayCastRange x y z x y hz 6
+let z := hz + result + height
+item.SetPosEx x y z
+item.SetAngle X 0
+item.SetAngle Y 0
+item.SetAngle Z speed
+SetFunctionValue item
+elseif op == 1
+let item := StringToRef "$refId"
+let result := 1
+SetFunctionValue result
+elseif op == 2
+let item := StringToRef "$refId"
+item.Disable
+item.MarkForDelete
+SetFunctionValue 1
+endif
+end
+
+
+

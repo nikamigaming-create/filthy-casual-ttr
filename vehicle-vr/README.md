@@ -17,14 +17,26 @@ or game models/textures. It is not a turnkey vehicle installer.
 
 ## Controls
 
-Car: grip the physical wheel with either/both hands and rotate it; right trigger
-throttle, left trigger brake, X reverse, B exit. Steering uses the original car's
-physics. Vehicle camera, wheel and hands share its moving chassis frame.
+Car: left-stick up/down drives forward/reverse; right-stick left/right steers.
+The other two stick axes do not control the car. Opposite
+input brakes before changing direction; neutral slows to a stop. Either or both
+hands can grip the physical rim independently by squeezing at it. A squeeze
+that started elsewhere stays native, so carrying a magazine past a control
+cannot steal the hand or drop the magazine. Native gun and item triggers are
+available while driving; B exits. The addon restores only the combat control
+that the Roadster boarding script disables, retaining its seat and other locks.
+With no hands on the wheel while moving, a visual knee-steering pose blends in;
+regripping or stopping blends it out. This is an animation, not knee tracking.
 
-Vertibird: left stick moves, right stick changes heading, A climbs, X descends,
-B lands, Y toggles the original HUD, triggers operate aircraft weapons and stick
-clicks choose weapons. Physical head movement stays free look. The original
-aircraft script owns flight and landing.
+Vertibird: right stick moves, left stick changes heading, A climbs, X descends,
+B lands, Y toggles the original HUD. Grip the visible control with either/both
+hands for physical steering; release frees that hand. Thumbstick input takes priority while gripping. With a gun drawn, both
+triggers and A/X stay native for firing, slides/bolts and reloading; aircraft
+climb/descent on A/X resumes when the gun is holstered. Item triggers also stay native. The flight script's repeated combat lock is narrowly adapted so it no longer holsters your gun every frame; other scripts retain their normal control locks. The local cockpit places the pilot in the left seat,
+with an upright control made from owned Fallout motorcycle-handle geometry.
+Physical head movement stays free look. Both expression and condition input queries reach the original aircraft script,
+which owns flight and landing. The duplicated center-console pedestal is removed
+from the local fitted cockpit; the original panel and control handles remain.
 
 `FC_ControlsProviderV1` advertises Driving and Flight to the optional Filthy
 Casuals editor. Both modes are configurable while on foot and offline. Boarding
@@ -52,3 +64,13 @@ states. Both-eye captures exist; physical headset comfort is not yet certified.
 Portable import/install UX, full canopy appearance review, visible companion
 seating and interactive cockpit instruments remain development work. This module
 is optional and separate from the core downloadable seated-mod candidate.
+
+The weapon tutorial's reading card stays in the cabin while travelling; part
+highlights update with the completed native weapon pose. On foot the card
+remains fixed in its reading zone. With Filthy Casuals enabled, weapon and
+consumable selectors stay fixed in the cabin during travel. Driving sticks do
+not dismiss them. Touching a preview selects it into the native right hand;
+B closes a selector without also exiting the car. Default shortcut: keep the
+opposite thumb rest touched and double-tap the right rest for weapons or the
+left rest for consumables. Both actions also appear in each vehicle's control
+mapping options. On foot, selectors retain their original world anchor.

@@ -67,7 +67,8 @@ inline void sample(void* actor,void* root){
  auto getter=scene::field<void**>(process,0)[0x1B8/4];if(getter!=reinterpret_cast<void*>(0x602150))return;
  auto data=reinterpret_cast<void*(__thiscall*)(void*)>(getter)(process);
  if(!data||scene::field<void*>(data,8)!=root)return;
- if(ownedSequence&&(ownedRoot!=root||ownedActor!=actor))restore();
+ if(ownedSequence&&ownedActor!=actor)restore();
+ if(ownedSequence&&ownedRoot!=root)ownedRoot=root; // same skeleton names, rebuilt weapon root
  if(!ownedSequence){
   if(!requestSucceeded||requestedActor!=actor||requestedRoot!=root)return;
   auto idle=scene::field<void*>(data,0x124);if(!idle)return;
@@ -109,7 +110,7 @@ inline void sample(void* actor,void* root){
  }
  pending=result;++samples;sourceTime=time;
 }
-inline bool apply(void* root,void* body,void* seat){
+inline bool apply(void* root,void* body,void* seat,bool creature=false){
  auto pose=pending;pending={};if(!pose.root||pose.root!=root||!body||!seat)return false;
  auto pelvis=pose.nodes[1];auto parent=scene::parent(pelvis);if(parent!=pose.nodes[0])return false;
  auto carrier=scene::world(body),parentWorld=scene::world(parent),oldPelvis=scene::world(pelvis);
@@ -119,6 +120,12 @@ inline bool apply(void* root,void* body,void* seat){
  auto targetR=mounted_frame::mul(c,mounted_frame::mul(n,p));
  auto relative=pose.local[0].p+scene::rotate(pose.local[0],pose.local[1].p)*pose.local[0].scale;
  auto position=scene::world(seat).p+scene::rotate(carrier,relative)*actorScale;
+ if(creature)if(auto spine=scene::find(root,"Bip01 Spine")){
+  // Owned Fallout male skeleton: Pelvis (0,.657,67.771), Spine (0,2.265,73.964).
+  // Keep their anatomical join; the car chair's seat height otherwise puts hips
+  // above the tracked lower spine and stretches the skin when looking down.
+  position=scene::world(spine).p+scene::rotate(carrier,{0,-1.608f,-6.193f})*actorScale;
+ }
  scene::Transform local{};local.p=scene::inverseRotate(parentWorld,position-parentWorld.p)*(1/parentWorld.scale);local.scale=oldPelvis.scale/parentWorld.scale;
  mounted_frame::Mat parentR;memcpy(parentR.a,parentWorld.r,sizeof parentR.a);auto localR=mounted_frame::mul(mounted_frame::transpose(parentR),targetR);memcpy(local.r,localR.a,sizeof local.r);
  for(unsigned i=1;i<10;i++)vehicle_body::releaseWorldOverride(pose.nodes[i]);

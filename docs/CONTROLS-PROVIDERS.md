@@ -28,3 +28,8 @@ Profile v3: header `FilthyCasualControls 3`, mode count, then for each stable mo
 ID exactly 26 rows: row, source, modifier, gesture, delay-ms. `onfoot` is required.
 Parsing is strict, bounded and transactional. v1/v2 migrate their former global
 mapping into discovered modes. No player save changes or dependency assets.
+
+Creature rides also advertise vehicles.bighorner and vehicles.deathclaw when
+enabled and initialized. Their independent ChallengeSeconds INI settings default
+to 30 and 60. Zero enables steering immediately after mounting; it does not bypass
+native mount eligibility. Left Y drives, right X turns, B dismounts.

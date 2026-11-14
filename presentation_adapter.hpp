@@ -4,7 +4,7 @@
 #include <atomic>
 #include <algorithm>
 #include <cmath>
-#include "scope_surface_adapter.hpp"
+#include "local-runtime/scope_surface_adapter.hpp"
 #include "floating_hud_adapter.hpp"
 #include "dialogue_anchor.hpp"
 #include "dialogue_layout.hpp"
