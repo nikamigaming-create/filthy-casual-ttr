@@ -26,6 +26,7 @@
 #include "drive_trace.hpp"
 #include "motion_adapter.hpp"
 #include "fleet_catalog.hpp"
+#include "stock_roadster_wheel.hpp"
 #include "road_contacts.hpp"
 #include "road_fit_native.hpp"
 #include "knee_steering.hpp"
@@ -62,6 +63,9 @@ ImpactSample lastImpact;
 bool arcadeEnabled=false,arcadeOwns=false,roadFitEnabled=true;float savedFrequency[4]{},savedCruise=0,lastDriveDelta=0;unsigned wheelHits=0;
 const char* driveSequences[]={"Creatures\\MkTRoadster\\mtforward.kf","Creatures\\MkTRoadster\\mtfastforward.kf","Creatures\\MkTRoadster\\mtleft.kf","Creatures\\MkTRoadster\\mtbackward.kf"};
 Form* fleetBases[std::size(vehicle_fleet::models)]{};const vehicle_fleet::Model* carModel=nullptr;
+stock_roadster_wheel::Rig stockWheel;
+void* stockWheelAttempt=nullptr;
+Script *insertStockWheel{},*removeStockWheel{};
 std::string modelSequences[4];float savedTurn=0;
 const vehicle_fleet::Model* findCarModel(Form* ref){if(!ref)return nullptr;auto base=scene::field<Form*>(ref,0x20);for(unsigned i=0;i<std::size(fleetBases);i++)if(base&&base==fleetBases[i])return &vehicle_fleet::models[i];return nullptr;}
 struct ParkedFit {unsigned id=0;road_fit_native::State fit;};
@@ -126,6 +130,25 @@ void resetGrips(){vehicle_grip::reset();kneeDriving=false;knee_steering::reset()
 std::string testDir;scene::Vec center{},right{},up{},axis{};
 void log(const char* s){if(file){fprintf(file,"%s\n",s);fflush(file);}}
 template<class... A> Element call(Script* fn,A... a){Element e;if(fn)scripts->call(fn,nullptr,nullptr,&e,sizeof...(a),a...);return e;}
+void clearStockWheel(){
+ const bool attached=stockWheel.root!=nullptr;
+ stockWheel.restore();
+ if(attached&&car&&loaded)call(removeStockWheel,car);
+ stockWheelAttempt=nullptr;
+}
+void prepareStockWheel(void* root){
+ if(!carModel||strcmp(carModel->form,"00E6BC")||!root||root==stockWheelAttempt)return;
+ clearStockWheel();stockWheelAttempt=root;
+ scene::Transform bind{};
+ if(!insertStockWheel||!removeStockWheel||scene::find(root,"FCWheelCarrier")||!stockWheel.stockRim(root,bind))return;
+ call(insertStockWheel,car);
+ if(stockWheel.attach(root))log("Roadster wheel bound to the original steering skin");
+ else{
+  call(removeStockWheel,car);
+  if(auto basis=scene::find(root,"FCStockWheelBasis"))scene::moveParent(basis,nullptr);
+  stockWheel.restore();
+ }
+}
 template<class... A> Element callOn(Script* fn,Form* object,A... a){Element e;if(fn)scripts->call(fn,object,nullptr,&e,sizeof...(a),a...);return e;}
 Script* compile(const char* s,bool expr=false){auto f=expr?scripts->expression(s):scripts->compile(s);if(!f)log(s);return f;}
 #include "vehicle_radio.hpp"
@@ -139,7 +162,7 @@ float wrap(float a){while(a>3.14159265f)a-=6.2831853f;while(a< -3.14159265f)a+=6
 void* mountedRoot=nullptr;
 void invalidateMountedFrame(){resetGrips();vehicle_contact::reset();mounted_frame::reset();cameraAnchorReady=false;mountedYawReady=false;mountedRoot=nullptr;}
 void suspendMounted(){vehicle_motion::clear();invalidateMountedFrame();active=false;steering=throttle=brake=0;flightX=flightY=0;flightButtons=0;grabbed[0]=grabbed[1]=false;}
-void clear(){vehicle_radio::reset();restoreDrive();if(car&&engineMode&&loaded)callOn(engineStop,car);restoreEnginePitch();engineMode=0;if(riding)stopRide(loaded);if(seatedPose&&player&&loaded&&seated_animation::ownsActive(player))call(stopPose);seated_animation::restore();seatedPose=false;invalidateMountedFrame();if(active)vehicle_perf::write(testDir);active=false;fittedFlightControls=false;flying=false;flightX=flightY=0;flightButtons=0;exitWas=reverseWas=false;car=nullptr;drivingScript=nullptr;steering=throttle=brake=wheelAngle=0;grabbed[0]=grabbed[1]=false;}
+void clear(){vehicle_radio::reset();clearStockWheel();restoreDrive();if(car&&engineMode&&loaded)callOn(engineStop,car);restoreEnginePitch();engineMode=0;if(riding)stopRide(loaded);if(seatedPose&&player&&loaded&&seated_animation::ownsActive(player))call(stopPose);seated_animation::restore();seatedPose=false;invalidateMountedFrame();if(active)vehicle_perf::write(testDir);active=false;fittedFlightControls=false;flying=false;flightX=flightY=0;flightButtons=0;exitWas=reverseWas=false;car=nullptr;drivingScript=nullptr;steering=throttle=brake=wheelAngle=0;grabbed[0]=grabbed[1]=false;}
 void ensureSeatedPose(){
  // Once the real idle sequence is retained, sample only its lower-body tracks.
  // Release the full-body idle once acquired so upper-body weapon animation
@@ -412,7 +435,7 @@ void tick(){
   // locomotion, POV, rollover and sneak locks and native seat attachment.
   call(allowDriveCombat);
  }
- active=true;ensureSeatedPose();vehicle_radio::tick();updateDrive();
+ active=true;prepareStockWheel(scene::root(car));ensureSeatedPose();vehicle_radio::tick();updateDrive();
  // Original engine assets, one state transition at a time. Also restores audio
  // after loading a save already seated (native Driving==1 never runs then).
  auto speed=callOn(getVar,car,"Momentum");int sound=(throttle>.15f||(speed.type==1&&speed.value.number>8))?2:1;
@@ -595,6 +618,11 @@ void updateSteering(){
  center=wheel?scene::world(wheel).p:scene::world(carrier).p;
  right=unit(scene::rotate(t,{1,0,0}));up=unit(scene::rotate(t,{0,.34394f,.93899f}));axis=unit(scene::cross(right,up));
  float rimRadius=10*t.scale;
+ if(wheel&&wheel==stockWheel.pivot){
+  t=scene::world(stockWheel.basis);
+  right=unit(scene::rotate(t,{1,0,0}));up=unit(scene::rotate(t,stock_roadster_wheel::up));axis=unit(scene::cross(right,up));
+  rimRadius=stock_roadster_wheel::radius*t.scale;
+ }
  if(wheel){auto r=scene::find(carrier,"FCWheelRight"),u=scene::find(carrier,"FCWheelUp");if(r&&u){auto rv=scene::world(r).p-center;rimRadius=scene::distance(rv,{});right=unit(rv);up=unit(scene::world(u).p-center);axis=unit(scene::cross(right,up));}}
  Hand h[2];{std::lock_guard<std::mutex> g(lock);h[0]=hands[0];h[1]=hands[1];}
  auto now=GetTickCount64();float sum=0;int count=0;bool fresh[2]{};
@@ -749,6 +777,8 @@ void __cdecl message(Message* m){
   if(!vehicle_radio::init())log("Vehicle radio scripts unavailable; native radio retained");
   getAttachedScript=compile("GetScript",true);
   getDriving=compile("GetVariable \"Driving\"",true);
+  insertStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 3 \"Bip01 Spine|FCStockWheelBasis\"\nInsertNode vehicle 3 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 3 \"FCSteeringWheel|FCStockWheelSkin\"\nend");
+  removeStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 2 \"FCSteeringWheel|FCStockWheelSkin\"\nInsertNode vehicle 2 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 2 \"Bip01 Spine|FCStockWheelBasis\"\nend");
   getVar=fc::nvse::loadFunction(*scripts,"Vehicles/ReadVariable");
   vehicleContacts=compile("GetContactRefs",true);
   pushParkedCar=compile("float force\nref source\nbegin function {force,source}\nPushActorNoRagdoll force 0 source 0\nend");

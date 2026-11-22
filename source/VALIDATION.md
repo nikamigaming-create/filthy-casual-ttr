@@ -7,12 +7,14 @@ functions were restored. The next archive is assembled and audited by
 includes the vehicle scripts alongside its rebuilt vehicle DLL.
 
 With the original dependencies installed in the simulator, the stock Roadster
-acquired arcade road contact, accelerated and moved, then exited with B. The
-stock Vertibird took off through Pilot Inside, moved with the right stick,
+acquired arcade road contact, bound the original steering rim, accepted a
+left-hand grip and turn, then released, accelerated, and exited with B.
+Both final eyes showed the original rim in the driver's seat. The stock
+Vertibird took off through Pilot Inside, moved with the right stick,
 climbed, and landed, then restored on-foot controls. Both final eyes showed an
 unobstructed stock flight view after correcting the camera frame.
 
-The fitted flight interior and physical wheel grips still need stock-resource
-attachment work. Stock Cheyenne body shadows, physical headset play and upscaler
+The fitted flight interior and other car models still need stock-resource
+attachment checks. Stock Cheyenne body shadows, physical headset play and upscaler
 behavior still need acceptance. Keep the candidate unpublished until these
 checks pass.
