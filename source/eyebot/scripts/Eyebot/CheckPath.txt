@@ -1,0 +1,9 @@
+float startX
+float startY
+float startZ
+float endX
+float endY
+float endZ
+begin function {startX, startY, startZ, endX, endY, endZ}
+    SetFunctionValue (GetP2PRayCastRange startX startY startZ endX endY endZ 1)
+end

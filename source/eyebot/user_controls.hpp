@@ -18,9 +18,10 @@ public:
         onInventory = fc::nvse::loadFunction(source, "Eyebot/OnInventory");
         setup = fc::nvse::loadFunction(source, "Eyebot/BindRemote");
         moveBeside = fc::nvse::loadFunction(source, "Eyebot/Deploy");
+        attachOptics = fc::nvse::loadFunction(source, "Eyebot/AttachOptics");
         stow = fc::nvse::loadFunction(source, "Eyebot/Stow");
         closeInventory = source.expression("CloseAllMenus");
-        return remote && device && onInventory && setup && moveBeside && stow && closeInventory;
+        return remote && device && onInventory && setup && moveBeside && stow && closeInventory && attachOptics;
     }
 
     bool registerForGame(Scripts& source, Form* item) {
@@ -48,7 +49,7 @@ public:
         return index >= 0 && index < 5 && menu < menus.size() ? actions[menu][index] : Action::Close;
     }
 
-    Script *remote{}, *device{}, *moveBeside{}, *stow{}, *closeInventory{};
+    Script *remote{}, *device{}, *moveBeside{}, *stow{}, *closeInventory{}, *attachOptics{};
 
 private:
     Script *onInventory{}, *setup{};

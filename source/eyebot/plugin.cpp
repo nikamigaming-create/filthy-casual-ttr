@@ -341,6 +341,10 @@ void refreshPilotCamera(Form* device, Form* player, uint64_t now) {
 bool placeLens(Form* device) {
     auto root = scene::root(device);
     auto mount = scene::find(root, "RobCoEyebotLens");
+    if (!mount && root && controls.attachOptics) {
+        scripts->call(controls.attachOptics, nullptr, nullptr, nullptr, 1, device);
+        mount = scene::find(root, "RobCoEyebotLens");
+    }
     if (!mount || !replay.place(eyebot::native_scene::lens(scene::world(mount)))) return false;
     lensRef = device->id;
     ++lensEpoch;

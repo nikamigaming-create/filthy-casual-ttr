@@ -8,6 +8,10 @@ Once inside FILTHY, release the trigger. Use right grip for the next page or lef
 
 Open Equipment, choose a wheel, profile and slot, then browse your carried items. The wheel highlights the destination slot and previews the selected item. A assigns the item. B backs out of the picker. **Save profile** keeps your assignments. **Use profile** activates the saved wheel. Use Holsters to save, preview and lock marker positions. Use Kits to combine a holster layout with both wheel profiles.
 
+## Eyebot
+
+Select Eyebot inside FILTHY to deploy and park the camera, take a still, or record and save a clip. The included RobCo Eyebot.esp supplies the device and its remote. [Recorder controls](EYEBOT-RECORDER.md).
+
 ## Voice Commands
 
 Voice uses TTR’s recognizer and your Windows default microphone. Press A to listen. Try “How many stimpaks do I have?” or “Turn on the flashlight.”

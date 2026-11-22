@@ -1,0 +1,8 @@
+ref remoteItem
+ref inventoryFn
+begin function {remoteItem, inventoryFn}
+    if eval ((player.GetItemCount remoteItem) == 0)
+        player.AddItem remoteItem 1 1
+    endif
+    SetOnMenuClickEventHandler inventoryFn 1 "InventoryMenu/GLOW_BRANCH/IM_MainRect/IM_InventoryList/IM_InventoryListTemplateRect"
+end

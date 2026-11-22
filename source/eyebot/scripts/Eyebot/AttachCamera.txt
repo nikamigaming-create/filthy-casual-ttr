@@ -1,0 +1,4 @@
+ref device
+begin function {device}
+    SetFunctionValue (device.AttachExtraCamera "RobCoEyebotStill" 1 "RobCoEyebotCamera")
+end

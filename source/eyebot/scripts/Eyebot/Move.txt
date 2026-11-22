@@ -1,0 +1,11 @@
+ref robotRef
+float xPos
+float yPos
+float zPos
+float yaw
+float pitch
+begin function {robotRef, xPos, yPos, zPos, yaw, pitch}
+    robotRef.SetPosEx xPos yPos zPos
+    robotRef.SetAngle Z yaw
+    robotRef.SetAngle X pitch
+end

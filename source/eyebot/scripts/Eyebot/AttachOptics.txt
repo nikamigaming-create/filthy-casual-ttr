@@ -1,0 +1,4 @@
+ref device
+begin function {device}
+    SetFunctionValue (AttachModel device 3 "RobCoEyebot\Recorder.nif")
+end

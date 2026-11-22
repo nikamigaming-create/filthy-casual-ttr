@@ -172,7 +172,8 @@ inline void publish(bool completed){
  if(changed!=light){changed=light;originalLocal=scene::local(light);originalFade=scene::field<float>(light,0xC4);originalRadius=scene::field<float>(light,0xE0);originalColour=scene::field<scene::Vec>(light,0xD4);}
  lastHit=end;
  auto target=scene::world(light);float distance=scene::distance(lastOrigin,end);
- projected_lighting::publish(projected_lighting::enabled,&lastOrigin.x,&direction.x,config.range,config.angle,config.rgb,config.brightness);
+ projected_lighting::publish(projected_lighting::enabled,&lastOrigin.x,&direction.x,config.range,
+                            config.angle,config.rgb,config.brightness,hit&&projected_lighting::contact_trace::log?&lastHit.x:nullptr);
  float radius=std::clamp(distance*std::tan(config.angle*.5f*.0174532925f),baselineComparison?20.f:30.f,baselineComparison?350.f:850.f);
  // Offset toward the viewer-facing side of the hit so the surface is lit.
  target.p=end+normal*std::min(radius*.35f,40.f);

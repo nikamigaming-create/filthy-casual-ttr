@@ -1,0 +1,4 @@
+ref device
+begin function {device}
+    SetFunctionValue (device.ProjectExtraCamera "RobCoEyebotStill" "RobCoEyebotScreen" 56 256 0)
+end

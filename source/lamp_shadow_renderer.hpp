@@ -115,7 +115,7 @@ inline void draw(IDirect3DDevice9* d){
  if(!gameplay||!p.active){if(state||attempted)release(false);return;}
  const auto frame=generation.load();if(frame==builtGeneration)return;
  IDirect3DSurface9* ds=nullptr;d->GetDepthStencilSurface(&ds);
- if(!ds||ds!=projected_depth_adapter::surface||!projected_lighting::worldTargetMatches(d,ds)){drop(ds);return;}
+ if(!projected_depth_adapter::sampleTexture(ds)||!projected_lighting::worldTargetMatches(d,ds)){drop(ds);return;}
  builtGeneration=frame;valid=false;
  float camera[64]{},eye[4]{};
  if(!projected_lighting::camera(camera,eye)||!prepare(d)){drop(ds);++failures;return;}

@@ -5,8 +5,19 @@ $script:GameLog = 'D:\SteamLibrary\steamapps\common\Fallout New Vegas\SeatedCont
 function Send-XR([string[]]$Lines) {
     & "$script:Repo\xrsim\xrsim-cmd.ps1" -Dir $script:Session -Lines $Lines -Quiet | Out-Null
 }
+function Get-SimulatorState {
+    $path = Join-Path $script:Session 'state.json'
+    $deadline = [DateTime]::UtcNow.AddSeconds(2)
+    while ($true) {
+        try { return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json }
+        catch [System.IO.IOException] {
+            if ([DateTime]::UtcNow -ge $deadline) { throw }
+            Start-Sleep -Milliseconds 20
+        }
+    }
+}
 function Send-Game([string[]]$Lines) {
-    $state = Get-Content "$script:Session\state.json" -Raw | ConvertFrom-Json
+    $state = Get-SimulatorState
     if (!$state.sessionRunning -or !(Get-Process -Id $state.pid -ErrorAction SilentlyContinue)) { throw 'No live isolated simulator' }
     $path = Join-Path $script:Session 'game-command.txt'
     if (Test-Path -LiteralPath $path) { throw 'A native game command is already pending' }
@@ -28,7 +39,7 @@ function Send-Game([string[]]$Lines) {
 function Get-Addon {
     $path=Join-Path $script:Session 'addon-state.json'
     $before=if(Test-Path -LiteralPath $path){(Get-Item -LiteralPath $path).LastWriteTimeUtc.Ticks}else{0}
-    $pidExpected=(Get-Content "$script:Session\state.json" -Raw|ConvertFrom-Json).pid
+    $pidExpected=(Get-SimulatorState).pid
     Send-Game @('sc_state') | Out-Null
     $deadline=[DateTime]::UtcNow.AddSeconds(8)
     do {

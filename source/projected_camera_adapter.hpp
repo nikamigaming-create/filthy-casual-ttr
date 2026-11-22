@@ -1,5 +1,5 @@
 #pragma once
-// FalloutNV 1.4.0.525 / exact TTR 1.1.6, installed only after build and byte guards.
+// FalloutNV 1.4.0.525 / verified TTR, installed only after build and byte guards.
 namespace projected_lighting {
 // TTR updates eye transform/frustum before native draws; NiCamera+9C is
 // still the previous eye's cached matrix here. Build the current camera from

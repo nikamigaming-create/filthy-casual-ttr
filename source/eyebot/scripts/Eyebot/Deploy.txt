@@ -1,0 +1,14 @@
+ref robotRef
+float heading
+float offsetX
+float offsetY
+begin function {robotRef}
+    let heading := player.GetAngle Z
+    let offsetX := (sin heading) * 70 + (cos heading) * 26
+    let offsetY := (cos heading) * 70 - (sin heading) * 26
+    robotRef.MoveTo player offsetX offsetY 54
+    robotRef.SetAngle X 0
+    robotRef.SetAngle Y 0
+    robotRef.SetAngle Z (heading + 180)
+    robotRef.Enable
+end

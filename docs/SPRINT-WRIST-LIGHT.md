@@ -20,7 +20,9 @@ left hand and rests on the knuckles. Its coiled cable plugs into the underside
 of the Wrist-Boy, below FILTHY.
 
 Open **FILTHY → Wrist flashlight** for brightness, beam width, reach, colour,
-and position. The default beam reaches 35 metres. Turn Wrist flashlight off
+and position. Reach is a world distance, with a default of 35 metres. The
+projector uses each eye's rasterized coordinates when TTR scales the image.
+Turn Wrist flashlight off
 in Feature Selection to use TTR’s original light.
 
 The projector shades visible surfaces at their world depth in each eye. Empty
@@ -31,7 +33,7 @@ native vertex-buffer UVs for static cutout foliage. Distant terrain and
 object proxies are excluded. The stock beam mesh is detached while the
 projector is on and restored when it turns off.
 
-Ordinary alpha-blended materials in the flashlight beam use diffuse and material opacity for partial shadows, including bottle glass. Grass and masked leaves cast through their texture cutouts. The beam keeps the existing 512 × 512 shadow map.
+Ordinary alpha-blended materials in the flashlight beam use diffuse and material opacity for partial shadows, including bottle glass. Grass and masked leaves cast through their texture cutouts. A 512 × 512 map records which surfaces block light from the wrist.
 
 ## Headset check
 

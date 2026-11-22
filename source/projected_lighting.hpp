@@ -8,9 +8,10 @@
 #include "projected_depth_adapter.hpp"
 #pragma comment(lib,"d3dcompiler.lib")
 namespace projected_lighting {
-struct Parameters {float origin[4]{},direction[4]{},colour[4]{};bool active=false;};
+struct Parameters {float origin[4]{},direction[4]{},colour[4]{},contact[3]{};bool active=false,hit=false;};
 inline Parameters parameters;inline std::mutex parameterMutex;
 inline bool enabled=false;inline bool ready=false;inline bool measureGpu=false;inline IDirect3DPixelShader9* shader=nullptr;inline IDirect3DStateBlock9* state=nullptr;
+inline IDirect3DVertexShader9* screenTriangle=nullptr;
 inline IDirect3DTexture9* sceneColour=nullptr;inline IDirect3DSurface9* sceneSurface=nullptr;inline D3DSURFACE_DESC sceneDesc{};
 inline double cpuTotalUs=0,cpuMaxUs=0;inline unsigned cpuSamples=0;
 inline unsigned draws=0,failures=0;inline HRESULT lastResult=S_OK;
@@ -22,13 +23,10 @@ inline void pollGpu(IDirect3DDevice9* d){
  if(!gpuAttempted){gpuAttempted=true;d->CreateQuery(D3DQUERYTYPE_TIMESTAMP,&gpuStart);d->CreateQuery(D3DQUERYTYPE_TIMESTAMP,&gpuEnd);d->CreateQuery(D3DQUERYTYPE_TIMESTAMPFREQ,&gpuFrequency);}
  if(gpuPending){UINT64 a{},b{},f{};if(gpuStart->GetData(&a,sizeof(a),0)==S_OK&&gpuEnd->GetData(&b,sizeof(b),0)==S_OK&&gpuFrequency->GetData(&f,sizeof(f),0)==S_OK){gpuPending=false;if(f&&b>=a){double ms=double(b-a)*1000/double(f);gpuTotalMs+=ms;gpuMaxMs=std::max(gpuMaxMs,ms);++gpuSamples;}}}
 }
-inline void release(){ready=false;
- if(gpuStart)gpuStart->Release();if(gpuEnd)gpuEnd->Release();if(gpuFrequency)gpuFrequency->Release();gpuStart=gpuEnd=gpuFrequency=nullptr;gpuPending=gpuAttempted=false;
-if(sceneSurface)sceneSurface->Release();if(sceneColour)sceneColour->Release();sceneSurface=nullptr;sceneColour=nullptr;sceneDesc={};
-if(state)state->Release();if(shader)shader->Release();state=nullptr;shader=nullptr;}
-inline void publish(bool active,const float* pos,const float* dir,float range,float degrees,const float* rgb,float brightness){
+inline void publish(bool active,const float* pos,const float* dir,float range,float degrees,const float* rgb,float brightness,const float* contact=nullptr){
  std::lock_guard<std::mutex> lock(parameterMutex);parameters.active=active;
  if(!active)return;for(int i=0;i<3;i++){parameters.origin[i]=pos[i];parameters.direction[i]=dir[i];parameters.colour[i]=rgb[i]*brightness;}
+ parameters.hit=contact!=nullptr;if(contact)memcpy(parameters.contact,contact,sizeof(parameters.contact));
  parameters.origin[3]=range;parameters.direction[3]=cosf(degrees*.5f*.0174532925f);parameters.colour[3]=cosf(degrees*.14f*.0174532925f);
 }
 inline bool inverse(const float* source,float* result){
@@ -40,21 +38,41 @@ inline bool inverse(const float* source,float* result){
 }
 }
 #include "projected_camera_adapter.hpp"
+#include "projected_contact_trace.hpp"
 namespace projected_lighting {
+inline void release(){ready=false;
+ contact_trace::release();
+ if(gpuStart)gpuStart->Release();if(gpuEnd)gpuEnd->Release();if(gpuFrequency)gpuFrequency->Release();gpuStart=gpuEnd=gpuFrequency=nullptr;gpuPending=gpuAttempted=false;
+ if(sceneSurface)sceneSurface->Release();if(sceneColour)sceneColour->Release();sceneSurface=nullptr;sceneColour=nullptr;sceneDesc={};
+ if(state)state->Release();if(shader)shader->Release();if(screenTriangle)screenTriangle->Release();state=nullptr;shader=nullptr;screenTriangle=nullptr;
+}
 inline bool prepare(IDirect3DDevice9* d){
- if(shader&&state)return true;if(shader){shader->Release();shader=nullptr;}if(state){state->Release();state=nullptr;}
+ if(shader&&screenTriangle&&state)return true;
+ if(!screenTriangle){
+  static const char vertexSource[]=R"HLSL(
+   float4 main(float3 corner:POSITION,out float2 eyeUV:TEXCOORD0):POSITION{
+    eyeUV=corner.xy;
+    return float4(corner.x*2-1,1-corner.y*2,0,1);
+   }
+  )HLSL";
+  ID3DBlob* code=nullptr;
+  lastResult=D3DCompile(vertexSource,sizeof(vertexSource)-1,nullptr,nullptr,nullptr,"main","vs_3_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,nullptr);
+  if(SUCCEEDED(lastResult)){lastResult=d->CreateVertexShader(static_cast<DWORD*>(code->GetBufferPointer()),&screenTriangle);code->Release();}
+  if(FAILED(lastResult))return false;
+ }
+ if(shader){shader->Release();shader=nullptr;}if(state){state->Release();state=nullptr;}
  static const char source[]=R"HLSL(
  sampler2D Depth:register(s0);sampler2D Scene:register(s1);sampler2D Shadow:register(s2);
  row_major float4x4 InverseClip:register(c0);
  float4 Lamp:register(c4);float4 Aim:register(c5);float4 Tint:register(c6);
  row_major float4x4 ShadowClip:register(c8);float4 ShadowMode:register(c12);
- // VPOS addresses the original target pixel, independent of texture-stage
- // transforms and sub-viewports used by upscalers. Never resample the whole
- // colour target into the current viewport: that draws displaced geometry.
- float4 TargetPixel:register(c13);float4 Viewport:register(c14);float4 DepthRange:register(c15);
- float4 main(float2 pixel:VPOS):COLOR0{
-  float2 sampleUV=(pixel+.5)*TargetPixel.xy;
-  float2 uv=(pixel+.5-Viewport.xy)*Viewport.zw;
+ // TTR can report a logical viewport and rasterize into a scaled eye.
+ // Interpolation spans the actual raster. Its derivatives are one physical
+ // pixel, including when the reported viewport stays at the game's size.
+ float4 TextureRect:register(c13);float4 DepthRange:register(c15);
+ float4 main(float2 eyeUV:TEXCOORD0):COLOR0{
+  float2 uv=eyeUV+.5*float2(ddx(eyeUV.x),ddy(eyeUV.y));
+  float2 sampleUV=TextureRect.xy+uv*TextureRect.zw;
   float z=(tex2D(Depth,sampleUV).r-DepthRange.x)*DepthRange.y;
   // The clear depth has no receiving surface.
   if(z<=0 || z>=.999999)return 0;
@@ -108,27 +126,26 @@ inline bool copyScene(IDirect3DDevice9* d){
  if(sceneSurface)lastResult=d->StretchRect(rt,nullptr,sceneSurface,nullptr,D3DTEXF_NONE);
  rt->Release();return sceneSurface&&SUCCEEDED(lastResult);
 }
-inline bool composite(IDirect3DDevice9* d,float* constants,const D3DVIEWPORT9& vp){
+inline bool composite(IDirect3DDevice9* d,IDirect3DTexture9* depth,float* constants,const D3DVIEWPORT9& vp){
  if(!sceneDesc.Width||!sceneDesc.Height||!vp.Width||!vp.Height||vp.X>sceneDesc.Width||vp.Y>sceneDesc.Height||vp.Width>sceneDesc.Width-vp.X||vp.Height>sceneDesc.Height-vp.Y||vp.MaxZ<=vp.MinZ)return false;
- constants[52]=1.f/sceneDesc.Width;constants[53]=1.f/sceneDesc.Height;
- constants[56]=float(vp.X);constants[57]=float(vp.Y);constants[58]=1.f/vp.Width;constants[59]=1.f/vp.Height;
+ constants[52]=float(vp.X)/sceneDesc.Width;constants[53]=float(vp.Y)/sceneDesc.Height;
+ constants[54]=float(vp.Width)/sceneDesc.Width;constants[55]=float(vp.Height)/sceneDesc.Height;
  constants[60]=vp.MinZ;constants[61]=1.f/(vp.MaxZ-vp.MinZ);
  d->SetDepthStencilSurface(nullptr);d->SetViewport(&vp);
  d->SetRenderState(D3DRS_STENCILENABLE,FALSE);d->SetRenderState(D3DRS_CLIPPLANEENABLE,0);d->SetRenderState(D3DRS_FOGENABLE,FALSE);d->SetRenderState(D3DRS_FILLMODE,D3DFILL_SOLID);
  for(unsigned i=0;i<2;++i){d->SetTextureStageState(i,D3DTSS_TEXTURETRANSFORMFLAGS,D3DTTFF_DISABLE);d->SetTextureStageState(i,D3DTSS_TEXCOORDINDEX,i);}
- d->SetVertexShader(nullptr);d->SetPixelShader(shader);d->SetPixelShaderConstantF(0,constants,16);
- d->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1);d->SetRenderState(D3DRS_ZENABLE,FALSE);d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE);d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE);
+ d->SetVertexShader(screenTriangle);d->SetPixelShader(shader);d->SetPixelShaderConstantF(0,constants,16);
+ d->SetFVF(D3DFVF_XYZ);d->SetRenderState(D3DRS_ZENABLE,FALSE);d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE);d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE);
  d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE);d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD);d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ONE);d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_ONE);
  // Preserve all auxiliary outputs (for example the temporal velocity buffer).
  d->SetRenderState(D3DRS_COLORWRITEENABLE1,0);
  d->SetRenderState(D3DRS_COLORWRITEENABLE2,0);
  d->SetRenderState(D3DRS_COLORWRITEENABLE3,0);
  d->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE,FALSE);d->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE);d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);d->SetRenderState(D3DRS_COLORWRITEENABLE,7);d->SetRenderState(D3DRS_SRGBWRITEENABLE,FALSE);
- d->SetTexture(0,projected_depth_adapter::texture);d->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT);d->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT);d->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE);d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,FALSE);d->SetSamplerState(0,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP);d->SetSamplerState(0,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP);
+ d->SetTexture(0,depth);d->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT);d->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT);d->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE);d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,FALSE);d->SetSamplerState(0,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP);d->SetSamplerState(0,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP);
  d->SetTexture(1,sceneColour);d->SetSamplerState(1,D3DSAMP_MINFILTER,D3DTEXF_POINT);d->SetSamplerState(1,D3DSAMP_MAGFILTER,D3DTEXF_POINT);d->SetSamplerState(1,D3DSAMP_MIPFILTER,D3DTEXF_NONE);d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,FALSE);d->SetSamplerState(1,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP);d->SetSamplerState(1,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP);
- float x=float(vp.X)-.5f,y=float(vp.Y)-.5f,w=float(vp.Width),h=float(vp.Height);
- float quad[4][6]={{x,y,0,1,0,0},{x+w,y,0,1,1,0},{x,y+h,0,1,0,1},{x+w,y+h,0,1,1,1}};
- lastResult=d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,quad,sizeof(quad[0]));ready=SUCCEEDED(lastResult);if(ready)++draws;else ++failures;
+ static const float corners[3][3]={{0,0,0},{2,0,0},{0,2,0}};
+ lastResult=d->DrawPrimitiveUP(D3DPT_TRIANGLELIST,1,corners,sizeof(corners[0]));ready=SUCCEEDED(lastResult);if(ready)++draws;else ++failures;
  return ready;
 }
 inline bool worldTargetMatches(IDirect3DDevice9* d,IDirect3DSurface9* depth){
@@ -144,7 +161,8 @@ inline bool worldTargetMatches(IDirect3DDevice9* d,IDirect3DSurface9* depth){
 inline void draw(IDirect3DDevice9* d){
  if(!enabled)return;Parameters p;{std::lock_guard<std::mutex> lock(parameterMutex);p=parameters;}if(!p.active)return;
  IDirect3DSurface9* ds=nullptr;if(FAILED(d->GetDepthStencilSurface(&ds))||!ds)return;
- if(ds!=projected_depth_adapter::surface||!worldTargetMatches(d,ds)){ready=false;ds->Release();return;}
+ auto depth=projected_depth_adapter::sampleTexture(ds);
+ if(!depth||!worldTargetMatches(d,ds)){ready=false;ds->Release();return;}
  LARGE_INTEGER begin{},finish{},frequency{};if(measureGpu){QueryPerformanceCounter(&begin);QueryPerformanceFrequency(&frequency);}
  float constants[64]{},worldEye[4]{};if(!camera(constants,worldEye)||!prepare(d)){ready=false;++failures;ds->Release();return;}
  memcpy(constants+16,p.origin,16);for(int i=0;i<3;i++)constants[16+i]-=worldEye[i];memcpy(constants+20,p.direction,16);memcpy(constants+24,p.colour,16);
@@ -168,7 +186,10 @@ inline void draw(IDirect3DDevice9* d){
  }
  state->Capture();bool began=SUCCEEDED(d->BeginScene());
  constants[48]=lampShadow&&lampShadow(d,worldEye,constants+32)?1.f:0;
- ready=composite(d,constants,vp);
+ const bool countRaster=contact_trace::beginCoverage(d,vp);
+ ready=composite(d,depth,constants,vp);
+ if(countRaster)contact_trace::endCoverage();
+ if(ready&&contact_trace::log)contact_trace::sample(d,p,constants,worldEye,vp,sceneDesc);
  d->SetTexture(0,nullptr);d->SetTexture(1,nullptr);d->SetTexture(2,nullptr);d->SetDepthStencilSurface(ds);state->Apply();d->SetViewport(&vp);if(began)d->EndScene();ds->Release();if(measure){gpuEnd->Issue(D3DISSUE_END);gpuPending=true;}
  if(measureGpu){QueryPerformanceCounter(&finish);double us=double(finish.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart);cpuTotalUs+=us;cpuMaxUs=std::max(cpuMaxUs,us);++cpuSamples;}
 }

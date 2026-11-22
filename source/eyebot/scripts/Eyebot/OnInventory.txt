@@ -1,0 +1,12 @@
+int menuId
+int tileId
+string_var tileName
+ref chosen
+ref remoteItem
+begin function {menuId, tileId, tileName}
+    let chosen := GetSelectedItemRef
+    let remoteItem := GetFormFromMod "RobCo Eyebot.esp" "000801"
+    if eval (chosen && remoteItem && (chosen.GetBaseObject == remoteItem))
+        DispatchEvent "RobCo:EyebotRemote"
+    endif
+end

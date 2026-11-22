@@ -1,0 +1,4 @@
+ref device
+begin function {device}
+    device.AttachExtraCamera "RobCoEyebotStill" 0
+end

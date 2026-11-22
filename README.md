@@ -25,6 +25,7 @@ Enable the vehicle dependencies above Filthy in MO2. Restart after changing Driv
 - **Seated play.** Do TTR’s seated zombie pose with both arms extended and both triggers held. Then adjust and save your seat height in FILTHY.
 - **Wrist-Boy.** Raise your wrist. Hold the right trigger and squeeze right grip to cycle to FILTHY. Release the trigger to browse FILTHY pages with the grips. Lower your wrist to resume world interaction.
 - **Full-size Pip-Boy.** Point at FILTHY and pull the right trigger. Both devices share your settings. [Device controls](docs/NATIVE-SETTINGS.md).
+- **RobCo Eyebot.** Open FILTHY → Eyebot to deploy the camera, fly it, take a snapshot, or record a clip. The recorder uses the Eyebot shell from New Vegas. [Eyebot controls](docs/EYEBOT-RECORDER.md).
 - **Equipment.** Save weapon and consumable wheels and holster layouts, then combine them into kits. Hold left thumbrest and double-tap right for weapons. Reverse the hands for consumables.
 - **Movement and hands.** Set walk, run, and sprint thresholds. Adjust grip sensitivity and save up to eight controller profiles. [Controller guide](docs/CONTROLS-EDITOR.md).
 - **Wrist flashlight.** Aim at the world with your wrist and set the beam’s color, brightness, width, and reach.

@@ -239,6 +239,8 @@ namespace {
   sprintConfig.multiplier=sprintValue("SpeedMultiplier",2.f);sprintConfig.apPerSecond=sprintValue("APPerSecond",15.f);sprintConfig.sanitize();
   wrist_light::config.enabled=GetPrivateProfileIntA("WristLight","Enabled",1,path)!=0;
   wrist_light::config.projected=GetPrivateProfileIntA("WristLight","Projected",1,path)!=0;
+  if(GetPrivateProfileIntA("WristLight","TraceProjection",0,path))
+   projected_lighting::contact_trace::log=log;
   wrist_light::config.gloveMount=GetPrivateProfileIntA("WristLight","GloveMount",1,path)!=0;
   auto lightValue=[&](const char* key,float fallback,float lo,float hi){char text[40],def[40];sprintf_s(def,"%.3f",fallback);GetPrivateProfileStringA("WristLight",key,def,text,sizeof text,path);float v=float(atof(text));return std::isfinite(v)?std::clamp(v,lo,hi):fallback;};
   wrist_light::config.brightness=lightValue("Brightness",1.3f,0,5);wrist_light::config.angle=lightValue("BeamDegrees",32,10,90);wrist_light::config.range=lightValue("RangeMetres",35,2,50)*69.99125f;

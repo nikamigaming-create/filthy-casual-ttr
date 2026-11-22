@@ -1,0 +1,4 @@
+ref robotRef
+begin function {robotRef}
+    robotRef.Disable
+end

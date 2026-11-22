@@ -6,7 +6,7 @@ functions were restored. `package.ps1` assembles and audits the RC22 archive.
 It includes the vehicle scripts, FILTHY tab XML, and rebuilt core and device
 settings DLLs.
 
-The final RC22 archive passed the isolated dependency-only simulator checks.
+The earlier RC22 vehicle and Pip-Boy build passed the isolated dependency-only simulator checks.
 The stock Roadster used arcade road contact and accepted steering from either
 hand on its original rim. It accelerated, moved, and exited with B. The
 Vertibird took off through Pilot Inside. The right cyclic and left collective
@@ -16,15 +16,40 @@ interior and Filthy’s authored handles.
 
 Earlier RC22 simulator coverage includes the worn Wrist-Boy handoff, controller
 mapping, equipment pages, wheels, automatic reload, walk/run/sprint, book set-down,
-and Bighorner riding. The current ZIP passed repeated full-size Pip-Boy opening,
+and Bighorner riding. That ZIP passed repeated full-size Pip-Boy opening,
 FILTHY navigation, Data restoration, and return to gameplay in both eyes at
 native render scale. The same session passed all four bottle families for
 consumption, held empty identity, hand-relative pose, release and visible physics.
 The maximum replacement position error was 0.352 game units. Physical headset
 play, upscaling, and stock masked character shadows still need acceptance.
 
-Tested RC22 ZIP SHA-256
+Earlier vehicle and Pip-Boy ZIP SHA-256
 
 ```text
 19DE97A90E6A302C7C01BE59D05F304A639B241C977CEA96D84E078B1AC04F87
 ```
+
+## Combined RC22 headset candidate
+
+The final player ZIP for this headset pass has SHA-256
+`AFE4BECE4724B8A378B180A9FC3EB29FACA960B01269AB31F6D28FF8C724080B`.
+It includes the flashlight core the player confirmed on the physical headset
+(`48FB0763FD4A8D1BBBB4C0BF6CB4A5A67353FCE7862A17BD00641AF7324CC08B`).
+
+The previous package omitted the RobCo Eyebot records and scripts. An older
+simulator fixture supplied the missing files privately. The combined ZIP
+provides the records, eleven native scripts, and authored recorder optics.
+New Vegas supplies the robot shell through its installed game data.
+
+The isolated dependency-only MO2 runs loaded that ZIP directly. Both Pip-Boy
+screens opened FILTHY > Eyebot. The wrist deployed and parked the recorder.
+The full-size page showed the parked robot status in both composed eyes.
+The inventory contained one remote. The parked lens rendered a still and tracked
+Sunny moving across 70 scene samples. All 83 MP4 frames encoded and restored
+the live scene transforms. The combined package awaits the player's headset pass.
+
+The same ZIP subsequently passed full-size Pip-Boy entry, Seated Height, close
+and reopen, FILTHY reentry, Data restoration, and return to gameplay. All four
+bottle families consumed and exchanged into the correct native empty in hand.
+The largest hand-relative replacement error was 0.181 game units (rounded up).
+Every sampled moving physics interval had corresponding visible bottle motion.
