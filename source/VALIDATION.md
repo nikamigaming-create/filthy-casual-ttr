@@ -14,5 +14,15 @@ grabbed, moved, and released independently. Stick movement, climb, landing and
 on-foot control restoration passed. Both final eyes showed the installed
 interior and Filthy’s authored handles.
 
-Other car models use native handling. Stock masked character shadows, physical
-headset play and upscaler behavior still need acceptance.
+The same ZIP passed worn Wrist-Boy handoff, controller mapping, the worn
+equipment pages, thumbrest wheels, automatic reload, walk/run/sprint, book
+set-down, and Bighorner riding in the simulator. The full-size Pip-Boy takes
+lost the live compositor, and the empty-bottle tests failed pose or handoff
+assertions. Those checks remain open along with stock masked character shadows,
+physical headset play, and upscaling. Other car models use native handling.
+
+Tested RC22 ZIP SHA-256
+
+```text
+FA27A0977E21AB62D8BD4F776EF67373C14B0AAD7CE45341C7F6C8B70823396C
+```
