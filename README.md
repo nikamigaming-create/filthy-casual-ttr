@@ -2,6 +2,8 @@
 
 Seated controls, equipment profiles, and a wrist flashlight for **Tale of Two Realities 1.1.7**.
 
+The public RC21 ZIP is missing the vehicle scripts. The RC22 candidate restores them. [Release status](https://github.com/nikamigaming-create/filthy-casual-ttr/releases).
+
 ## Install in Mod Organizer 2
 
 1. Start with TTR 1.1.7 running in MO2 with xNVSE and JIP LN NVSE. [Check the supported build](docs/INSTALL.md#supported-base).
