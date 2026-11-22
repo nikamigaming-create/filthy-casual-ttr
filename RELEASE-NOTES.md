@@ -4,6 +4,7 @@
 - Includes the native scripts required by the vehicle module.
 - Uses the stock Roadster’s wheel and tyre pivots for physical steering and arcade handling.
 - Mounts the installed Vertibird interior in flight and adds independent Filthy cyclic and collective handles.
+- Includes the full-size FILTHY tab and preserves the native Data menu during category switches.
 
 ## Changes since public RC8
 

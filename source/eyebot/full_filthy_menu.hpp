@@ -8,10 +8,12 @@ namespace eyebot::full_page {
 // An unused slot inside the retail menu registry. Refuse entry if another
 // plugin has registered it. The factory is scoped to our own XML load.
 constexpr int id=1005;
+constexpr int dataCategory=1023;
 constexpr char xml[]="Data\\Menus\\prefabs\\RobCoEyebot\\full_filthy.xml";
 inline void* instance=nullptr;
 inline void* root=nullptr;
 inline bool loading=false;
+inline bool dataHidden=false;
 inline void (*click)(int)=nullptr;
 inline void (*stockTab)(int)=nullptr;
 inline std::array<void*,18> methods{};
@@ -73,6 +75,11 @@ inline unsigned trait(const char* name){
 inline void number(void* node,const char* name,float value){
     if(node)reinterpret_cast<void(__thiscall*)(void*,unsigned,float,bool)>(0xA012D0)(node,trait(name),value,true);
 }
+inline void restoreStockData(){
+    if(!dataHidden)return;
+    if(auto tile=registered(dataCategory))number(tile,"visible",1.f);
+    dataHidden=false;
+}
 inline void text(void* node,const char* name,const char* value){
     if(node)reinterpret_cast<void(__thiscall*)(void*,unsigned,const char*,bool)>(0xA01350)(node,trait(name),value,true);
 }
@@ -107,12 +114,16 @@ inline bool open(int previous,bool (*removePrior)(int)){
     }
     auto old=registered(previous);
     if(!old || !at<void*>(old,0x3c))return false;
-    // The stock Pip-Boy replaces a category by destroying its TileMenu.
-    // Fading it alone can leave Inventory text in the rendered menu.
     if(!removePrior(previous))return false;
     if(registered(previous)==old){
-        auto destroyTile=reinterpret_cast<void(__thiscall*)(void*,bool)>(at<void**>(old,0)[0]);
-        destroyTile(old,true);
+        if(previous==dataCategory){
+            // Engine and NVSE fast-travel checks still need the native map.
+            number(old,"visible",0.f);
+            dataHidden=true;
+        }else{
+            auto destroyTile=reinterpret_cast<void(__thiscall*)(void*,bool)>(at<void**>(old,0)[0]);
+            destroyTile(old,true);
+        }
     }
     // Register in the engine's live menu stack, just as native XML menus do.
     reinterpret_cast<void(__thiscall*)(void*,int)>(0x714D90)(manager,id);

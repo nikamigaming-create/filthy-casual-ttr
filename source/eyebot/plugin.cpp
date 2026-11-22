@@ -1370,6 +1370,7 @@ void tickWrist() {
     const int tabRequest=transition.value;
     if (tabRequest || now >= wrist.nextTabCheck) {
         wrist.nextTabCheck = now + 100;
+        eyebot::native_tabs::restoreActiveData();
         const auto active = call(wrist.menuMode);
         auto menu = wrist.stockMenu(active.type == 1 ? int(active.value.number) : 0);
         const auto seen = liveWristAt.load();

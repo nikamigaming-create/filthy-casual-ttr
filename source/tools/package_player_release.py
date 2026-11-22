@@ -9,6 +9,8 @@ import zipfile
 
 RC21_DIGEST = 'b7c60e97280c5fcef3916af012c874eddc6cae56990aea3c14959bae5d359989'
 VEHICLE_PLUGIN = 'NVSE/Plugins/FilthyCasualVehicles.dll'
+SETTINGS_PLUGIN = 'NVSE/Plugins/FilthyCasualNativeSettings.dll'
+CORE_PLUGIN = 'NVSE/Plugins/SeatedControls.dll'
 VEHICLE_FUNCTIONS = (
     'AllowCombat', 'FlightSeatLocks', 'ReadFrequency', 'ReadVariable', 'RefreshSeat',
     'SetEnginePitch', 'SetFrequency', 'ShowPilot', 'StartEngineDrive', 'StartEngineIdle',
@@ -35,7 +37,7 @@ def player_entry(name):
                                  'NVSE/user_defined_functions/FilthyCasual/Eyebot/')))
 
 
-def assemble(original, destination, vehicle_dll, version, flight_controls=None):
+def assemble(original, destination, vehicle_dll, version, flight_controls, settings_dll, core_dll):
     if sha256(original.read_bytes()) != RC21_DIGEST:
         raise ValueError('Expected the exact published RC21 archive.')
     with zipfile.ZipFile(original) as archive:
@@ -54,11 +56,14 @@ def assemble(original, destination, vehicle_dll, version, flight_controls=None):
 
     for name in PLAYER_DOCS:
         payload[name] = (ROOT / name).read_bytes()
+    payload['menus/prefabs/RobCoEyebot/filthy_tab.xml'] = (ROOT / 'source/eyebot/filthy_tab.xml').read_bytes()
     for name in VEHICLE_FUNCTIONS:
         relative = f'FilthyCasual/Vehicles/{name}.txt'
         payload[f'NVSE/user_defined_functions/{relative}'] = (ROOT / 'source/native-scripts' / relative).read_bytes()
     if vehicle_dll is not None:
         payload[VEHICLE_PLUGIN] = vehicle_dll.read_bytes()
+    payload[SETTINGS_PLUGIN] = settings_dll.read_bytes()
+    payload[CORE_PLUGIN] = core_dll.read_bytes()
     if flight_controls is not None:
         payload['meshes/FilthyCasual/flight-controls.nif'] = flight_controls.read_bytes()
     payload['meta.ini'] = (
@@ -91,12 +96,14 @@ def main():
     parser.add_argument('rc21', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--vehicle-dll', type=Path)
+    parser.add_argument('--settings-dll', type=Path, required=True)
+    parser.add_argument('--core-dll', type=Path, required=True)
     parser.add_argument('--flight-controls', type=Path)
     parser.add_argument('--version', required=True)
     args = parser.parse_args()
     if args.output.suffix.lower() != '.zip' or args.output.resolve() == args.rc21.resolve():
         parser.error('Choose a separate output ZIP.')
-    assemble(args.rc21, args.output, args.vehicle_dll, args.version, args.flight_controls)
+    assemble(args.rc21, args.output, args.vehicle_dll, args.version, args.flight_controls, args.settings_dll, args.core_dll)
 
 
 if __name__ == '__main__':

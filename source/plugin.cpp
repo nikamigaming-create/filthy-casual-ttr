@@ -711,6 +711,27 @@ namespace {
  // An ordinary game-owned empty reference, handed to native TTR once. No
  // replacement physics, persistent hand latch, custom save records or cloning.
  unsigned lastEmptyBottle=0;
+ bool placeEmptyForPickup(Form* ref){
+  scene::Transform replacement{};
+  if(!held_pose_adapter::target(replacement))return false;
+  auto root=scene::root(ref);
+  if(!bottle_impact_adapter::body(root))return false;
+  // The held offset is computed from the actual rigid body at pickup.
+  // Wait for the reference move to reach the loaded scene before binding it.
+  static Script* place=nullptr;
+  if(!place)place=compile("empty bottle pose","ref target\nfloat x\nfloat y\nfloat z\nfloat ax\nfloat ay\nfloat az\nbegin function {target,x,y,z,ax,ay,az}\ntarget.SetAngleEx ax ay az 1\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");
+  constexpr float deg=57.295779513f;
+  const auto& r=replacement.r;
+  const auto ax=std::atan2(r[2][1],r[2][2])*deg;
+  const auto ay=-std::asin(std::clamp(r[2][0],-1.f,1.f))*deg;
+  const auto az=std::atan2(r[1][0],r[0][0])*deg;
+  if(!place||number(place,ref,bits(replacement.p.x),bits(replacement.p.y),bits(replacement.p.z),bits(ax),bits(ay),bits(az))!=1)return false;
+  root=scene::root(ref);
+  if(!root)return false;
+  const auto error=scene::distance(scene::world(root).p,replacement.p);
+  log("EMPTY BOTTLE placement ref=%08X position error=%.3f",ref->id,error);
+  return error<.4f;
+ }
  void leaveEmptyBottle(Form* base,double inventoryBefore,const scene::Transform* heldPose){
   if(!base||weaponTransition)return;auto player=playerForm();Form* ref=nullptr;
   // Reuse one empty already returned by another consumption mod, if present.
@@ -1707,19 +1728,14 @@ namespace {
       else if(pendingWeapon.id==0x15169){weaponTransition=false;tell("Stimpak ready in right hand");}
       else {pendingStage=3;pendingAt=now+150;aidDeadline=now+2000;}
      }else{
-      // Keep the replacement in the previous bottle's hand-relative frame
-      // while its native 3D loads. The pickup then owns it normally.
-      scene::Transform replacement{};if(held_pose_adapter::target(replacement)){
-       // Set the actual reference/Havok pose, not just the visible NiNode;
-       // native grab derives its attachment from the rigid body.
-       static Script* placeEmpty=nullptr;if(!placeEmpty)placeEmpty=compile("empty bottle pose","ref target\nfloat x\nfloat y\nfloat z\nfloat ax\nfloat ay\nfloat az\nbegin function {target,x,y,z,ax,ay,az}\ntarget.SetAngleEx ax ay az 1\ntarget.SetPosEx x y z\nSetFunctionValue 1\nend");
-       constexpr float deg=57.295779513f;auto& r=replacement.r;
-       auto ax=std::atan2(r[2][1],r[2][2])*deg,ay=-std::asin(std::clamp(r[2][0],-1.f,1.f))*deg,az=std::atan2(r[1][0],r[0][0])*deg;
-       if(placeEmpty)number(placeEmpty,selectedRef,bits(replacement.p.x),bits(replacement.p.y),bits(replacement.p.z),bits(ax),bits(ay),bits(az));
-      }
-      Vec head;int result=0;if(pos("Bip01 Head",1,head))result=build_adapter::grabSelected(playerForm(),&head.x,selectedRef);
+      const bool preservePose=held_pose_adapter::pending;
+      Vec head;
+      int result=0;
+      if((!preservePose||placeEmptyForPickup(selectedRef))&&pos("Bip01 Head",1,head))
+       result=build_adapter::grabSelected(playerForm(),&head.x,selectedRef);
       if(build_adapter::grabbedItem()==selectedRef&&build_adapter::grabbedHand()==1){aidDropPending=false;weaponTransition=false;held_pose_adapter::pending=false;if(current.h[1].grip>.65f)aidGripLatch=false;stickyAidButtons=aidGripLatch.load();log("NATIVE AID handoff %08X result=%d",heldAid.id,result);tell(heldAid.name+" in right hand");}
       else if(now>=aidDeadline){clearAid();weaponTransition=false;tell("Item returned to inventory; native handoff unavailable");}
+      else if(preservePose){pendingAt=now+30;}
       else {pendingAt=now+100;auto palm=scene::palm(root,1);number(moveRef,selectedRef,bits(palm.x),bits(palm.y),bits(palm.z));}
      }
     }else if(pendingStage==1){

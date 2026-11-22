@@ -101,6 +101,15 @@ inline void publishFullCategory(){
     scene::field<int>(ttr,0x19F5DE0)=full_page::id;
     reinterpret_cast<void(__cdecl*)(int,const char*)>(ttr+0x35D600)(full_page::id,"FILTHY");
 }
+inline void restoreActiveData(){
+    if(!full_page::dataHidden)return;
+    // TTR clears the previous owner before setting its pending category.
+    // Restoring sooner can leave the map painted over the previous menu.
+    const auto owned=scene::field<int>(ttr,0x19F5DE0);
+    const auto pending=scene::field<int>(ttr,0x19F5DE8);
+    if(owned==full_page::dataCategory || (!owned && pending==full_page::dataCategory))
+        full_page::restoreStockData();
+}
 inline void __cdecl switchFull(int target,bool byTab){
     const int current=fullMenu.load();
     if(byTab && current==full_page::id){
