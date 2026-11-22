@@ -1,4 +1,11 @@
-# Filthy Casual TTR 1.8.0-beta.4-rc.21
+# Filthy Casual TTR 1.8.0-beta.4-rc.22
+
+- Installs as one MO2 mod with the original dependencies listed on the [front page](README.md#vehicle-downloads).
+- Includes the native scripts required by the vehicle module.
+- Uses the stock Roadster’s wheel and tyre pivots for physical steering and arcade handling.
+- Mounts the installed Vertibird interior in flight and adds independent Filthy cyclic and collective handles.
+
+## RC21 core features
 
 ## Changes since public RC8
 

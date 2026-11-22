@@ -35,7 +35,7 @@ def player_entry(name):
                                  'NVSE/user_defined_functions/FilthyCasual/Eyebot/')))
 
 
-def assemble(original, destination, vehicle_dll, version):
+def assemble(original, destination, vehicle_dll, version, flight_controls=None):
     if sha256(original.read_bytes()) != RC21_DIGEST:
         raise ValueError('Expected the exact published RC21 archive.')
     with zipfile.ZipFile(original) as archive:
@@ -59,6 +59,8 @@ def assemble(original, destination, vehicle_dll, version):
         payload[f'NVSE/user_defined_functions/{relative}'] = (ROOT / 'source/native-scripts' / relative).read_bytes()
     if vehicle_dll is not None:
         payload[VEHICLE_PLUGIN] = vehicle_dll.read_bytes()
+    if flight_controls is not None:
+        payload['meshes/FilthyCasual/flight-controls.nif'] = flight_controls.read_bytes()
     payload['meta.ini'] = (
         f'[General]\nmodid=0\nversion={version}\nnewestVersion=\ncategory=0\ninstallationFile=\n'
         'comments=TTR 1.1.7 with xNVSE and JIP LN NVSE. Cars use Uhmatt Drivable Cars 8b. '
@@ -89,11 +91,12 @@ def main():
     parser.add_argument('rc21', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--vehicle-dll', type=Path)
+    parser.add_argument('--flight-controls', type=Path)
     parser.add_argument('--version', required=True)
     args = parser.parse_args()
     if args.output.suffix.lower() != '.zip' or args.output.resolve() == args.rc21.resolve():
         parser.error('Choose a separate output ZIP.')
-    assemble(args.rc21, args.output, args.vehicle_dll, args.version)
+    assemble(args.rc21, args.output, args.vehicle_dll, args.version, args.flight_controls)
 
 
 if __name__ == '__main__':

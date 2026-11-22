@@ -6,12 +6,13 @@ Install the original dependencies listed on the [front page](../README.md#vehicl
 
 Right trigger accelerates. Left trigger brakes, then reverses once stopped. Left stick steers. B exits. When you draw a weapon, both triggers return to the weapon. Release them before accelerating again after holstering.
 
-## Compatibility
+The stock Roadster uses the original steering wheel for physical grip steering and supports arcade handling. Other stock cars keep native handling. Existing fitted rigs continue to use their fitted controls.
 
-The published RC21 ZIP is missing the NVSE functions needed to initialize the
-vehicle module. The next release is testing the complete package with the
-original downloads in an isolated MO2 profile. Physical wheel grips and the
-fitted cockpit also need replacement runtime attachment code for stock rigs.
+## Vertibird
+
+Board through Pilot Inside. The fitted cockpit mounts the installed Vertibird interior and Filthy's two flight handles. Grip the right cyclic to pitch and bank. Grip the left collective to climb and descend. You can use the associated thumbstick while holding each handle. B lands and returns control to TTR.
+
+The published RC21 ZIP omitted scripts required by the vehicle module. RC22 adds them to the standard MO2 installation.
 
 ## Riding
 

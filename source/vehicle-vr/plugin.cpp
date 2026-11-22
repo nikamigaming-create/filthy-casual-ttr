@@ -27,6 +27,7 @@
 #include "motion_adapter.hpp"
 #include "fleet_catalog.hpp"
 #include "stock_roadster_wheel.hpp"
+#include "stock_vertibird_cabin.hpp"
 #include "road_contacts.hpp"
 #include "road_fit_native.hpp"
 #include "knee_steering.hpp"
@@ -66,6 +67,10 @@ Form* fleetBases[std::size(vehicle_fleet::models)]{};const vehicle_fleet::Model*
 stock_roadster_wheel::Rig stockWheel;
 void* stockWheelAttempt=nullptr;
 Script *insertStockWheel{},*removeStockWheel{};
+stock_vertibird_cabin::Rig stockCabin;
+void* stockCabinAttempt=nullptr;
+Script *insertStockCabin{},*removeStockCabin{};
+bool stockCabinEnabled=false;
 std::string modelSequences[4];float savedTurn=0;
 const vehicle_fleet::Model* findCarModel(Form* ref){if(!ref)return nullptr;auto base=scene::field<Form*>(ref,0x20);for(unsigned i=0;i<std::size(fleetBases);i++)if(base&&base==fleetBases[i])return &vehicle_fleet::models[i];return nullptr;}
 struct ParkedFit {unsigned id=0;road_fit_native::State fit;};
@@ -149,6 +154,23 @@ void prepareStockWheel(void* root){
   stockWheel.restore();
  }
 }
+void clearStockCabin(){
+ const bool attached=stockCabin.root!=nullptr;
+ stockCabin.restore();
+ if(attached&&car&&loaded)call(removeStockCabin,car);
+ stockCabinAttempt=nullptr;
+}
+void prepareStockCabin(void* root){
+ if(!stockCabinEnabled||!root||root==stockCabinAttempt)return;
+ clearStockCabin();stockCabinAttempt=root;
+ if(!insertStockCabin||!removeStockCabin||scene::find(root,"FCCockpitCarrier")||!scene::find(root,"Bip01 Spine1"))return;
+ call(insertStockCabin,car);
+ if(stockCabin.mount(root))log("Attached installed Vertibird interior to native airframe");
+ else{
+  call(removeStockCabin,car);
+  if(auto carrier=scene::find(root,"FCCockpitCarrier"))scene::moveParent(carrier,nullptr);
+ }
+}
 template<class... A> Element callOn(Script* fn,Form* object,A... a){Element e;if(fn)scripts->call(fn,object,nullptr,&e,sizeof...(a),a...);return e;}
 Script* compile(const char* s,bool expr=false){auto f=expr?scripts->expression(s):scripts->compile(s);if(!f)log(s);return f;}
 #include "vehicle_radio.hpp"
@@ -162,7 +184,7 @@ float wrap(float a){while(a>3.14159265f)a-=6.2831853f;while(a< -3.14159265f)a+=6
 void* mountedRoot=nullptr;
 void invalidateMountedFrame(){resetGrips();vehicle_contact::reset();mounted_frame::reset();cameraAnchorReady=false;mountedYawReady=false;mountedRoot=nullptr;}
 void suspendMounted(){vehicle_motion::clear();invalidateMountedFrame();active=false;steering=throttle=brake=0;flightX=flightY=0;flightButtons=0;grabbed[0]=grabbed[1]=false;}
-void clear(){vehicle_radio::reset();clearStockWheel();restoreDrive();if(car&&engineMode&&loaded)callOn(engineStop,car);restoreEnginePitch();engineMode=0;if(riding)stopRide(loaded);if(seatedPose&&player&&loaded&&seated_animation::ownsActive(player))call(stopPose);seated_animation::restore();seatedPose=false;invalidateMountedFrame();if(active)vehicle_perf::write(testDir);active=false;fittedFlightControls=false;flying=false;flightX=flightY=0;flightButtons=0;exitWas=reverseWas=false;car=nullptr;drivingScript=nullptr;steering=throttle=brake=wheelAngle=0;grabbed[0]=grabbed[1]=false;}
+void clear(){vehicle_radio::reset();clearStockWheel();clearStockCabin();restoreDrive();if(car&&engineMode&&loaded)callOn(engineStop,car);restoreEnginePitch();engineMode=0;if(riding)stopRide(loaded);if(seatedPose&&player&&loaded&&seated_animation::ownsActive(player))call(stopPose);seated_animation::restore();seatedPose=false;invalidateMountedFrame();if(active)vehicle_perf::write(testDir);active=false;fittedFlightControls=false;flying=false;flightX=flightY=0;flightButtons=0;exitWas=reverseWas=false;car=nullptr;drivingScript=nullptr;steering=throttle=brake=wheelAngle=0;grabbed[0]=grabbed[1]=false;}
 void ensureSeatedPose(){
  // Once the real idle sequence is retained, sample only its lower-body tracks.
  // Release the full-body idle once acquired so upper-body weapon animation
@@ -381,7 +403,7 @@ void tick(){
  auto birdRoot=bird?scene::root(bird):nullptr;
  if(flightFeature&&bird&&flightBase&&scene::field<Form*>(bird,0x20)==flightBase&&piloting.type==1&&piloting.value.number==1&&scene::find(birdRoot,"PlayerPos")){
   if(car!=bird){clear();car=bird;flightPitch=flightBank=0;auto heading=callOn(getAngleZ,player);flightHeading=heading.type==1?float(heading.value.number):0;call(showPilot);call(allowDriveCombat);}flying=true;active=true;call(allowDriveCombat);ensureSeatedPose();
-  vehicle_radio::tick();
+  vehicle_radio::tick();prepareStockCabin(birdRoot);
   auto cockpit=scene::find(birdRoot,"FCCockpitCarrier");
   const bool hasHandles=scene::find(cockpit,"FCFlightGripR")&&scene::find(cockpit,"FCFlightGripL");
   fittedFlightControls=hasHandles;
@@ -779,6 +801,10 @@ void __cdecl message(Message* m){
   getDriving=compile("GetVariable \"Driving\"",true);
   insertStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 3 \"Bip01 Spine|FCStockWheelBasis\"\nInsertNode vehicle 3 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 3 \"FCSteeringWheel|FCStockWheelSkin\"\nend");
   removeStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 2 \"FCSteeringWheel|FCStockWheelSkin\"\nInsertNode vehicle 2 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 2 \"Bip01 Spine|FCStockWheelBasis\"\nend");
+  if(stockCabinEnabled){
+   insertStockCabin=compile("ref aircraft\nbegin function {aircraft}\nInsertNode aircraft 3 \"Bip01 Spine1|FCCockpitCarrier\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCStockCabin\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCStockPilotAnchor\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCPilotEye\"\nAttachModel aircraft 3 \"FCStockCabin|PlayerVertibird\\vertibirdinterior.nif\"\nAttachModel aircraft 3 \"FCStockCabin|PlayerVertibird\\vertibirdinterior_console.nif\"\nAttachModel aircraft 3 \"FCCockpitCarrier|FilthyCasual\\flight-controls.nif\"\nend");
+   removeStockCabin=compile("ref aircraft\nbegin function {aircraft}\nAttachModel aircraft 2 \"FCCockpitCarrier|FilthyCasual\\flight-controls.nif\"\nAttachModel aircraft 2 \"FCStockCabin|PlayerVertibird\\vertibirdinterior_console.nif\"\nAttachModel aircraft 2 \"FCStockCabin|PlayerVertibird\\vertibirdinterior.nif\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCPilotEye\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCStockPilotAnchor\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCStockCabin\"\nInsertNode aircraft 2 \"Bip01 Spine1|FCCockpitCarrier\"\nend");
+  }
   getVar=fc::nvse::loadFunction(*scripts,"Vehicles/ReadVariable");
   vehicleContacts=compile("GetContactRefs",true);
   pushParkedCar=compile("float force\nref source\nbegin function {force,source}\nPushActorNoRagdoll force 0 source 0\nend");
@@ -896,6 +922,8 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* n){
  deathclawChallengeSeconds=readChallengeSeconds(L"Deathclaw",creature_ride::deathclawDefaultSeconds);
  std::wstring dir=std::wstring(path)+L"\\FilthyCasualVehicles";if(!layer_discovery::append(L"XR_API_LAYER_PATH",dir)||!layer_discovery::append(L"XR_ENABLE_API_LAYERS",L"XR_APILAYER_NIKAMI_vehicles"))return false;
  char dirTest[MAX_PATH]{};GetEnvironmentVariableA("SEATED_TEST_DIR",dirTest,MAX_PATH);testDir=dirTest;
+ auto controlsAsset=GetFileAttributesW(L"Data\\Meshes\\FilthyCasual\\flight-controls.nif");
+ stockCabinEnabled=controlsAsset!=INVALID_FILE_ATTRIBUTES&&!(controlsAsset&FILE_ATTRIBUTE_DIRECTORY);
  return msgs->listen(n->getPluginHandle(),"NVSE",message);
 }
 
