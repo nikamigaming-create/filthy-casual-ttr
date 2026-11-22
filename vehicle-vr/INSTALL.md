@@ -1,17 +1,16 @@
-# Optional Filthy Casual Vehicles 1.8.0 beta 2
+# Cars, Flight and Riding
 
-Install the core only if you want selectors, seated settings and the remapper.
-Vehicles is separate; Pool is not enabled or included.
+Open **FILTHY → General → Features** to enable Driving, Flight or Riding, then restart Fallout.
 
-## Required downloads (not bundled)
+## Requirements
 
-- Working TTR 1.1.5, exact DLL SHA-256 `E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1`.
-- Cars: [Uhmatt Drivable Cars 8b](https://www.nexusmods.com/newvegas/mods/63890).
-- Flight: [Vertibird Player Home 4.18 + TTW patch 4.18c](https://www.nexusmods.com/newvegas/mods/60923) and [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171).
-- kNVSE and the original mods' requirements. Python 3.11 for local preparation.
+- Cars require [Uhmatt Drivable Cars 8b](https://www.nexusmods.com/newvegas/mods/63890) and its dependencies.
+- Flight requires [Vertibird Player Home 4.18 with TTW patch 4.18c](https://www.nexusmods.com/newvegas/mods/60923), [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171) and their dependencies, including kNVSE.
+- Riding is included in the Filthy download.
 
-Install the Vehicles ZIP in MO2 below the original dependency mods. Before driving/flying,
-extract another copy of this ZIP to a work folder and prepare your private mesh override:
+## Physical wheel grips and fitted cockpit
+
+Enable Filthy below the vehicle dependencies in MO2. Extract a copy of the Filthy ZIP and run this from its top folder with Python 3.11. Substitute your paths. Omit `--cars` or `--vertibird` if you only use one integration.
 
 ```powershell
 python -m venv .venv
@@ -19,20 +18,12 @@ python -m venv .venv
 .\.venv\Scripts\python.exe vehicle-vr/prepare-local.py --game-data "D:\Games\Fallout New Vegas\Data" --cars "D:\MO2\mods\Uhmatt Drivable Cars 8b" --vertibird "D:\MO2\mods\Vertibird Player Home 4.18" --output "D:\MO2\mods\Filthy Casual Vehicles - Local Assets"
 ```
 
-Use your actual folders. Omit `--cars` or `--vertibird` if you do not use that integration.
-Choose a new empty output folder; existing mods are never overwritten. Enable the generated
-Local Assets mod below Vehicles. The helper reads your owned files locally and produces the
-wheel attachment and fitted classic cockpit. No Fallout 4 installation is needed.
-Never distribute the generated Local Assets folder; it contains dependency/game-derived data.
+Use a new, empty output folder and enable the resulting mod below Filthy. Keep the generated files local to your installation.
 
-## Play
+## Controls
 
-- Car: left stick forward/reverse; right stick left/right. Grip either side of the wheel independently. B exits.
-- Flight: right stick moves; left stick turns. A climbs, X descends, B lands. With a gun drawn, A/X and triggers stay with the gun.
-- Free hands can select items, use native weapons and reload. The core's selectors travel with the cabin.
-- Hold Menu for settings. Ground/car/flight/creature heights save independently.
-- Bighorner: both grips at its flank to mount, keep one hand gripping the body through the 30-second challenge, then left stick moves/right stick turns. B dismounts.
-- Deathclaw: sneak behind it while undetected, mount and hold on for 60 seconds. Dismount restores hostility.
-- ChallengeSeconds is configurable per species in FilthyCasualVehicles.ini; zero unlocks steering after a valid mount.
-
-Home rooms/facilities come from Vertibird Player Home. Visible companion seating and interactive cockpit instruments are not promised by this beta.
+- **Cars.** Right trigger accelerates. Left trigger brakes, then reverses. Release both to coast. Grip a prepared wheel to steer or use the left stick. Drawing a gun returns the triggers to the gun. B exits. Cars with prepared wheel rigs use arcade handling. To switch back, set `ExperimentalArcadeHandling=0` under `[Driving]` in `FilthyCasualVehicles.ini` and restart.
+- **Vertibird.** Grip the right cyclic for pitch and bank. Grip the left collective for lift and turning. Releasing a handle frees that hand. B lands.
+- **Bighorner.** Approach its flank and use both grips to mount. Keep one hand on it during the 30-second challenge. Afterwards, the left stick moves and the right stick turns. B dismounts.
+- **Deathclaw.** Sneak up from behind, mount and hold on for 60 seconds. Dismounting restores hostility.
+- **Seat height.** Calibrate with TTR’s seated zombie pose first. Open Filthy while seated in the vehicle to adjust the height for that vehicle type.

@@ -1,85 +1,29 @@
-# Install Filthy Casual TTR 1.8.0-beta.2
-
-Start with TTR already working in VR through Mod Organizer 2, including its
-xNVSE, JIP LN NVSE and other upstream requirements. This addon does not install
-the original games or TTR. [Overview](../README.md) Â· [Controls](CONTROLS-EDITOR.md).
+# Install Filthy Casual TTR
 
 ## Supported base
 
-This build targets upstream **TTR 1.1.5** and accepts only TTWVR.dll SHA-256:
+Start with Kupo’s TTR 1.1.7 running in VR through MO2, including its xNVSE and JIP LN requirements. The native adapters check this SHA-256 for the winning TTWVR.dll.
 
 ```text
-E14567BC1C7D183130F902F9489B8CFFE6269DE06EEA0D79BF8D1D3098C595B1
+119A085A5B0101F0618B8E076A421B4B89E30D72D9B6EAE874F4E5AF7BD3FB27
 ```
 
-PE timestamp: `6AF8509E`. Unknown builds refuse integration. Check the DLL from
-the enabled base mod, rather than an unrelated copy outside MO2:
+## Install or upgrade
 
-```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\TTWVR.dll'
-```
+1. Quit Fallout. Back up any personalized INIs or remapping profiles.
+2. Install the Filthy Casual TTR RC21 ZIP as a new mod in MO2. Disable the older Filthy core and its test overrides, then enable RC21 below TTR. Keep the Controls Book and Glass ESPs enabled to use those features. Keep the Reload Parts ESP if an existing save depends on it.
+3. Launch your usual TTR entry. Open **FILTHY → General → Features** and choose what to enable. Vehicle selections take effect after restarting. Existing feature choices persist when their settings are retained.
+4. For seated play, do TTR’s seated zombie pose first. After calibration, adjust the current seat height in Filthy and save it.
 
-The prior TTR 1.1.2 host needs [Filthy Casuals beta 1](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.1). Do not mix core/Vehicle binaries from different compatibility releases.
+## Local assets
 
-## Install or update
+- **Cheyenne.** Follow the [dog shadow setup](../README.md#install-and-update). The importer checks the original archive mesh and the generated result. It can be rerun against the same output.
+- **Cars and flight.** Install the [original dependencies](../vehicle-vr/INSTALL.md) and run the local rig importer for physical wheel grips and the fitted cockpit.
+- **Eyebot.** The [device guide](NATIVE-SETTINGS.md#optional-eyebot-page) explains how to generate and enable the Eyebot ESP and assets. The Equipment and General pages work independently.
+- **Wrist appearance.** To prepare the optional English label for the physical Wrist-Boy button, install the Python requirements from `vehicle-vr/requirements-local.txt`, then run the following from your extracted ZIP. Use `xbox` in both places for the controller layout, or `pc` in both places for the PC layout. Enable the generated mod below Filthy.
 
-1. Quit the game. Back up your personal `SeatedControls.ini` when updating.
-2. In MO2 choose **Install a new mod from an archive**, selecting
-   `Filthy-Casual-TTR-1.8.0-beta.2.zip`.
-3. Enable **Filthy Casual TTR** below the base TTR mod in the left pane, so the
-   addon wins its own file conflicts. Leave base TTR and its dependencies enabled.
-4. Preserve the personal INI, especially height and reload preferences.
-5. Start your headset/runtime normally and use the same working TTR executable
-   entry in MO2. No new launcher or global OpenXR registration is required.
+  ```powershell
+  python tools/build_filthy_case_paint.py --archive "D:\Games\Fallout New Vegas\Data\Fallout - Textures2.bsa" --layout xbox --local-dds "D:\MO2\mods\Filthy Wrist Label\textures\pipboy3000\xbox\english\PipBoyArm01.dds"
+  ```
 
-The core ZIP contains no Pool or Vehicles DLL. They stay optional. The legacy
-`Filthy Casual Reload Parts.esp` and original carrier are retained for existing
-saves: keep the ESP if your saves already depend on it. Current native TTR owns
-world-magazine creation and save records; the old addon drop hooks stay disabled.
-
-## Files that must remain together
-
-```text
-NVSE/Plugins/SeatedControls.dll
-NVSE/Plugins/SeatedControls.ini
-NVSE/Plugins/SeatedControls/SeatedInput.dll
-NVSE/Plugins/SeatedControls/SeatedInput.json
-NVSE/Plugins/SeatedControls/Controls/
-meshes/FilthyCasual/tutorial.nif
-textures/FilthyCasual/Tutorial/
-tools/controls-editor.html
-```
-
-The Controls directory includes the licensed Quest models and textures and
-original RobCo artwork. Install the complete archive. Documentation, licenses
-and a per-file SHA-256 manifest are included. No original game/TTR files, test
-runtime, personal save or machine-specific launcher is included.
-
-## First use
-
-Hold the opposite separate thumbrest and double-tap the right thumbrest for
-weapons or left for consumables. Touch a preview; it goes to the right hand.
-The center cap clears the hand. B closes. A deliberate right-grip squeeze returns
-holding behavior to TTR. Stimpaks use native trigger plus body stab. Ordinary food
-in sticky mode can be brought to the mouth; A/X stows it without eating.
-
-Tap left Menu to switch manual/automatic reload. Hold Menu for seated height:
-A calibrates, right stick adjusts, B saves for next run, Y toggles routine hints.
-Click the left stick there to open the RobCo controls editor. Fixed recovery:
-physical left Menu + right stick click for one second.
-
-Profiles are separate from game saves:
-`%LOCALAPPDATA%\FilthyCasualTTR\Controls\profile-1.fcp` through `profile-8.fcp`.
-The folder also contains `catalog.json` for offline editing. [Full instructions](CONTROLS-EDITOR.md).
-
-Graphics, DLSS, Link/Air Link and texture settings are separate from this addon.
-The installer does not alter them. [Validation](VALIDATION.md).
-
-## Tested local bottle build
-
-This local update includes `Filthy Casual Glass.esp` and original glass textures.
-Enable that plugin alongside Filthy Casual TTR. It adds only a texture-set record
-and depends on FalloutNV.esm; no third-party game assets are bundled.
-Existing INI preferences are retained during the local upgrade. Gentle impacts
-leave tracked empties intact. Hard collisions shatter them with native sound,
-particles and a timed glass decal. Public 1.8.0-beta.2 does not yet include this update.
+Kupo’s normal controls handle play outside the device. Use the [README](../README.md) for wheel gestures and category navigation.
