@@ -1,0 +1,24 @@
+int profileIndex
+ref firstSlot
+ref secondSlot
+ref thirdSlot
+ref fourthSlot
+ref fifthSlot
+ref sixthSlot
+array_var slotArray
+begin function {profileIndex, firstSlot, secondSlot, thirdSlot, fourthSlot, fifthSlot, sixthSlot}
+    let slotArray := ar_List firstSlot, secondSlot, thirdSlot, fourthSlot, fifthSlot, sixthSlot
+    if profileIndex == 1
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.AidWheel.1" slotArray)
+    elseif profileIndex == 2
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.AidWheel.2" slotArray)
+    elseif profileIndex == 3
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.AidWheel.3" slotArray)
+    elseif profileIndex == 4
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.WeaponWheel.1" slotArray)
+    elseif profileIndex == 5
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.WeaponWheel.2" slotArray)
+    elseif profileIndex == 6
+        SetFunctionValue (player.AuxVarSetFromArr "_FC.WeaponWheel.3" slotArray)
+    endif
+end

@@ -99,7 +99,7 @@ every INI setting can currently be changed live from this panel.
 
 1. Run the game once with your installed addons. It exports `catalog.json` into
    `%LOCALAPPDATA%\FilthyCasualTTR\Controls` even while you are on foot.
-2. Open [the desktop editor](../tools/controls-editor.html) locally in a browser.
+2. Open [the desktop editor](../source/tools/controls-editor.html) locally in a browser.
    Load that catalog and your `profile-N.fcp`. All rows are populated.
 3. Choose any mode, input, modifier, gesture and delay; download the profile.
 4. Quit the game, back up the old slot and copy the downloaded file into Controls.

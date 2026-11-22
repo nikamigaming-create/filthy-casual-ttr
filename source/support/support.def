@@ -1,0 +1,4 @@
+LIBRARY 000_FilthyCasualsSupport
+EXPORTS
+ NVSEPlugin_Query
+ NVSEPlugin_Load

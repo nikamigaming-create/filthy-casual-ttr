@@ -1,0 +1,4 @@
+float pitch
+begin function {pitch}
+SetSoundTraitNumeric UmEngineDriveB 2 pitch
+end

@@ -1,0 +1,4 @@
+string_var tilePath
+begin function {tilePath}
+    SetFunctionValue (GetUIFloat tilePath)
+end

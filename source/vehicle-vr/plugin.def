@@ -1,0 +1,21 @@
+EXPORTS
+NVSEPlugin_Query
+NVSEPlugin_Load
+FC_VehicleInput
+FC_VehicleActive
+FC_VehicleFeaturesChanged
+
+ FC_NativePoseOwner
+ FC_NativePoseSubscribe
+
+FC_ControlsProviderV1
+
+FC_VehicleHandContact
+
+ FC_VehicleTutorialFrame
+
+FC_RidePulse
+
+FC_SeatContext
+
+    FC_NativeTrackingHook

@@ -23,3 +23,6 @@
 __pycache__/
 *.pyc
 /local-runtime/
+/source/build/
+/source/work/
+/source/outputs/

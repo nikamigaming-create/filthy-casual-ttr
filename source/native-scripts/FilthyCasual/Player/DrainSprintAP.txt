@@ -1,0 +1,5 @@
+float amount
+begin function {amount}
+player.DamageAV ActionPoints amount
+SetFunctionValue 1
+end

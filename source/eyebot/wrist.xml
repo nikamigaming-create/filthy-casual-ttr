@@ -1,0 +1,252 @@
+<!-- Independent tile in the native Pip-Boy menus. It owns no TTR tiles. -->
+<rect name="RobCoEyebotWrist">
+    <x>0</x><y>0</y><width>960</width><height>768</height><depth>55</depth>
+    <locus>&true;</locus><font>2</font>
+
+    <image name="SectionIcon"><visible>0</visible><target>0</target><depth>8</depth><x>51</x><y>61</y><width>64</width><height>64</height><systemcolor>1</systemcolor><filename>FilthyCasual/Device/general.dds</filename></image>
+    <rect name="FilthyPages">
+        <visible>0</visible><width>960</width><height>768</height><depth>9</depth><locus>&true;</locus>
+        <hotrect name="General">
+            <include src="super_text_box.xml"/>
+            <id>7125</id><target>0</target><visible>0</visible><string>GENERAL</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>80</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Eyebot">
+            <include src="super_text_box.xml"/>
+            <id>7126</id><target>0</target><visible>0</visible><string>EYEBOT</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>240</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Voice">
+            <include src="super_text_box.xml"/>
+            <id>7127</id><target>0</target><visible>0</visible><string>VOICE</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>400</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Pool">
+            <include src="super_text_box.xml"/>
+            <id>7128</id><target>0</target><visible>0</visible><string>POOL</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>560</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Workshop">
+            <include src="super_text_box.xml"/>
+            <id>7129</id><target>0</target><visible>0</visible><string>BUILD</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>720</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Equipment">
+            <include src="super_text_box.xml"/>
+            <id>7130</id><target>0</target><visible>0</visible><string>EQUIPMENT</string><justify>&center;</justify>
+            <_horbuf>18</_horbuf><_verbuf>7</_verbuf><_x>880</_x><_y>642</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+    </rect>
+    <rect name="Settings">
+        <visible>0</visible><locus>&true;</locus><width>960</width><height>768</height><depth>2</depth>
+        <image name="EquipmentLayout"><visible>0</visible><target>0</target><depth>7</depth><x>605</x><y>147</y><width>290</width><height>290</height><alpha>255</alpha><filename>RobCoEyebot/screen.dds</filename></image>
+        <text name="Title"><depth>7</depth><x>119</x><y>70</y><font>2</font><systemcolor>1</systemcolor><string>GENERAL SETTINGS</string></text>
+        <text name="Detail"><depth>7</depth><x>60</x><y>480</y><font>2</font><systemcolor>1</systemcolor><wrapwidth>820</wrapwidth><string> </string></text>
+        <hotrect name="Row0">
+            <id>7120</id><target>1</target><x>60</x><y>145</y><width>840</width><height>55</height><locus>&true;</locus>
+            <text name="Caption"><depth>3</depth><x>0</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+            <text name="Value"><depth>3</depth><x>550</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+        </hotrect>
+        <hotrect name="Row1">
+            <id>7121</id><target>1</target><x>60</x><y>208</y><width>840</width><height>55</height><locus>&true;</locus>
+            <text name="Caption"><depth>3</depth><x>0</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+            <text name="Value"><depth>3</depth><x>550</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+        </hotrect>
+        <hotrect name="Row2">
+            <id>7122</id><target>1</target><x>60</x><y>271</y><width>840</width><height>55</height><locus>&true;</locus>
+            <text name="Caption"><depth>3</depth><x>0</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+            <text name="Value"><depth>3</depth><x>550</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+        </hotrect>
+        <hotrect name="Row3">
+            <id>7123</id><target>1</target><x>60</x><y>334</y><width>840</width><height>55</height><locus>&true;</locus>
+            <text name="Caption"><depth>3</depth><x>0</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+            <text name="Value"><depth>3</depth><x>550</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+        </hotrect>
+        <hotrect name="Row4">
+            <id>7124</id><target>1</target><x>60</x><y>397</y><width>840</width><height>55</height><locus>&true;</locus>
+            <text name="Caption"><depth>3</depth><x>0</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+            <text name="Value"><depth>3</depth><x>550</x><y>7</y><font>2</font><systemcolor>1</systemcolor><string> </string></text>
+        </hotrect>
+        <image name="BackPrompt">
+            <x>67</x><y>582</y><width>32</width><height>32</height><depth>4</depth><systemcolor>1</systemcolor>
+            <filename>FilthyCasual\Device\back.dds</filename>
+        </image>
+        <image name="SelectPrompt"><x>615</x><y>582</y><width>32</width><height>32</height><depth>4</depth><systemcolor>1</systemcolor><filename>FilthyCasual\Device\select.dds</filename></image>
+        <text name="SelectLabel"><x>657</x><y>580</y><depth>5</depth><font>2</font><systemcolor>1</systemcolor><string>Select</string></text>
+        <image name="TabsPrompt">
+            <x>623</x><y>582</y><width>32</width><height>32</height><depth>4</depth><systemcolor>1</systemcolor>
+            <filename>Interface\nvvr_general_button_x.dds</filename>
+        </image>
+        <hotrect name="Back">
+            <include src="super_text_box.xml"/>
+            <id>7116</id><target>1</target><string>Back</string><justify>&center;</justify>
+            <_horbuf>16</_horbuf><_verbuf>6</_verbuf><_x>155</_x><_y>598</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Less">
+            <include src="super_text_box.xml"/>
+            <id>7117</id><target>1</target><string>Less</string><justify>&center;</justify>
+            <_horbuf>16</_horbuf><_verbuf>6</_verbuf><_x>375</_x><_y>598</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="More">
+            <include src="super_text_box.xml"/>
+            <id>7118</id><target>1</target><string>More</string><justify>&center;</justify>
+            <_horbuf>16</_horbuf><_verbuf>6</_verbuf><_x>490</_x><_y>598</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <hotrect name="Cycle">
+            <include src="super_text_box.xml"/>
+            <id>7119</id><target>1</target><string>Other tabs</string><justify>&center;</justify>
+            <_horbuf>16</_horbuf><_verbuf>6</_verbuf><_x>730</_x><_y>598</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+    </rect>
+    <rect name="Page">
+        <visible>0</visible><locus>&true;</locus><width>960</width><height>768</height><depth>1</depth>
+        <text name="Title">
+            <x>119</x><y>70</y><font>2</font><string>ROBCO EYEBOT</string>
+            <depth>4</depth><systemcolor>1</systemcolor>
+        </text>
+        <text name="Status">
+            <x>72</x><y>156</y><font>2</font><string>STOWED</string>
+            <depth>4</depth><systemcolor>1</systemcolor>
+        </text>
+        <text name="Controls">
+            <x>72</x><y>207</y><font>2</font><string>Deploy to position the recorder.</string>
+            <depth>4</depth><systemcolor>1</systemcolor>
+        </text>
+        <text name="ButtonGuide">
+            <x>72</x><y>471</y><font>2</font><string>Right stick click selects. A confirms. B backs out.</string>
+            <depth>4</depth><systemcolor>1</systemcolor>
+        </text>
+        <hotrect name="SettingsTab">
+            <include src="super_text_box.xml"/>
+            <id>7115</id><target>1</target><string>Settings</string><justify>&center;</justify>
+            <_horbuf>15</_horbuf><_verbuf>6</_verbuf><_x>742</_x><_y>435</_y>
+            <_enabled>&true;</_enabled><_line_alpha>210</_line_alpha><_selected>0</_selected>
+        </hotrect>
+        <image name="Still">
+            <x>502</x><y>243</y><width>224</width><height>224</height>
+            <depth>3</depth><filename>RobCoEyebot\screen.dds</filename><alpha>255</alpha>
+        </image>
+        <rect name="Flight">
+            <visible>1</visible><locus>&true;</locus>
+
+    <hotrect name="Deploy">
+        <include src="super_text_box.xml"/>
+        <id>7102</id><target>1</target>
+        <string>Deploy / Recall</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>170</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Stay">
+        <include src="super_text_box.xml"/>
+        <id>7103</id><target>1</target>
+        <string>Stay</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>408</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Snap">
+        <include src="super_text_box.xml"/>
+        <id>7104</id><target>1</target>
+        <string>Take a Snap</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>643</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Record">
+        <include src="super_text_box.xml"/>
+        <id>7105</id><target>1</target>
+        <string>Record</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>170</_x><_y>550</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Save">
+        <include src="super_text_box.xml"/>
+        <id>7106</id><target>1</target>
+        <string>Save MP4</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>408</_x><_y>550</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Clips">
+        <include src="super_text_box.xml"/>
+        <id>7107</id><target>1</target>
+        <string>Clips</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>643</_x><_y>550</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Navigate">
+        <include src="super_text_box.xml"/>
+        <id>7108</id><target>1</target>
+        <string>Fly / Aim</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>170</_x><_y>594</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Stow">
+        <include src="super_text_box.xml"/>
+        <id>7109</id><target>1</target>
+        <string>Stow</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>408</_x><_y>594</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Back">
+        <include src="super_text_box.xml"/>
+        <id>7110</id><target>1</target>
+        <string>Back</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>643</_x><_y>594</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+        </rect>
+        <rect name="Library">
+            <visible>0</visible><locus>&true;</locus>
+
+    <hotrect name="Previous">
+        <include src="super_text_box.xml"/>
+        <id>7111</id><target>1</target>
+        <string>Previous</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>170</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Next">
+        <include src="super_text_box.xml"/>
+        <id>7112</id><target>1</target>
+        <string>Next</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>408</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="Trash">
+        <include src="super_text_box.xml"/>
+        <id>7113</id><target>1</target>
+        <string>Trash</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>643</_x><_y>506</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+    <hotrect name="ConfirmTrash">
+        <include src="super_text_box.xml"/>
+        <id>7114</id><target>1</target>
+        <string>Confirm trash</string><justify>&center;</justify>
+        <_horbuf>15</_horbuf><_verbuf>6</_verbuf>
+        <_x>408</_x><_y>550</_y><_enabled>&true;</_enabled>
+        <_line_alpha>210</_line_alpha><_selected>0</_selected>
+    </hotrect>
+        </rect>
+    </rect>
+</rect>

@@ -1,0 +1,4 @@
+string_var name
+begin function {name}
+SetFunctionValue (GetAnimSequenceFrequency "$name")
+end

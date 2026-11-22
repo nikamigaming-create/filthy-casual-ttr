@@ -1,0 +1,8 @@
+<!-- Child of the installed NVVR_PipboyTabs row. Coordinates are row-relative. -->
+<hotrect name="FC_TabFilthy">
+    <include src="super_text_box.xml"/>
+    <id>7101</id><target>1</target>
+    <string>FILTHY</string><justify>&center;</justify>
+    <_horbuf>35</_horbuf><_verbuf>15</_verbuf><_x>782</_x><_y>0</_y>
+    <_enabled>&true;</_enabled><_line_alpha>255</_line_alpha><_selected>0</_selected>
+</hotrect>

@@ -11,13 +11,3 @@ Open Equipment, choose a wheel, profile and slot, then browse your carried items
 ## Voice Commands
 
 Voice uses TTR’s recognizer and your Windows default microphone. Press A to listen. Try “How many stimpaks do I have?” or “Turn on the flashlight.”
-
-## Optional Eyebot page
-
-Install Python 3 with Pillow, NumPy and PyFFI. From an extracted copy of the ZIP, run the following with your own paths.
-
-```powershell
-python eyebot/build_content.py --game-data "D:/Games/Fallout New Vegas/Data" --output "D:/MO2/mods/RobCo Eyebot Content"
-```
-
-Enable the generated mod and **RobCo Eyebot.esp** in MO2. Disable any older standalone `RobCoEyebot.dll` before launching. Physical-headset checks for in-world activation and trigger altitude controls are pending.

@@ -1,0 +1,6 @@
+ref aircraft
+begin function {aircraft}
+if aircraft.GetVariable "Controlling" == 1 || aircraft.GetVariable "Driving" == 3
+player.SetPosEx (player.GetPos X) (player.GetPos Y) (player.GetPos Z)
+endif
+end

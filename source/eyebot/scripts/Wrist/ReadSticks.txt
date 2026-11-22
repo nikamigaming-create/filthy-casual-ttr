@@ -1,0 +1,3 @@
+begin function {}
+    SetFunctionValue (ar_List (GetLeftStickX) (GetLeftStickY) (GetRightStickX) (GetRightStickY))
+end

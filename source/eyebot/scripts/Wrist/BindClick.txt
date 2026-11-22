@@ -1,0 +1,6 @@
+ref callback
+string_var buttonPath
+begin function {callback, buttonPath}
+    SetOnMenuClickEventHandler callback 1 buttonPath
+    SetFunctionValue 1
+end

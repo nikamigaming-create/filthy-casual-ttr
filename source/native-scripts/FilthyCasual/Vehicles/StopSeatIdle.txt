@@ -1,0 +1,3 @@
+begin function {}
+player.ForceStopIdle 1
+end

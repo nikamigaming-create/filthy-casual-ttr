@@ -1,0 +1,7 @@
+ref item
+begin function {item}
+if player.GetDead == 0 && player.GetItemCount item > 0
+player.EquipItemAlt item 0 1
+SetFunctionValue (player.GetEquipped item)
+endif
+end

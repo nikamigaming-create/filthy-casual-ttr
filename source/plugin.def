@@ -1,0 +1,36 @@
+LIBRARY SeatedControls
+EXPORTS
+ NVSEPlugin_Query
+ NVSEPlugin_Load
+ SC_Input
+ SC_UI
+ SC_Height
+SC_Head
+ SC_UIState
+ SC_DialogueAnchor
+
+ SC_ControlsState
+ SC_ControlAction
+
+ FC_NativePoseOwner
+ FC_NativePoseSubscribe
+
+ SC_Mouth
+
+SC_SeatOffset
+
+ SC_FeaturesView
+ SC_FeatureHover
+ FC_CrashStrength
+ FC_FeatureEnabled
+
+ SC_SettingsView
+ SC_SettingsHover
+ FC_WristSettings
+ FC_EquipmentWheels
+ FC_WheelProfile
+ FC_WheelProfiles
+ FC_UseWheelProfile
+
+ FC_ComfortConfig
+ FC_SkeletalFingers

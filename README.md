@@ -1,46 +1,31 @@
 # Filthy Casual TTR
 
-Filthy adds seated controls, equipment profiles and a wrist flashlight to Kupo’s **Tale of Two Realities 1.1.7**. Install the release ZIP through Mod Organizer 2, enable it below TTR, then open **FILTHY → General → Features** on your Pip-Boy or Wrist-Boy. Fresh installs start with optional features unchecked.
+Seated controls, equipment profiles, and a wrist flashlight for **Tale of Two Realities 1.1.7**.
 
-[Download RC21](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.4-rc.21)
+## Install in Mod Organizer 2
 
-## Find your settings
+1. Start with TTR 1.1.7 running in MO2 with xNVSE and JIP LN NVSE. [Check the supported build](docs/INSTALL.md#supported-base).
+2. Install the **Filthy Casual TTR ZIP** as one mod and enable it below TTR. Upgrading players should keep their personal INIs and controller profiles and leave one Filthy core enabled.
+3. Launch your usual TTR entry. Open **FILTHY → General → Features** on either Pip-Boy screen and enable what you want to use.
 
-| Device | Open FILTHY | Use a page |
-| --- | --- | --- |
-| Wrist-Boy | Raise your wrist. Hold right trigger and squeeze right grip to cycle past DATA to FILTHY. | Release the trigger. Right grip advances a page and left grip goes back. Use the right stick to browse or adjust, A to select and B to back out. Lower your wrist to use your hand in the world. |
-| Full-size Pip-Boy | Point at FILTHY and press right trigger. You can also hold right trigger and use the grips to change category. | Use the pointer or right stick. A selects and B backs out. |
+[Download the current release](https://github.com/nikamigaming-create/filthy-casual-ttr/releases) · [Changelog](RELEASE-NOTES.md) · [Source and build instructions](source/README.md)
 
-Both devices edit the same settings. FILTHY is beside Stats, Items and Data. Left-stick click still opens Wait.
+### Vehicle downloads
 
-## What’s in the download
+- **Cars** use [Uhmatt Drivable Cars 8b](https://www.nexusmods.com/newvegas/mods/63890) and its requirements.
+- **Vertibird** uses [Vertibird Player Home 4.18 with TTW patch 4.18c](https://www.nexusmods.com/newvegas/mods/60923), [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171), and their requirements.
+- **Creature riding** uses the base TTR setup.
 
-| Feature | What you can do |
-| --- | --- |
-| Seated calibration | Sit on foot, extend both arms forward and hold both triggers for TTR’s zombie pose. Then adjust and save separate heights for normal play, cars, the Vertibird and riding. |
-| Movement | Set where walking, running and forward sprinting begin. Adjust sprint speed, AP cost and the start notification. Auto-walk is optional. |
-| Hands and controllers | Use finger gestures, grip sensitivity, hand smoothing and eight remapping profiles. Index finger input requires compatible hardware. |
-| Equipment | Assign carried weapons and consumables to their wheels. Save three profiles per wheel and three holster layouts. Preview holstered items, lock marker positions and combine layouts into three kits. Hold left thumbrest and double-tap right for weapons. Reverse hands for consumables. |
-| Weapons and aid | Switch manual or automatic reload, adjust the seated ammo pouch, use the reload tutorial, recover compatible magazines and bring supported items to your mouth. Supported drinks leave matching empty bottles. Hard impacts can break glass. |
-| Wrist flashlight | The lamp sits on the glove and plugs into the underside of the Wrist-Boy. Aim with your wrist and adjust color, brightness, width and reach. It projects onto world surfaces and casts shadows through railings, foliage and around characters. The local dog-mesh setup below enables Cheyenne’s full-body shadow. |
-| Interface and manual | Adjust supported dialogue and HUD placement and hints. Read Kupo’s twelve-page controls book in VR or open `docs/Kupos-Controls.pdf` in the download. |
-| Optional pages | Voice Commands uses TTR’s recognizer when available. The Eyebot page requires its locally prepared content. Its in-world activation and trigger altitude controls still need headset verification. [Device guide](docs/NATIVE-SETTINGS.md) |
-| Vehicles and riding | Enable Driving, Flight or Riding individually and restart. Cars support trigger acceleration, braking, reverse and coasting. Prepared rigs support physical wheel grips and arcade handling. The Vertibird uses its cyclic and collective. Bighorner and Deathclaw riding have separate mount challenges. [Vehicle setup](vehicle-vr/INSTALL.md) |
+Enable the vehicle dependencies above Filthy in MO2. Restart after changing Driving, Flight or Riding. [Vehicle controls and compatibility](docs/VEHICLES.md).
 
-Pool, base building, troop command, physical crafting and repair, saddles, bags and mount armor are outside this release. The holster component runs in holsters-only mode. Flashlight shadows are local to the beam. The release does not enable scene-wide shadows or volumetric lighting.
+## In game
 
-## Install and update
+- **Seated play.** Do TTR’s seated zombie pose with both arms extended and both triggers held. Then adjust and save your seat height in FILTHY.
+- **Wrist-Boy.** Raise your wrist. Hold the right trigger and squeeze right grip to cycle to FILTHY. Release the trigger to browse FILTHY pages with the grips. Lower your wrist to resume world interaction.
+- **Full-size Pip-Boy.** Point at FILTHY and pull the right trigger. Both devices share your settings. [Device controls](docs/NATIVE-SETTINGS.md).
+- **Equipment.** Save weapon and consumable wheels and holster layouts, then combine them into kits. Hold left thumbrest and double-tap right for weapons. Reverse the hands for consumables.
+- **Movement and hands.** Set walk, run, and sprint thresholds. Adjust grip sensitivity and save up to eight controller profiles. [Controller guide](docs/CONTROLS-EDITOR.md).
+- **Wrist flashlight.** Aim at the world with your wrist and set the beam’s color, brightness, width, and reach.
+- **Kupo’s Controls.** Read the twelve-page book in the game or open `docs/Kupos-Controls.pdf` in the download.
 
-1. Start with a working TTR 1.1.7 installation and its xNVSE and JIP LN dependencies. Check the supported DLL in the [install guide](docs/INSTALL.md).
-2. Install the ZIP as one mod in MO2. When upgrading, back up personal INI edits and controller profiles first. Enable the new version and keep only one active core. Use your usual TTR launch entry.
-3. For Cheyenne’s shadow, extract a copy of the ZIP and run the following from its top folder with Python 3. Use your own game and MO2 paths. Enable the generated local mod below Filthy.
-
-   ```powershell
-   py -3 tools/prepare-dog-shadow.py "D:\Games\Fallout New Vegas\Data" "D:\MO2\mods\Filthy Local Shadow Assets"
-   ```
-
-4. For physical wheels or the fitted cockpit, follow the [local vehicle import instructions](vehicle-vr/INSTALL.md). Cars require Uhmatt Drivable Cars 8b. Flight requires Vertibird Player Home 4.18, its TTW patch 4.18c, Pilot Inside and their dependencies. Local content is generated from your installed games and mods.
-
-The flashlight was checked in the simulator with native rendering at 100% scale. Headset and upscaling checks are pending. [Changes since RC8](RELEASE-NOTES.md)
-
-Thanks to Kupo for Tale of Two Realities and to the authors of the original vehicle mods. [Third-party credits and licenses](THIRD_PARTY.md)
+Thanks to Kupo for TTR and to the original vehicle mod authors. [Credits and licenses](THIRD_PARTY.md).

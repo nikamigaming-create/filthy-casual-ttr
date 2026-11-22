@@ -1,0 +1,4 @@
+ref item
+begin function {item}
+SetFunctionValue (GetName item)
+end

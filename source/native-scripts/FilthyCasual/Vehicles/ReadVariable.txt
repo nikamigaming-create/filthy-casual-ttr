@@ -1,0 +1,4 @@
+string_var key
+begin function {key}
+SetFunctionValue (GetVariable "$key")
+end

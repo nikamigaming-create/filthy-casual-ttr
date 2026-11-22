@@ -1,0 +1,11 @@
+<menu name="FilthyMenu">
+    <class>1005</class>
+    <id>&pipboymenu;</id>
+    <rect name="NOGLOW_BRANCH"><id>&noglow_branch;</id></rect>
+    <rect name="GLOW_BRANCH">
+        <id>&glow_branch;</id>
+        <systemcolor>&Pipboy;</systemcolor>
+        <include src="RobCoEyebot/wrist.xml"/>
+        <include src="nvvr/pipboy_tabs.xml"/>
+    </rect>
+</menu>

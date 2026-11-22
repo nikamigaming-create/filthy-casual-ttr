@@ -1,0 +1,4 @@
+begin function {}
+StopSound UmEngineIdleB
+StopSound UmEngineDriveB
+end

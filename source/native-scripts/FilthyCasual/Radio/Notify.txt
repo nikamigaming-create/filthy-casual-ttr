@@ -1,0 +1,5 @@
+ref station
+begin function {station}
+MessageEx "Radio: %n" station
+PlaySound3D OBJRadioKnobTurnOn
+end

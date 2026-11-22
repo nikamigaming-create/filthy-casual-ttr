@@ -1,0 +1,4 @@
+begin function {}
+TogglePipBoyLight 1
+SetFunctionValue 1
+end

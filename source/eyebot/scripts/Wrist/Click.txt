@@ -1,0 +1,6 @@
+int menuID
+int tileID
+string_var tileName
+begin function {menuID, tileID, tileName}
+    DispatchEvent "RobCo:EyebotWrist" (ar_Map "button"::tileID)
+end

@@ -1,0 +1,4 @@
+ref item
+begin function {item}
+SetFunctionValue (player.GetItemCount item)
+end

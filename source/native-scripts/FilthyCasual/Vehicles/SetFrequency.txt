@@ -1,0 +1,5 @@
+string_var name
+float value
+begin function {name,value}
+SetAnimSequenceFrequency "$name" value
+end

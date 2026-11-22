@@ -1,0 +1,3 @@
+begin function {}
+TogglePipBoyLight 1
+end

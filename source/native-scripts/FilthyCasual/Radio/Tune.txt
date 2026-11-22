@@ -1,0 +1,5 @@
+int enabled
+ref station
+begin function {enabled,station}
+SetNPCRadio enabled station
+end

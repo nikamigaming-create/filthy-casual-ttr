@@ -1,0 +1,3 @@
+begin function {}
+player.SetActorAlpha 1
+end
