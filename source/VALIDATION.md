@@ -1,5 +1,16 @@
 # Dependency-only release validation
 
+## General-only RC22
+
+The player ZIP has SHA-256
+`4B769CC55019790E3FE5941D82A73F3843278BE55E7E5B989BB6666191CC91FE`.
+The manifest covers all 229 payload files. The settings DLL exposes General
+as the single FILTHY section. The full-size prefab contains the settings
+controls. The core, OpenXR input layer and vehicle DLL match the preceding build.
+Use `tests/rc22-general-only.ps1` on the isolated dependency-only profile to
+exercise the flashlight submenu on both devices.
+
+
 ## RC22 Eyebot altitude controls
 
 The November 22 headset report identified reversed altitude controls. A

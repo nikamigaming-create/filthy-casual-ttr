@@ -79,7 +79,7 @@ uint32_t sampleCalls = 0;
 bool loaded = false;
 std::string qaDirectory;
 eyebot::UserControls controls;
-bool recorderInstalled = !settingsOnly;
+constexpr bool recorderInstalled = !settingsOnly;
 bool controlScripts = false, controlsBound = false, showCommands = false, summonRequested = false;
 uint64_t showDeadline = 0;
 uint32_t authoredDeviceId = 0;
@@ -732,11 +732,7 @@ void closeWrist(bool restoreCategory) {
 namespace pages = eyebot::wrist_frame;
 
 uint8_t filthyPages(){
-    if(!settingsOnly)return 0;
-    const auto pool=poolSettingsProvider();
-    return (pool&&pool(fc_settings::DeviceRead,0,0,nullptr,0)?pages::bit(pages::Pool):0)|pages::bit(pages::General)|(controlsBound?pages::bit(pages::Eyebot):0)|
-        (voiceReady?pages::bit(pages::Voice):0)|(settlementDesk(0)?pages::bit(pages::Workshop):0)|
-        (equipment.present()?pages::bit(pages::Equipment):0);
+    return settingsOnly ? pages::bit(pages::General) : 0;
 }
 
 pages::FilthyPage activeFilthyPage(){
@@ -1888,7 +1884,7 @@ void __cdecl message(Message* incoming) {
                 eyebot::native_tabs::install(paintNativeWrist);
                 if(eyebot::native_tabs::installed)wristHardware.initialize(*scripts);
             }
-            voiceReady=wristReady&&robco_voice::Capture::available()&&voice.compile(*scripts,*arrays);
+            voiceReady=!settingsOnly&&wristReady&&robco_voice::Capture::available()&&voice.compile(*scripts,*arrays);
             if(!recorderInstalled)break;
             controlScripts = controls.compile(*scripts);
             // Exterior cell borders are streaming boundaries; a parked lens and
@@ -2135,16 +2131,6 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* nvse) 
     char directory[MAX_PATH]{};
     const auto length = GetEnvironmentVariableA("SEATED_TEST_DIR", directory, MAX_PATH);
     if (length && length < MAX_PATH) qaDirectory.assign(directory, length);
-    if (settingsOnly) {
-        const auto present=[](const wchar_t* path){
-            const auto attrs=GetFileAttributesW(path);
-            return attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY);
-        };
-        recorderInstalled=present(L"Data\\RobCo Eyebot.esp")&&
-            present(L"Data\\Meshes\\RobCoEyebot\\Recorder.nif")&&
-            present(L"Data\\Textures\\RobCoEyebot\\screen.dds")&&
-            !GetModuleHandleW(L"RobCoEyebot.dll");
-    }
     if (!recorderInstalled) {
         return events->registerEvent("RobCo:EyebotWrist", 0, nullptr, 6) &&
                events->listen("RobCo:EyebotWrist", wristChoose) &&

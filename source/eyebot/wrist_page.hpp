@@ -108,6 +108,7 @@ public:
         using namespace wrist_frame;
         constexpr FilthyPage pages[]{General,Eyebot,Voice,Pool,Workshop,Equipment};
         constexpr const char* paths[]{"FilthyPages/General","FilthyPages/Eyebot","FilthyPages/Voice","FilthyPages/Pool","FilthyPages/Workshop","FilthyPages/Equipment"};
+        if (availablePages == bit(General)) return;
         set(console,"FilthyPages/visible",true);
         if(independent()){
             constexpr const char* icons[]{"","general","eyebot","voice","pool","build","equipment"};

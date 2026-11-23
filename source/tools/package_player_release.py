@@ -4,9 +4,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import subprocess
-import sys
-import tempfile
 import zipfile
 
 
@@ -20,13 +17,13 @@ VEHICLE_FUNCTIONS = (
     'StartSeatIdle', 'StopEngine', 'StopSeatIdle', 'WriteVariable',
 )
 DEVELOPMENT_DOCS = {
-    'docs/COMBINED-TEST.md', 'docs/CURRENT-BETA.md', 'docs/FINAL-TEST.md',
+    'docs/PERFORMANCE-AUDIT.md', 'docs/COMBINED-TEST.md', 'docs/CURRENT-BETA.md', 'docs/FINAL-TEST.md',
     'docs/VEHICLE-CONTROLS-CURRENT.md', 'vehicle-vr/README.md', 'vehicle-vr/INSTALL.md',
 }
 ROOT = Path(__file__).resolve().parents[2]
 PLAYER_DOCS = (
-    'README.md', 'RELEASE-NOTES.md', 'docs/INSTALL.md', 'docs/NATIVE-SETTINGS.md',
-    'docs/SPRINT-WRIST-LIGHT.md', 'docs/VEHICLES.md', 'docs/EYEBOT-RECORDER.md',
+    'README.md', 'RELEASE-NOTES.md', 'docs/CONTROLLERS.md', 'docs/INSTALL.md', 'docs/NATIVE-SETTINGS.md',
+    'docs/SPRINT-WRIST-LIGHT.md', 'docs/VEHICLES.md',
 )
 
 
@@ -34,9 +31,16 @@ def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
+REMOVED_DEVICE_FILES = {
+    'RobCo Eyebot.esp', 'docs/EYEBOT-RECORDER.md',
+    *(f'textures/FilthyCasual/Device/{page}.dds' for page in ('eyebot', 'voice', 'equipment', 'pool', 'build')),
+}
+
+
 def player_entry(name):
-    return (name not in DEVELOPMENT_DOCS and not name.endswith('.py') and
-            not name.startswith(('eyebot/', 'pool-vr/', 'vehicle-vr/')))
+    return (name not in DEVELOPMENT_DOCS and name not in REMOVED_DEVICE_FILES and not name.endswith('.py') and
+            not name.startswith(('eyebot/', 'pool-vr/', 'vehicle-vr/', 'textures/RobCoEyebot/', 'meshes/RobCoEyebot/',
+                                 'NVSE/user_defined_functions/FilthyCasual/Eyebot/', 'NVSE/user_defined_functions/FilthyCasual/Voice/')))
 
 
 def assemble(original, destination, vehicle_dll, version, flight_controls, settings_dll, core_dll):
@@ -58,16 +62,10 @@ def assemble(original, destination, vehicle_dll, version, flight_controls, setti
 
     for name in PLAYER_DOCS:
         payload[name] = (ROOT / name).read_bytes()
-    payload['menus/prefabs/RobCoEyebot/filthy_tab.xml'] = (ROOT / 'source/eyebot/filthy_tab.xml').read_bytes()
-    # Generate the authored records, optics and scripts in an empty directory.
-    # Private QA meshes can never enter the archive through a staging overlay.
-    with tempfile.TemporaryDirectory() as folder:
-        stage = Path(folder)
-        subprocess.run([sys.executable, '-B', str(ROOT / 'source/eyebot/build_content.py'),
-                        '--output', str(stage)], check=True)
-        for item in stage.rglob('*'):
-            if item.is_file():
-                payload[item.relative_to(stage).as_posix()] = item.read_bytes()
+    menus = ROOT / 'source/eyebot'
+    for target, source in (('wrist.xml', 'general_settings.xml'), ('filthy_tab.xml', 'filthy_tab.xml'),
+                           ('full_filthy.xml', 'full_filthy.xml')):
+        payload[f'menus/prefabs/RobCoEyebot/{target}'] = (menus / source).read_bytes()
     for name in VEHICLE_FUNCTIONS:
         relative = f'FilthyCasual/Vehicles/{name}.txt'
         payload[f'NVSE/user_defined_functions/{relative}'] = (ROOT / 'source/native-scripts' / relative).read_bytes()
@@ -87,8 +85,8 @@ def assemble(original, destination, vehicle_dll, version, flight_controls, setti
         manifest.pop(key, None)
     manifest['version'] = version
     manifest['payloadOrigin'] = {'version': '1.8.0-beta.4-rc.21', 'sha256': RC21_DIGEST}
-    manifest['features'] = [feature for feature in manifest['features'] if feature != 'local-dog-shadow-import']
-    manifest['features'].append('robco-eyebot-recorder')
+    manifest['features'] = [feature for feature in manifest['features'] if feature not in
+                            ('local-dog-shadow-import', 'equipment-wheel-holster-profiles', 'equipment-kits', 'robco-eyebot-recorder')]
     manifest['files'] = [{'path': name, 'sha256': sha256(content)} for name, content in sorted(payload.items())]
     payload['manifest.json'] = (json.dumps(manifest, indent=2) + '\n').encode()
     destination.parent.mkdir(parents=True, exist_ok=True)

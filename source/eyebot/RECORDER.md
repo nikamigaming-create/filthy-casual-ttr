@@ -1,6 +1,6 @@
 # RobCo Eyebot
 
-The recorder is included in the Filthy Casual TTR ZIP. MO2 loads its RobCo Eyebot.esp plugin. The game supplies the robot shell and collision from Fallout: New Vegas.
+This guide covers the standalone development recorder. Its MO2 mod loads RobCo Eyebot.esp. The game supplies the robot shell and collision from Fallout: New Vegas.
 
 ## Wrist-Boy and Pip-Boy controls
 

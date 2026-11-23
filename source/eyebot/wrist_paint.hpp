@@ -53,7 +53,7 @@ inline void filthyTabs(HDC dc,const View& view,COLORREF text,COLORREF quiet){
     using namespace wrist_frame;
     constexpr FilthyPage pages[]{General,Eyebot,Voice,Pool,Workshop,Equipment};
     constexpr const char* labels[]{"GENERAL","EYEBOT","VOICE","POOL","BUILD","EQUIP"};
-    if(!view.availableFilthyPages)return;
+    if(!view.availableFilthyPages || view.availableFilthyPages == bit(General))return;
     unsigned count=0,slot=0;
     for(auto page:pages)if(view.availableFilthyPages&bit(page))++count;
     const int width=440/int(count);
