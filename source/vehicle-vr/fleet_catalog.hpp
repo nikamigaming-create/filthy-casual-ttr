@@ -26,6 +26,9 @@ inline const Model models[]={
  {"00C8AA","Sport Coupe","Creatures\\NVHPCar",17,10,25},
  {"00A345","Street Cleaner","Creatures\\UmStreetCleaner",6,3,14},
  {"011D4A","Tractor","Creatures\\UmMkTTractor",8,3,15},
+ {"00ABE5","Motorcycle","Creatures\\UmMotorcycleA",12,6,20},
+ {"00B482","Classic Motorcycle","Creatures\\UmMotorcycleClassic",12,6,20},
+ {"00D4D8","Chopper","Creatures\\UmMotorcycleChopper",12,6,20},
  {"00E3DC","Truck","Creatures\\UmArmyTruckNEW",11,4,18},
  {"00D80D","Van","Creatures\\UmVan",13,6,20}
 };

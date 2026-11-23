@@ -7,6 +7,7 @@
 #include <mutex>
 #include <atomic>
 #include <fstream>
+#include <unordered_map>
 #include <share.h>
 #include "../nvse_function.hpp"
 #include "../build_adapter.hpp"
@@ -63,8 +64,9 @@ struct ImpactSample { bool ready=false; scene::Vec position{}; float elapsed=0,p
 ImpactSample lastImpact;
 bool arcadeEnabled=false,arcadeOwns=false,roadFitEnabled=true;float savedFrequency[4]{},savedCruise=0,lastDriveDelta=0;unsigned wheelHits=0;
 const char* driveSequences[]={"Creatures\\MkTRoadster\\mtforward.kf","Creatures\\MkTRoadster\\mtfastforward.kf","Creatures\\MkTRoadster\\mtleft.kf","Creatures\\MkTRoadster\\mtbackward.kf"};
-Form* fleetBases[std::size(vehicle_fleet::models)]{};const vehicle_fleet::Model* carModel=nullptr;
-stock_roadster_wheel::Rig stockWheel;
+std::unordered_map<unsigned,const vehicle_fleet::Model*> fleetModels;
+const vehicle_fleet::Model* carModel=nullptr;
+stock_vehicle_wheel::Rig stockWheel;
 void* stockWheelAttempt=nullptr;
 Script *insertStockWheel{},*removeStockWheel{};
 stock_vertibird_cabin::Rig stockCabin;
@@ -72,7 +74,13 @@ void* stockCabinAttempt=nullptr;
 Script *insertStockCabin{},*removeStockCabin{};
 bool stockCabinEnabled=false;
 std::string modelSequences[4];float savedTurn=0;
-const vehicle_fleet::Model* findCarModel(Form* ref){if(!ref)return nullptr;auto base=scene::field<Form*>(ref,0x20);for(unsigned i=0;i<std::size(fleetBases);i++)if(base&&base==fleetBases[i])return &vehicle_fleet::models[i];return nullptr;}
+const vehicle_fleet::Model* findCarModel(Form* ref){
+ if(!ref)return nullptr;
+ auto base=scene::field<Form*>(ref,0x20);
+ if(!base)return nullptr;
+ const auto match=fleetModels.find(base->id);
+ return match==fleetModels.end()?nullptr:match->second;
+}
 struct ParkedFit {unsigned id=0;road_fit_native::State fit;};
 std::vector<ParkedFit> parkedFits;ULONGLONG parkedScan=0;unsigned parkedFrame=0;
 Script* parkedActors=nullptr;
@@ -142,12 +150,25 @@ void clearStockWheel(){
  stockWheelAttempt=nullptr;
 }
 void prepareStockWheel(void* root){
- if(!carModel||strcmp(carModel->form,"00E6BC")||!root||root==stockWheelAttempt)return;
+ if(!carModel||!root||root==stockWheelAttempt)return;
+ const stock_vehicle_wheel::Rim* spec=nullptr;
+ constexpr struct {const char* family; const stock_vehicle_wheel::Rim* rim;} originalWheels[]{
+  {"00E6BC",&stock_vehicle_wheel::roadster}, {"006CB3",&stock_vehicle_wheel::pickup},
+  {"00C8AA",&stock_vehicle_wheel::sportCoupe}, {"00D80D",&stock_vehicle_wheel::van},
+  {"00EC79",&stock_vehicle_wheel::firetruck}, {"00E3DC",&stock_vehicle_wheel::flatbed}
+ };
+ for(const auto& entry:originalWheels){
+  if(!strcmp(carModel->form,entry.family)){
+   spec=entry.rim;
+   break;
+  }
+ }
+ if(!spec)return;
  clearStockWheel();stockWheelAttempt=root;
  scene::Transform bind{};
- if(!insertStockWheel||!removeStockWheel||scene::find(root,"FCWheelCarrier")||!stockWheel.stockRim(root,bind))return;
+ if(!insertStockWheel||!removeStockWheel||scene::find(root,"FCWheelCarrier")||!stockWheel.stockRim(root,*spec,bind))return;
  call(insertStockWheel,car);
- if(stockWheel.attach(root))log("Roadster wheel bound to the original steering skin");
+ if(stockWheel.attach(root,*spec))log("Physical wheel bound to the original steering skin");
  else{
   call(removeStockWheel,car);
   if(auto basis=scene::find(root,"FCStockWheelBasis"))scene::moveParent(basis,nullptr);
@@ -642,8 +663,8 @@ void updateSteering(){
  float rimRadius=10*t.scale;
  if(wheel&&wheel==stockWheel.pivot){
   t=scene::world(stockWheel.basis);
-  right=unit(scene::rotate(t,{1,0,0}));up=unit(scene::rotate(t,stock_roadster_wheel::up));axis=unit(scene::cross(right,up));
-  rimRadius=stock_roadster_wheel::radius*t.scale;
+  right=unit(scene::rotate(t,{1,0,0}));up=unit(scene::rotate(t,stockWheel.rim->up));axis=unit(scene::cross(right,up));
+  rimRadius=stockWheel.rim->radius*t.scale;
  }
  if(wheel){auto r=scene::find(carrier,"FCWheelRight"),u=scene::find(carrier,"FCWheelUp");if(r&&u){auto rv=scene::world(r).p-center;rimRadius=scene::distance(rv,{});right=unit(rv);up=unit(scene::world(u).p-center);axis=unit(scene::cross(right,up));}}
  Hand h[2];{std::lock_guard<std::mutex> g(lock);h[0]=hands[0];h[1]=hands[1];}
@@ -698,7 +719,7 @@ void updateSteering(){
  if(!arcadeOwns){if(!throttle)variable("Throttle",0);if(!brake)variable("BrakeForce",0);}
  if(live&&fresh[1]&&h[1].b&&!exitWas)variable("Dismount",1);exitWas=h[1].b;
  if(!testDir.empty()){
-  static ULONGLONG last=0;if(now-last>100){last=now;auto c=vehicle_adapter::tracking(center),r=vehicle_adapter::tracking(center+right*(10*t.scale)),u=vehicle_adapter::tracking(center+up*(10*t.scale));
+  static ULONGLONG last=0;if(now-last>100){last=now;auto c=vehicle_adapter::tracking(center),r=vehicle_adapter::tracking(center+right*rimRadius),u=vehicle_adapter::tracking(center+up*rimRadius);
    auto pa=vehicle_adapter::tracking(scene::palm(rig,0)),pb=vehicle_adapter::tracking(scene::palm(rig,1));
    scene::Vec shoulder[2]{};float armLength[2]{};
    for(int h=0;h<2;h++){auto a=scene::find(rig,h?"Bip01 R UpperArm":"Bip01 L UpperArm"),e=scene::find(rig,h?"Bip01 R Forearm":"Bip01 L Forearm"),w=scene::find(rig,h?"Bip01 R Hand":"Bip01 L Hand");if(a&&e&&w){shoulder[h]=vehicle_adapter::tracking(scene::world(a).p);armLength[h]=(scene::distance(scene::world(a).p,scene::world(e).p)+scene::distance(scene::world(e).p,scene::world(w).p))/vehicle_adapter::unitsPerMetre();}}
@@ -787,6 +808,37 @@ void syncVehicleFeatures(){
   memset(menuHeld,0,sizeof(menuHeld));
  }
 }
+// Dealer purchases create new references and colors have separate creature bases.
+// Index the installed plugin once. Boarding and collision callbacks only read this map.
+void indexVehicleFamilies(){
+ if(!supported || !rideArrays)return;
+ auto list=call(compile("GetLoadedTypeArray 43 (GetModIndex \"UmDrivingVIIIb.esp\")",true));
+ if(list.type!=4 || !list.value.array)return;
+ const auto count=rideArrays->size(list.value.array);
+ if(!count)return;
+ std::vector<Element> creatures(count);
+ if(!rideArrays->elements(list.value.array,creatures.data(),nullptr))return;
+ auto modelPath=compile("ref item\nbegin function {item}\nSetFunctionValue (GetModelPath item)\nend");
+ for(const auto& item:creatures){
+  if(item.type!=2 || !item.value.form)continue;
+  auto path=call(modelPath,item.value.form);
+  if(path.type!=3 || !path.value.string)continue;
+  std::string directory=path.value.string;
+  build_adapter::freeGameString(path.value.string);
+  const auto slash=directory.find_last_of("\\/");
+  if(slash==std::string::npos)continue;
+  directory.resize(slash);
+  for(const auto& family:vehicle_fleet::models){
+   if(_stricmp(family.directory,directory.c_str())==0){
+    fleetModels.emplace(item.value.form->id,&family);
+    break;
+   }
+  }
+ }
+ char message[100];
+ sprintf_s(message,"Indexed %zu installed Uhmatt vehicle bases",fleetModels.size());
+ log(message);
+}
 void __cdecl message(Message* m){
  if(m->type==DeferredInit){
   drivingFeature=fc_feature_client::enabled("Driving");
@@ -806,7 +858,7 @@ void __cdecl message(Message* m){
   setVerticalVelocity=compile("float velocity\nbegin function {velocity}\nSetActorVelocity Z velocity\nend");
   setVar=fc::nvse::loadFunction(*scripts,"Vehicles/WriteVariable");
   auto base=call(compile("GetFormFromMod \"UmDrivingVIIIb.esp\" \"00E6BC\"",true));supported=base.type==2?base.value.form:nullptr;
-  for(unsigned i=0;i<std::size(fleetBases);i++){auto text=std::string("GetFormFromMod \"UmDrivingVIIIb.esp\" \"")+vehicle_fleet::models[i].form+"\"";auto value=call(compile(text.c_str(),true));fleetBases[i]=value.type==2?value.value.form:nullptr;}
+  indexVehicleFamilies();
   readFrequency=fc::nvse::loadFunction(*scripts,"Vehicles/ReadFrequency");
   setFrequency=fc::nvse::loadFunction(*scripts,"Vehicles/SetFrequency");
   engineIdle=fc::nvse::loadFunction(*scripts,"Vehicles/StartEngineIdle");

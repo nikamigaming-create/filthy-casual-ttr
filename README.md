@@ -2,7 +2,7 @@
 
 Seated controls, controller profiles, and a wrist flashlight for **Tale of Two Realities 1.1.7**.
 
-**[Download the RC22 MO2 ZIP](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/download/v1.8.0-beta.4-rc.22/Filthy-Casual-TTR-1.8.0-beta.4-rc.22.zip)**
+**[Download the RC23 MO2 ZIP](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/download/v1.8.0-beta.4-rc.23/Filthy-Casual-TTR-1.8.0-beta.4-rc.23.zip)**
 
 ## Install in Mod Organizer 2
 
@@ -10,7 +10,7 @@ Seated controls, controller profiles, and a wrist flashlight for **Tale of Two R
 2. Install the **Filthy Casual TTR ZIP** as one mod and enable it below TTR. Upgrading players should keep their personal INIs and controller profiles and leave one Filthy core enabled.
 3. Launch your usual TTR entry. Open **FILTHY → General → Features** on either Pip-Boy screen and enable what you want to use.
 
-[RC22 release notes](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.4-rc.22) · [Changelog](RELEASE-NOTES.md) · [Source and build instructions](source/README.md)
+[RC23 release notes](https://github.com/nikamigaming-create/filthy-casual-ttr/releases/tag/v1.8.0-beta.4-rc.23) · [Changelog](RELEASE-NOTES.md) · [Source and build instructions](source/README.md)
 
 ### Vehicle downloads
 

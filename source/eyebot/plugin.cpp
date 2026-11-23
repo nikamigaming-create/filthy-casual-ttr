@@ -6,6 +6,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -1373,6 +1374,10 @@ void tickWrist() {
         eyebot::native_tabs::restoreActiveData();
         const auto active = call(wrist.menuMode);
         auto menu = wrist.stockMenu(active.type == 1 ? int(active.value.number) : 0);
+        if(settingsOnly && eyebot::native_tabs::installed && active.type==1 && !tabRequest &&
+           !eyebot::full_page::root && (active.value.number==0 || menu)){
+            eyebot::full_page::prepare();
+        }
         const auto seen = liveWristAt.load();
         const auto focused = focusedWristAt.load();
         const bool hasWrist = settingsOnly && eyebot::native_tabs::installed
@@ -1419,17 +1424,22 @@ void tickWrist() {
         const bool stock = menu && stockTab.type == 1 && stockTab.value.number == 1;
         bool menuReady=wrist.independent();
         if (stock) {
-            auto exists = call(menu->installed);
-            if (exists.type == 1 && exists.value.number == 0) {
-                call(menu->add);
-                exists=call(menu->installed);
+            // The standalone category owns its settings tree. Stock pages only need the tab.
+            bool pageReady = settingsOnly;
+            if (!pageReady) {
+                auto exists = call(menu->installed);
+                if (exists.type == 1 && exists.value.number == 0) {
+                    call(menu->add);
+                    exists=call(menu->installed);
+                }
+                pageReady = exists.type==1 && exists.value.number==1;
             }
             auto button=call(menu->hasButton);
             if(button.type==1&&button.value.number==0){
                 call(menu->addButton);
                 button=call(menu->hasButton);
             }
-            menuReady=exists.type==1 && exists.value.number==1 && button.type==1 && button.value.number==1;
+            menuReady=pageReady && button.type==1 && button.value.number==1;
             if (menuReady && !wristBound) wristBound = wrist.bindButtons(*scripts);
         }
         fullPipboyReady = menuReady;
@@ -1587,6 +1597,8 @@ void dispatchWrist(eyebot::WristPage::Button command) {
     if (command == B::Tab) {
         if (wrist.open) { if(!settingsOnly)closeWrist(); }
         else {
+            const auto start=std::chrono::steady_clock::now();
+            const bool prepared=eyebot::full_page::prepared;
             if(settingsOnly && !onArm){
                 const bool entered=wrist.selected && eyebot::full_page::open(wrist.selected->id,eyebot::native_tabs::removePriorCategory);
                 if(!qaDirectory.empty()){
@@ -1611,6 +1623,10 @@ void dispatchWrist(eyebot::WristPage::Button command) {
             }else if(returnToBuild){
                 returnToBuild=false;
                 selectFilthyPage(pages::Workshop);
+            }
+            if(settingsOnly && !onArm && !qaDirectory.empty()){
+                const auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+                std::ofstream(qaDirectory+"/filthy-tab-latency.txt",std::ios::app)<<prepared<<" "<<ms<<"\n";
             }
         }
         return;

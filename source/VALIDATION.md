@@ -1,5 +1,19 @@
 # Dependency-only release validation
 
+## RC23
+
+The dependency-only TTR 1.1.7 simulator loaded all 352 Uhmatt 8b vehicle
+bases. Twenty-three of 26 representative dealer vehicles showed the torso
+and both hands in both eyes. The Fusion Flea and Shopping Cart obscured
+the driver, and the standard Motorcycle crashed before a capture in both
+RC22 and RC23. Independent left and right grip steering passed on the pickup,
+Sport Coupe, Van, Firetruck, and covered Flatbed.
+
+Both devices opened General and Wrist flashlight and returned to the stock
+menu. The simulator measured 0.79 to 7.79 ms of in-game FILTHY entry work.
+A physical-headset report still noted a brief pause entering from Data on
+the full-size Pip-Boy. The report found the other direction responsive.
+
 ## Cars-only RC22
 
 The headset ZIP has SHA-256

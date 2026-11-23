@@ -6,4 +6,4 @@ Install Uhmatt Drivable Cars 8b above Filthy in MO2. Enable Driving under FILTHY
 
 Right trigger accelerates. Left trigger brakes, then reverses once stopped. Left stick steers. B exits. When you draw a weapon, both triggers return to the weapon. Release them before accelerating again after holstering.
 
-The stock Roadster uses the original steering wheel for physical grip steering and supports arcade handling. Other stock cars keep native handling. Existing fitted rigs continue to use their fitted controls.
+Grip the stock Roadster, pickup, Sport Coupe, Van, Firetruck, or compatible Flatbed rim with either hand and turn it to steer. The Roadster supports arcade handling. The pickup uses native handling. Left-stick steering works with stock rims and existing fitted rigs.

@@ -3,6 +3,7 @@
 #include <d3d9.h>
 #include <wrl/client.h>
 #include "filthy_case_paint_data.hpp"
+#include "filthy_case_paint_xbox_data.hpp"
 
 namespace eyebot::filthy_case_paint {
 
@@ -23,7 +24,7 @@ public:
             trace("surface",surface?surface->GetType():~0u);
             return false;
         }
-        if(surface==installed.Get())return true;
+        if(surface==checked.Get())return matches;
         auto atlas=static_cast<IDirect3DTexture9*>(surface);
         D3DSURFACE_DESC desc{};
         if(FAILED(atlas->GetLevelDesc(0,&desc))||desc.Width!=1024||desc.Height!=1024||
@@ -31,12 +32,14 @@ public:
             trace("descriptor",desc.Width,desc.Height,unsigned(desc.Format),atlas->GetLevelCount());
             return false;
         }
-        if(!paint(atlas))return false;
-        installed=atlas;
-        return true;
+        const auto result=paint(atlas);
+        if(result==Result::Retry)return false;
+        checked=atlas;
+        matches=result==Result::Painted;
+        return matches;
     }
 
-    void reset(){installed.Reset();}
+    void reset(){checked.Reset(); matches=false;}
 
 private:
     static void trace(const char* message,uint64_t a=0,unsigned b=0,unsigned c=0,unsigned d=0){
@@ -51,42 +54,47 @@ private:
         }
     }
     static constexpr unsigned levels=5;
-    Microsoft::WRL::ComPtr<IDirect3DBaseTexture9> installed;
+    enum class Result { Retry, Unknown, Painted };
+    Microsoft::WRL::ComPtr<IDirect3DBaseTexture9> checked;
+    bool matches=false;
 
-    static bool paint(IDirect3DTexture9* atlas){
+    static Result paint(IDirect3DTexture9* atlas){
         D3DLOCKED_RECT rect[levels]{};
         unsigned locked=0;
         HRESULT hr=S_OK;
         while(locked<levels&&SUCCEEDED(hr=atlas->LockRect(locked,&rect[locked],nullptr,0)))++locked;
         if(locked!=levels)trace("lock",unsigned(hr),locked);
-        bool painted=false;
+        Result result=Result::Retry;
         if(locked==levels){
-            const auto texel=[&](const Block& block){
+            const auto texel=[&](const auto& block){
                 return static_cast<unsigned char*>(rect[block.level].pBits)+
                        block.y*rect[block.level].Pitch+block.x*8;
             };
-            uint64_t hash=14695981039346656037ull;
-            for(const auto& block:blocks){
-                const auto bytes=texel(block);
-                for(unsigned i=0;i<8;++i)hash=(hash^bytes[i])*1099511628211ull;
-            }
-            // The Xbox case uses the same layout. Its label is already in
-            // the local MO2 texture built by build_filthy_case_paint.py.
-            constexpr uint64_t bakedXboxHash=0xaabd5dc46107cd36ull;
-            painted=hash==stockHash||hash==paintedHash||hash==bakedXboxHash;
-            trace(painted?"applied":"hash",hash);
-            if(hash==stockHash){
-                for(const auto& block:blocks){
-                    auto bytes=texel(block);
-                    uint64_t value;
-                    std::memcpy(&value,bytes,sizeof(value));
-                    value^=block.delta;
-                    std::memcpy(bytes,&value,sizeof(value));
+            const auto apply=[&](const auto& patch,uint64_t stock,uint64_t painted){
+                uint64_t hash=14695981039346656037ull;
+                for(const auto& block:patch){
+                    const auto bytes=texel(block);
+                    for(unsigned i=0;i<8;++i)hash=(hash^bytes[i])*1099511628211ull;
                 }
-            }
+                if(hash!=stock && hash!=painted)return false;
+                if(hash==stock){
+                    for(const auto& block:patch){
+                        auto bytes=texel(block);
+                        uint64_t value;
+                        std::memcpy(&value,bytes,sizeof(value));
+                        value^=block.delta;
+                        std::memcpy(bytes,&value,sizeof(value));
+                    }
+                }
+                trace("applied",hash);
+                return true;
+            };
+            result=apply(blocks,stockHash,paintedHash) ||
+                   apply(xbox::blocks,xbox::stockHash,xbox::paintedHash) ? Result::Painted : Result::Unknown;
+            if(result==Result::Unknown)trace("unknown atlas");
         }
         while(locked)atlas->UnlockRect(--locked);
-        return painted;
+        return result;
     }
 };
 

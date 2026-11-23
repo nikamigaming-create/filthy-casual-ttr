@@ -13,6 +13,7 @@ constexpr char xml[]="Data\\Menus\\prefabs\\RobCoEyebot\\full_filthy.xml";
 inline void* instance=nullptr;
 inline void* root=nullptr;
 inline bool loading=false;
+inline bool prepared=false;
 inline bool dataHidden=false;
 inline void (*click)(int)=nullptr;
 inline void (*stockTab)(int)=nullptr;
@@ -34,7 +35,7 @@ inline void __fastcall onClick(void*,void*,int number,void*){
     if(click && number>=7101 && number<=7132)click(number);
 }
 inline void* __fastcall destroy(void* self,void*,bool free){
-    if(self==instance){root=nullptr;instance=nullptr;}
+    if(self==instance){root=nullptr;instance=nullptr;prepared=false;}
     return reinterpret_cast<void*(__thiscall*)(void*,bool)>(0xA1E170)(self,free);
 }
 inline void* __cdecl create(int requested){
@@ -87,8 +88,8 @@ inline void value(std::string_view path,bool flag){
     const auto pos=path.rfind('/');
     if(pos!=path.npos)number(find(root,path.substr(0,pos)),path.data()+pos+1,flag?1.f:0.f);
 }
-inline bool open(int previous,bool (*removePrior)(int)){
-    if(previous!=1002 && previous!=1003 && previous!=1023)return false;
+inline bool prepare(){
+    if(prepared)return true;
     auto manager=gameRoot();
     if(!manager || !at<void*>(manager,0x9c) || (!instance && registered(id)))return false;
     if(!root){
@@ -112,6 +113,16 @@ inline bool open(int previous,bool (*removePrior)(int)){
         number(tab,"target",1.f);
         number(tab,"_selected",0.f);
     }
+    // The prepared tree stays out of the menu stack until a category gesture.
+    number(root,"visible",0.f);
+    prepared=true;
+    return true;
+}
+inline bool open(int previous,bool (*removePrior)(int)){
+    if(previous!=1002 && previous!=1003 && previous!=1023)return false;
+    if(!prepare() || !instance || registered(id)!=root)return false;
+    auto manager=gameRoot();
+    if(!manager)return false;
     auto old=registered(previous);
     if(!old || !at<void*>(old,0x3c))return false;
     if(!removePrior(previous))return false;
@@ -125,6 +136,7 @@ inline bool open(int previous,bool (*removePrior)(int)){
             destroyTile(old,true);
         }
     }
+    number(root,"visible",1.f);
     // Register in the engine's live menu stack, just as native XML menus do.
     reinterpret_cast<void(__thiscall*)(void*,int)>(0x714D90)(manager,id);
     reinterpret_cast<void(__thiscall*)(void*)>(0xA1DB20)(instance);

@@ -55,7 +55,7 @@ public:
     Menu* selected{};
 
     bool bindButtons(Scripts& source) const {
-        for (const auto& menu : menus) for (int button = Tab; button <= (settingsOnly_?EquipmentSubtab:SettingsLast); ++button) {
+        for (const auto& menu : menus) for (int button = Tab; button <= (settingsOnly_?Tab:SettingsLast); ++button) {
             Element result;
             if (!recorder_ && button != Tab && (button < SettingsBack && button != SettingsTab)) continue;
             const auto path = std::string(menu.name) + "#" + std::to_string(button);
@@ -143,7 +143,7 @@ public:
                 full_page::number(full_page::find(full_page::root,row+"/Value"),"x",picture.empty()?550.f:295.f);
             }
         }
-        label(console,"Settings/Title",view.title);
+        label(console,"Settings/Title",settingsOnly_ && view.page==fc_settings::WristHome ? "FILTHY / GENERAL SETTINGS" : view.title);
         const int count=std::min<int>(view.count,8);
         const int first=fc_settings::firstVisible(view);
         for(int i=0;i<fc_settings::DeviceRows;++i){

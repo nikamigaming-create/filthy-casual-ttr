@@ -1,4 +1,15 @@
-# Filthy Casual TTR 1.8.0-beta.4-rc.22
+# Filthy Casual TTR 1.8.0-beta.4-rc.23
+
+- Vehicle recognition uses the installed Uhmatt 8b vehicle families and covers paint variants. Simulator testing confirmed the driver's torso and hands in Chet's red Jeep and black car, including a reload while seated in the Jeep.
+- The pickup, Sport Coupe, Van, Firetruck, and compatible Flatbed use their original wheels for grip steering. Both hands passed independent grab-and-turn checks in the simulator. The Roadster retains physical steering. The red Jeep and the black car use the left stick.
+- The full-size Pip-Boy prepares FILTHY before you open it. FILTHY is visible on the settings page and on both supported English Wrist-Boy case textures.
+
+## Known issues
+
+- On the full-size Pip-Boy, advancing from Data into FILTHY can briefly pause. The headset report found that entering from the other direction avoided the pause.
+- The Fusion Flea and Shopping Cart can obscure the driver. The standard Motorcycle crashed on boarding in both RC22 and RC23 simulator tests.
+
+## Filthy Casual TTR 1.8.0-beta.4-rc.22
 
 - Installs as one MO2 mod with the original dependencies listed on the [front page](README.md#vehicle-downloads).
 - FILTHY opens directly to General on both devices. Select Wrist flashlight to adjust the beam.
