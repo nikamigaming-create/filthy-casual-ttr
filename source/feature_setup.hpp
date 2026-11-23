@@ -20,7 +20,7 @@ inline constexpr Definition definitions[]={
  {"EmptyBottles","Throwable empty bottles","Supported drinks leave a matching empty bottle.",false,false},
  {"GlassImpacts","Glass impact effects","Strong contacts break tracked bottles with glass effects.",false,false},
  {"WristLight","Wrist flashlight","Wrist-guided lamp with brightness, colour and range settings.",false,false},
- {"Driving","Driving (experimental)","Bundled vehicle module; original car mod and local assets required. Off applies now. Restart for first activation.",true,false},
+ {"Driving","Driving (experimental)","Requires Uhmatt Drivable Cars 8b. Restart after first enabling driving.",true,false},
  {"Flight","Vertibird (experimental)","Bundled vehicle module; original aircraft mods and local assets required. Off applies now. Restart for first activation.",true,false},
  {"Riding","Creature riding (experimental)","Bundled vehicle module. Off applies now. Restart for first activation.",true,false},
  {"Pool","Pool","Saloon pool against Sunny, practice, trick shots (Pool V.A.T.S.), and two-player hotseat. Restart to apply.",true,false},
@@ -38,7 +38,7 @@ inline bool restartNeeded(uint32_t selected,uint32_t session){
  // A disabled vehicle can resume this run only when its adapter was installed at startup.
  return ((selected&~session&vehicleMask)|((selected^session)&addonMask&~vehicleMask))!=0;
 }
-constexpr uint32_t allowedMask=coreMask|addonMask;
+constexpr uint32_t allowedMask=(coreMask|addonMask)&~(bit(Flight)|bit(Riding));
 inline int find(const char* key){if(key)for(int i=0;i<Count;++i)if(!strcmp(key,definitions[i].key))return i;return -1;}
 struct View {uint32_t size=sizeof(View),version=1;uint32_t visible=0,epoch=0,selected=0,pending=0,available=coreMask,restart=0,page=0;char status[160]{};};
 struct Selection {

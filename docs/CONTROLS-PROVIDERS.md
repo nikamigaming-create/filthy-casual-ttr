@@ -18,8 +18,7 @@ run on the XR input thread. If overlapping providers report active modes, the
 first discovered mode wins; providers should coordinate exclusive ownership.
 Descriptors and their modules must remain loaded for the process lifetime.
 
-The Vehicles addon advertises `vehicles.driving` and `vehicles.flight` even when
-neither is active. The UI can edit them while on foot, exports the installed
+The Vehicles addon advertises `vehicles.driving` when the car dependency is available. The UI can edit it while on foot, exports the installed
 catalog for offline editing, and switches routing when the provider reports the
 mode. The core preserves absent-mode profiles across saves. Mode changes flush
 virtual output and require neutral inputs before gameplay resumes.
@@ -28,8 +27,3 @@ Profile v3: header `FilthyCasualControls 3`, mode count, then for each stable mo
 ID exactly 26 rows: row, source, modifier, gesture, delay-ms. `onfoot` is required.
 Parsing is strict, bounded and transactional. v1/v2 migrate their former global
 mapping into discovered modes. No player save changes or dependency assets.
-
-Creature rides also advertise vehicles.bighorner and vehicles.deathclaw when
-enabled and initialized. Their independent ChallengeSeconds INI settings default
-to 30 and 60. Zero enables steering immediately after mounting; it does not bypass
-native mount eligibility. Left Y drives, right X turns, B dismounts.

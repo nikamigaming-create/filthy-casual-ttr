@@ -12,17 +12,19 @@ VEHICLE_PLUGIN = 'NVSE/Plugins/FilthyCasualVehicles.dll'
 SETTINGS_PLUGIN = 'NVSE/Plugins/FilthyCasualNativeSettings.dll'
 CORE_PLUGIN = 'NVSE/Plugins/SeatedControls.dll'
 VEHICLE_FUNCTIONS = (
-    'AllowCombat', 'FlightSeatLocks', 'ReadFrequency', 'ReadVariable', 'RefreshSeat',
-    'SetEnginePitch', 'SetFrequency', 'ShowPilot', 'StartEngineDrive', 'StartEngineIdle',
+    'AllowCombat', 'ReadFrequency', 'ReadVariable', 'RefreshSeat',
+    'SetEnginePitch', 'SetFrequency', 'StartEngineDrive', 'StartEngineIdle',
     'StartSeatIdle', 'StopEngine', 'StopSeatIdle', 'WriteVariable',
 )
 DEVELOPMENT_DOCS = {
-    'docs/PERFORMANCE-AUDIT.md', 'docs/COMBINED-TEST.md', 'docs/CURRENT-BETA.md', 'docs/FINAL-TEST.md',
+    'docs/PERFORMANCE-AUDIT.md', 'docs/CREATURE-RIDES.md', 'docs/VALIDATION.md', 'docs/assets/robco-flight.png',
+    'meshes/FilthyCasual/flight-controls.nif', 'NVSE/user_defined_functions/FilthyCasual/Vehicles/FlightSeatLocks.txt',
+    'NVSE/user_defined_functions/FilthyCasual/Vehicles/ShowPilot.txt', 'docs/COMBINED-TEST.md', 'docs/CURRENT-BETA.md', 'docs/FINAL-TEST.md',
     'docs/VEHICLE-CONTROLS-CURRENT.md', 'vehicle-vr/README.md', 'vehicle-vr/INSTALL.md',
 }
 ROOT = Path(__file__).resolve().parents[2]
 PLAYER_DOCS = (
-    'README.md', 'RELEASE-NOTES.md', 'docs/CONTROLLERS.md', 'docs/INSTALL.md', 'docs/NATIVE-SETTINGS.md',
+    'README.md', 'RELEASE-NOTES.md', 'docs/CONTROLLERS.md', 'docs/INSTALL.md', 'docs/NATIVE-SETTINGS.md', 'docs/CONTROLS-PROVIDERS.md', 'docs/SETTINGS.md',
     'docs/SPRINT-WRIST-LIGHT.md', 'docs/VEHICLES.md',
 )
 
@@ -43,7 +45,7 @@ def player_entry(name):
                                  'NVSE/user_defined_functions/FilthyCasual/Eyebot/', 'NVSE/user_defined_functions/FilthyCasual/Voice/')))
 
 
-def assemble(original, destination, vehicle_dll, version, flight_controls, settings_dll, core_dll):
+def assemble(original, destination, vehicle_dll, version, settings_dll, core_dll):
     if sha256(original.read_bytes()) != RC21_DIGEST:
         raise ValueError('Expected the exact published RC21 archive.')
     with zipfile.ZipFile(original) as archive:
@@ -73,12 +75,10 @@ def assemble(original, destination, vehicle_dll, version, flight_controls, setti
         payload[VEHICLE_PLUGIN] = vehicle_dll.read_bytes()
     payload[SETTINGS_PLUGIN] = settings_dll.read_bytes()
     payload[CORE_PLUGIN] = core_dll.read_bytes()
-    if flight_controls is not None:
-        payload['meshes/FilthyCasual/flight-controls.nif'] = flight_controls.read_bytes()
+    payload['NVSE/Plugins/FilthyCasualVehicles.ini'] = (ROOT / 'source/vehicle-vr/FilthyCasualVehicles.ini').read_bytes()
     payload['meta.ini'] = (
         f'[General]\nmodid=0\nversion={version}\nnewestVersion=\ncategory=0\ninstallationFile=\n'
         'comments=TTR 1.1.7 with xNVSE and JIP LN NVSE. Cars use Uhmatt Drivable Cars 8b. '
-        'Vertibird uses Vertibird Player Home 4.18, TTW patch 4.18c, and Pilot Inside. '
         'See README.md for downloads.\n'
     ).encode()
     for key in ('lockedFeatures', 'optionalLocalContent', 'coreOrigin'):
@@ -108,12 +108,11 @@ def main():
     parser.add_argument('--vehicle-dll', type=Path)
     parser.add_argument('--settings-dll', type=Path, required=True)
     parser.add_argument('--core-dll', type=Path, required=True)
-    parser.add_argument('--flight-controls', type=Path)
     parser.add_argument('--version', required=True)
     args = parser.parse_args()
     if args.output.suffix.lower() != '.zip' or args.output.resolve() == args.rc21.resolve():
         parser.error('Choose a separate output ZIP.')
-    assemble(args.rc21, args.output, args.vehicle_dll, args.version, args.flight_controls, args.settings_dll, args.core_dll)
+    assemble(args.rc21, args.output, args.vehicle_dll, args.version, args.settings_dll, args.core_dll)
 
 
 if __name__ == '__main__':

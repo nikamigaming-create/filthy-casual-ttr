@@ -1553,10 +1553,7 @@ namespace {
   if(!bookForm)available&=~fc_features::bit(fc_features::Book);
   if(auto module=GetModuleHandleW(L"FilthyCasualVehicles.dll"))if(GetProcAddress(module,"FC_FeatureGateVersion")){
    static auto cars=compile("driving requirement","IsModLoaded \"UmDrivingVIIIb.esp\"",true);
-   static auto flight=compile("flight requirements","(IsModLoaded \"Player Vertibird.esm\") && (IsModLoaded \"Player Vertibird TTW Patch.esp\") && (IsModLoaded \"Vertibird Player Home - pilot inside.esp\")",true);
    if(number(cars))available|=fc_features::bit(fc_features::Driving);
-   if(number(flight))available|=fc_features::bit(fc_features::Flight);
-   available|=fc_features::bit(fc_features::Riding);
   }
   if(auto module=GetModuleHandleW(L"FilthyCasualPool.dll"))if(GetProcAddress(module,"FC_FeatureGateVersion"))available|=fc_features::bit(fc_features::Pool);
   if(auto module=GetModuleHandleW(L"FilthyCasualSettlements.dll"))if(GetProcAddress(module,"FC_SettlementDesk")){

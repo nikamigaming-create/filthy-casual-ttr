@@ -86,7 +86,7 @@ inline void remapping(View &v) {
 inline void home(View &v, const char *seat) {
     strcpy_s(v.title, "FILTHY CASUALS / SETTINGS");
     add(v, "Seated height", seat, fc_settings::Action,
-        "Adjust your current seat. Default, car, flight and creature heights save separately.");
+        "Adjust your current seat. On-foot and car seat heights save separately.");
     add(v, "Sprint", "OPEN", fc_settings::Action,
         "Speed, AP use, stick activation and the sprint notification.");
     add(v, "Wrist flashlight", "OPEN", fc_settings::Action,

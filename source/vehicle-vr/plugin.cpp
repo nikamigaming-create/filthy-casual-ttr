@@ -37,12 +37,12 @@
 #include "../glass_effects.hpp"
 namespace {
 constexpr unsigned DrivingMode=1,FlightMode=2,BighornerMode=4,DeathclawMode=8;
-std::atomic<unsigned> controlsAvailable{0},requestedModes{15};
+std::atomic<unsigned> controlsAvailable{0},requestedModes{DrivingMode};
 unsigned installedModes=0;
 bool inputDrain[2][6]{},menuHeld[2][6]{};
 std::atomic<bool> nativeMenu{true};
 float bighornerChallengeSeconds=creature_ride::bighornerDefaultSeconds,deathclawChallengeSeconds=creature_ride::deathclawDefaultSeconds;
-Arrays* rideArrays{};bool drivingFeature=true,flightFeature=true;bool rideEnabled=false,bighornerEnabled=false,deathclawEnabled=false;std::atomic<bool> ridingDeathclaw{false};std::atomic<bool> riding{false},rideMountReady{false};
+Arrays* rideArrays{};bool drivingFeature=true,flightFeature=false;bool rideEnabled=false,bighornerEnabled=false,deathclawEnabled=false;std::atomic<bool> ridingDeathclaw{false};std::atomic<bool> riding{false},rideMountReady{false};
 Scripts* scripts{};FILE* file{};std::mutex lock;
 struct Hand {float grip=0,trigger=0,sx=0,sy=0;bool b=false,x=false,stick=false,valid=false,gripClaim=false,triggerClaim=false;ULONGLONG time=0,poseAt=0,rimPressAt=0;};Hand hands[2];
 std::atomic<bool> cameraAnchorReady{false};float cameraAnchorZ=0,mountedYawOffset=0;bool mountedYawReady=false;scene::Vec mountedEyeOffset{};mounted_frame::Mat mountedStageHeading=mounted_frame::identity();
@@ -789,10 +789,9 @@ void syncVehicleFeatures(){
 }
 void __cdecl message(Message* m){
  if(m->type==DeferredInit){
-  drivingFeature=fc_feature_client::enabled("Driving");flightFeature=fc_feature_client::enabled("Flight");rideEnabled=rideEnabled&&fc_feature_client::enabled("Riding");
-  // Keep saved tack cleanup available even when every vehicle feature is off.
-  getPlayer=compile("player",true);getMenu=compile("MenuMode",true);bighorner_tack::init();
-  if(!drivingFeature&&!flightFeature&&!rideEnabled){log("Vehicle features off; leaving native controls in place");return;}
+  drivingFeature=fc_feature_client::enabled("Driving");
+  getPlayer=compile("player",true);getMenu=compile("MenuMode",true);
+  if(!drivingFeature){log("Vehicle features off; leaving native controls in place");return;}
   vehicle_glazing::candidate=vehicle_glazing::candidate&&(drivingFeature||flightFeature);
   getCar=compile("GetRefVariable \"CurrentCarRef\" (GetFormFromMod \"UmDrivingVIIIb.esp\" \"000ADE\")",true);
   getWeaponOut=compile("player.IsWeaponOut",true);
@@ -801,10 +800,6 @@ void __cdecl message(Message* m){
   getDriving=compile("GetVariable \"Driving\"",true);
   insertStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 3 \"Bip01 Spine|FCStockWheelBasis\"\nInsertNode vehicle 3 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 3 \"FCSteeringWheel|FCStockWheelSkin\"\nend");
   removeStockWheel=compile("ref vehicle\nbegin function {vehicle}\nInsertNode vehicle 2 \"FCSteeringWheel|FCStockWheelSkin\"\nInsertNode vehicle 2 \"FCStockWheelBasis|FCSteeringWheel\"\nInsertNode vehicle 2 \"Bip01 Spine|FCStockWheelBasis\"\nend");
-  if(stockCabinEnabled){
-   insertStockCabin=compile("ref aircraft\nbegin function {aircraft}\nInsertNode aircraft 3 \"Bip01 Spine1|FCCockpitCarrier\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCStockCabin\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCStockPilotAnchor\"\nInsertNode aircraft 3 \"FCCockpitCarrier|FCPilotEye\"\nAttachModel aircraft 3 \"FCStockCabin|PlayerVertibird\\vertibirdinterior.nif\"\nAttachModel aircraft 3 \"FCStockCabin|PlayerVertibird\\vertibirdinterior_console.nif\"\nAttachModel aircraft 3 \"FCCockpitCarrier|FilthyCasual\\flight-controls.nif\"\nend");
-   removeStockCabin=compile("ref aircraft\nbegin function {aircraft}\nAttachModel aircraft 2 \"FCCockpitCarrier|FilthyCasual\\flight-controls.nif\"\nAttachModel aircraft 2 \"FCStockCabin|PlayerVertibird\\vertibirdinterior_console.nif\"\nAttachModel aircraft 2 \"FCStockCabin|PlayerVertibird\\vertibirdinterior.nif\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCPilotEye\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCStockPilotAnchor\"\nInsertNode aircraft 2 \"FCCockpitCarrier|FCStockCabin\"\nInsertNode aircraft 2 \"Bip01 Spine1|FCCockpitCarrier\"\nend");
-  }
   getVar=fc::nvse::loadFunction(*scripts,"Vehicles/ReadVariable");
   vehicleContacts=compile("GetContactRefs",true);
   pushParkedCar=compile("float force\nref source\nbegin function {force,source}\nPushActorNoRagdoll force 0 source 0\nend");
@@ -812,8 +807,6 @@ void __cdecl message(Message* m){
   setVar=fc::nvse::loadFunction(*scripts,"Vehicles/WriteVariable");
   auto base=call(compile("GetFormFromMod \"UmDrivingVIIIb.esp\" \"00E6BC\"",true));supported=base.type==2?base.value.form:nullptr;
   for(unsigned i=0;i<std::size(fleetBases);i++){auto text=std::string("GetFormFromMod \"UmDrivingVIIIb.esp\" \"")+vehicle_fleet::models[i].form+"\"";auto value=call(compile(text.c_str(),true));fleetBases[i]=value.type==2?value.value.form:nullptr;}
-  auto fb=call(compile("GetFormFromMod \"Player Vertibird.esm\" \"0045B4\"",true));flightBase=fb.type==2?fb.value.form:nullptr;
-  if(flightBase){getFlight=compile("GetRefVariable \"PilotingBird\" (GetFormFromMod \"Player Vertibird.esm\" \"000AE7\")",true);getPiloting=compile("GetVariable \"Piloting\" (GetFormFromMod \"Player Vertibird.esm\" \"000AE7\")",true);}
   readFrequency=fc::nvse::loadFunction(*scripts,"Vehicles/ReadFrequency");
   setFrequency=fc::nvse::loadFunction(*scripts,"Vehicles/SetFrequency");
   engineIdle=fc::nvse::loadFunction(*scripts,"Vehicles/StartEngineIdle");
@@ -822,18 +815,12 @@ void __cdecl message(Message* m){
   getEnginePitch=compile("GetSoundTraitNumeric UmEngineDriveB 2",true);
   setEnginePitch=fc::nvse::loadFunction(*scripts,"Vehicles/SetEnginePitch");
   getAngleZ=compile("GetAngle Z",true);getDelta=compile("GetSecondsPassed",true);
-  auto fs=call(compile("GetFormFromMod \"Player Vertibird.esm\" \"0045B6\"",true));flightScript=fs.type==2?fs.value.form:nullptr;
   getX=compile("GetPos X",true);getY=compile("GetPos Y",true);getZ=compile("GetPos Z",true);
-  yawFlight=compile("float axis\nbegin function {axis}\nplayer.SetAngle Z (player.GetAngle Z + axis * 60 * GetSecondsPassed)\nend");
-  setFlightBank=compile("float angle\nbegin function {angle}\nSetAngle Y angle\nend");
   refreshSeat=fc::nvse::loadFunction(*scripts,"Vehicles/RefreshSeat");
-  showPilot=fc::nvse::loadFunction(*scripts,"Vehicles/ShowPilot");
   allowDriveCombat=fc::nvse::loadFunction(*scripts,"Vehicles/AllowCombat");
   getPlayedIdle=compile("player.GetPlayedIdle",true);
   sitPose=fc::nvse::loadFunction(*scripts,"Vehicles/StartSeatIdle");
   stopPose=fc::nvse::loadFunction(*scripts,"Vehicles/StopSeatIdle");
-  flightControlLocks=fc::nvse::loadFunction(*scripts,"Vehicles/FlightSeatLocks");
-  initRide();
   if(!vehicle_glazing::init())log("Vehicle glazing events unavailable; glass remains unchanged");
   parkedActors=compile("GetActorsByProcessingLevel 0",true);
   auto check=[](bool ok,const char* stage){if(!ok){char text[160];sprintf_s(text,"Vehicle initialization failed: %s",stage);log(text);}return ok;};
@@ -852,16 +839,16 @@ void __cdecl message(Message* m){
   controlsAvailable=installedModes&requestedModes.load();
   log(ready?"Vehicle bridge ready":"Vehicle bridge failed");
  }
- if(m->type==PostLoadGame||m->type==NewGame){clear();bighorner_tack::nextStock=0;rideRestorePending=true;loaded=m->type==NewGame||m->data!=nullptr;auto p=call(getPlayer);player=p.type==2?p.value.form:nullptr;vehicle_glazing::subscribeProjectiles();}
+ if(m->type==PostLoadGame||m->type==NewGame){clear();bighorner_tack::nextStock=0;rideRestorePending=false;loaded=m->type==NewGame||m->data!=nullptr;auto p=call(getPlayer);player=p.type==2?p.value.form:nullptr;vehicle_glazing::subscribeProjectiles();}
  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame){restoreParked();parkedFits.clear();parkedScan=0;rideRestorePending=false;rideHostileRef=0;if(riding)stopRide(false);seatedPose=false;clear();loaded=false;player=nullptr;}
  if(m->type==PreLoadGame||m->type==ExitMenu||m->type==ExitGame)vehicle_glazing::clear();
  if(m->type==MainLoop&&ready)syncVehicleFeatures();
- if(m->type==MainLoop&&loaded){restoreRideLease();tickRideHostility();vehicle_glazing::tick();bighorner_tack::tick();}
+ if(m->type==MainLoop&&loaded){vehicle_glazing::tick();}
  if(m->type==MainLoop&&controlsAvailable&&loaded){tick();if(!testDir.empty()){static ULONGLONG last=0;auto now=GetTickCount64();if(now-last>3000){last=now;vehicle_perf::write(testDir);}}}
 }
 }
-extern "C" __declspec(dllexport) void __cdecl FC_VehicleFeaturesChanged(bool driving,bool flight,bool mounts){
- requestedModes=(driving?DrivingMode:0u)|(flight?FlightMode:0u)|(mounts?(BighornerMode|DeathclawMode):0u);
+extern "C" __declspec(dllexport) void __cdecl FC_VehicleFeaturesChanged(bool driving,bool,bool){
+ requestedModes=driving?DrivingMode:0u;
 }
 extern "C" __declspec(dllexport) bool __cdecl FC_VehicleActive(){return active&&(requestedModes.load()&mountedMode());}
 extern "C" __declspec(dllexport) unsigned __cdecl FC_VehicleInput(const char* name,int hand,int kind,float x,float y){
@@ -915,15 +902,11 @@ extern "C" __declspec(dllexport) bool __cdecl NVSEPlugin_Load(const NVSE* n){
  // Suspension presentation is withheld after final-eye cabin flicker. Native
  // ground/collision remains active; arcade acceleration is independent.
  roadFitEnabled=false;
- bighornerEnabled=GetPrivateProfileIntW(L"Bighorner",L"Enabled",0,(std::wstring(path)+L"\\FilthyCasualVehicles.ini").c_str())!=0;
- deathclawEnabled=GetPrivateProfileIntW(L"Deathclaw",L"Enabled",0,(std::wstring(path)+L"\\FilthyCasualVehicles.ini").c_str())!=0;rideEnabled=bighornerEnabled||deathclawEnabled;
  auto readChallengeSeconds=[&](const wchar_t* section,float fallback){wchar_t value[128]{};GetPrivateProfileStringW(section,L"ChallengeSeconds",L"",value,128,(std::wstring(path)+L"\\FilthyCasualVehicles.ini").c_str());return creature_ride::configuredSeconds(value,fallback);};
  bighornerChallengeSeconds=readChallengeSeconds(L"Bighorner",creature_ride::bighornerDefaultSeconds);
  deathclawChallengeSeconds=readChallengeSeconds(L"Deathclaw",creature_ride::deathclawDefaultSeconds);
  std::wstring dir=std::wstring(path)+L"\\FilthyCasualVehicles";if(!layer_discovery::append(L"XR_API_LAYER_PATH",dir)||!layer_discovery::append(L"XR_ENABLE_API_LAYERS",L"XR_APILAYER_NIKAMI_vehicles"))return false;
  char dirTest[MAX_PATH]{};GetEnvironmentVariableA("SEATED_TEST_DIR",dirTest,MAX_PATH);testDir=dirTest;
- auto controlsAsset=GetFileAttributesW(L"Data\\Meshes\\FilthyCasual\\flight-controls.nif");
- stockCabinEnabled=controlsAsset!=INVALID_FILE_ATTRIBUTES&&!(controlsAsset&FILE_ATTRIBUTE_DIRECTORY);
  return msgs->listen(n->getPluginHandle(),"NVSE",message);
 }
 
@@ -934,13 +917,9 @@ extern "C" __declspec(dllexport) const fc_provider::Provider* __cdecl FC_Control
  static const fc_provider::Mode modes[]={
  {"vehicles.driving","DRIVING","Right trigger accelerates; left trigger brakes/reverses. Left stick or rim grips steer. Release coasts. Drawing a weapon frees both triggers; release before accelerating again.",
  {"Brake / reverse or held-item trigger","Left wheel grip / native grab","Native X","Pause",nullptr,"Accelerate or held-item trigger","Right wheel grip / native grab","Native A","Exit vehicle",nullptr,"Filthy Casuals shortcuts","Steer left","Steer right",nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,"Left thumb-rest touch","Right thumb-rest touch","Weapon wheel","Consumable wheel","Reload mode","Height / settings","Weapon tutorial"}},
- {"vehicles.flight","FLIGHT","Left stick yaws and climbs/descends. Right stick flies with pitch/bank. Grip the right cyclic for pitch/bank and the left collective for lift. Drawing a personal gun returns both triggers to native weapons; holstering restores aircraft weapons.",
- {"Left aircraft weapon / held-item trigger","Collective grip / native grab","Descend","Aircraft HUD","Left weapon selector","Right aircraft weapon / held-item trigger","Cyclic grip / native grab","Climb","Land","Right weapon selector",nullptr,"Yaw left","Yaw right","Descend","Climb","Bank / fly left","Bank / fly right","Pitch / fly backward","Pitch / fly forward","Left thumb-rest touch","Right thumb-rest touch","Weapon wheel","Consumable wheel","Reload mode","Height / settings","Weapon tutorial"}}
- ,{"vehicles.bighorner","BIGHORNER RIDE","Both grips near a Bighorner to mount. Release your hands, or grip near the withers to hold on. B dismounts.", {"Native trigger","Hold on / native grab","Native X","Pause",nullptr,"Native trigger","Hold on / native grab","Native A","Dismount"}}
-,{"vehicles.deathclaw","DEATHCLAW RIDE","Sneak behind an unaware Deathclaw and grip its body with both hands. Hold on through the configured challenge (60 seconds by default) to earn steering. B dismounts; it immediately becomes hostile.", {"Native trigger","Hold on / native grab","Native X","Pause",nullptr,"Native trigger","Hold on / native grab","Native A","Dismount"}}
  };
- static const fc_provider::Provider p={sizeof(fc_provider::Provider),1,4,modes,
- +[]()->uint32_t{return controlsAvailable.load();},+[]()->int{return !active?-1:riding?(ridingDeathclaw?3:2):flying?1:0;}};
+ static const fc_provider::Provider p={sizeof(fc_provider::Provider),1,1,modes,
+ +[]()->uint32_t{return controlsAvailable.load();},+[]()->int{return active?0:-1;}};
  return &p;
 }
 

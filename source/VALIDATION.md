@@ -1,5 +1,21 @@
 # Dependency-only release validation
 
+## Cars-only RC22
+
+The headset ZIP has SHA-256
+`50CB76D8C56394DFF7E61AC611AA3B360E18BF23C9EA388DB2EEC315016C089D`
+and 223 verified payload files. Uhmatt Drivable Cars 8b supplies the cars.
+Driving is the only vehicle mode in the feature selector and controller provider.
+Previous Flight and Riding selections cannot enable those modes.
+
+The dependency-only simulator launched this ZIP with Uhmatt enabled and all
+three Vertibird plugins absent. The stock Roadster acquired arcade road contact,
+steered from either hand on the original rim, accelerated, moved, and returned
+to on-foot control with B. In a separate run on the same ZIP, both Pip-Boy
+screens opened General and Wrist flashlight and returned to General. The
+flashlight projection and height regression suite also passed. Physical headset
+acceptance for this build is pending.
+
 ## General-only RC22
 
 The player ZIP has SHA-256

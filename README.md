@@ -15,10 +15,8 @@ The public RC21 ZIP is missing the vehicle scripts. The RC22 candidate restores 
 ### Vehicle downloads
 
 - **Cars** use [Uhmatt Drivable Cars 8b](https://www.nexusmods.com/newvegas/mods/63890) and its requirements.
-- **Vertibird** uses [Vertibird Player Home 4.18 with TTW patch 4.18c](https://www.nexusmods.com/newvegas/mods/60923), [Pilot Inside](https://www.nexusmods.com/newvegas/mods/100171), and their requirements.
-- **Creature riding** uses the base TTR setup.
 
-Enable the vehicle dependencies above Filthy in MO2. Restart after changing Driving, Flight or Riding. [Vehicle controls and compatibility](docs/VEHICLES.md).
+Enable Uhmatt above Filthy in MO2. Enable Driving under FILTHY → General → Features, then restart TTR. [Vehicle controls and compatibility](docs/VEHICLES.md).
 
 ## In game
 

@@ -13,6 +13,6 @@ build-physical-workshop.cmd
 
 The output DLLs go under `build\`. Keep generated assets and local QA outputs outside version control. The source snapshot can be built independently. A matching DLL checksum requires the original build inputs and toolchain for that release.
 
-On the build machine, `vehicle-vr/build_flight_controls.py` authors the lever mesh using PyFFI. It reads no game content. `package.ps1` verifies the archived RC21 payload and adds the vehicle scripts and the FILTHY General settings menu. Supply `-Rc21Archive`, `-OutputZip`, `-Version`, `-VehicleDll`, `-FlightControls`, `-NativeSettingsDll`, and `-CoreDll` to create the MO2 archive with the exact binaries and mesh under test.
+`package.ps1` verifies the archived RC21 payload and adds the vehicle scripts and the FILTHY General settings menu. Supply `-Rc21Archive`, `-OutputZip`, `-Version`, `-VehicleDll`, `-NativeSettingsDll`, and `-CoreDll` to create the MO2 archive with the exact binaries under test.
 
 [Current release validation](VALIDATION.md).
