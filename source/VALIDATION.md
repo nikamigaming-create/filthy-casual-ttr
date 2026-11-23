@@ -7,8 +7,7 @@ The player ZIP has SHA-256
 The manifest covers all 229 payload files. The settings DLL exposes General
 as the single FILTHY section. The full-size prefab contains the settings
 controls. The core, OpenXR input layer and vehicle DLL match the preceding build.
-Use `tests/rc22-general-only.ps1` on the isolated dependency-only profile to
-exercise the flashlight submenu on both devices.
+The isolated dependency-only run of `tests/rc22-general-only.ps1` passed. Both devices exposed only General, opened Wrist flashlight, and returned to General. The game reported the Eyebot plugin absent, and leaving FILTHY restored stock Data.
 
 
 ## RC22 Eyebot altitude controls
