@@ -818,7 +818,7 @@ void refreshWrist() {
     switch (state) {
         case State::Placed:
             status = "POSITIONING";
-            help = "Left stick moves. Right stick aims. RT rises. LT lowers.";
+            help = "Left stick moves. Right stick aims. LT rises. RT lowers.";
             break;
         case State::Parked: status = "PARKED"; help = "Fly / Aim repositions the Eyebot."; break;
         case State::Recording: status = "RECORDING"; help = "Close the wrist to play. Deploy / Recall ends the take."; break;

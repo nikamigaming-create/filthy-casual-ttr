@@ -9,7 +9,7 @@ Use the right stick to move through actions and **A** to select.
 
 - **Deploy / Recall** sends the recorder out or ends a recording.
 - While positioning, the **left stick** moves the Eyebot and the **right stick**
-  aims the lens. Squeeze the right trigger to rise or the left trigger to descend.
+  aims the lens. Squeeze the left trigger to rise or the right trigger to descend.
   Release both to hold altitude. The green feed fills the width of the wrist screen and
   updates about once a second, with a longer interval on slow draws. Press
   **A** or **B** to park. **Fly / Aim** lets you move it again.

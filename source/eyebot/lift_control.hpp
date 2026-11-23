@@ -35,7 +35,7 @@ class LiftControl {
             const auto at = trigger.sample.load();
             return at && now >= at && now - at < 180 ? trigger.pressure.load() : 0.f;
         };
-        return freshPressure(triggers[1]) - freshPressure(triggers[0]);
+        return freshPressure(triggers[0]) - freshPressure(triggers[1]);
     }
 };
 } // namespace eyebot::flight

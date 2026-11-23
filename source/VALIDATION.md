@@ -1,5 +1,22 @@
 # Dependency-only release validation
 
+## RC22 Eyebot altitude controls
+
+The November 22 headset report identified reversed altitude controls. A
+dependency-only simulator run on the previous ZIP reproduced the reversal.
+From an initial lens height of 638.647, the left trigger moved it down to
+598.082 and the right trigger moved it up to 659.719.
+
+The corrected player ZIP has SHA-256
+`F4A406CA240246C050BA4CABE38463622141FBC3DCFDC7BA8FC74B8B6612AF7F`.
+In the worn Pip-Boy flight test, the deployed lens started at
+638.647. The left trigger raised the lens to 707.384 game units. The lens
+stayed at 707.384 with both triggers released, then the right trigger
+lowered it to 651.042. A parked the recorder, and the full-size Pip-Boy
+subsequently opened the Eyebot page. The settings DLL in the headset
+profile matches the tested ZIP. The earlier headset-confirmed flashlight
+core is unchanged. Physical confirmation of this trigger mapping is pending.
+
 RC21’s archive omits the 14 NVSE vehicle functions. In the isolated TTR 1.1.7
 MO2 profile, the vehicle module stopped at seat-script initialization until the
 functions were restored. `package.ps1` assembles and audits the RC22 archive.
@@ -31,7 +48,7 @@ Earlier vehicle and Pip-Boy ZIP SHA-256
 
 ## Combined RC22 headset candidate
 
-The final player ZIP for this headset pass has SHA-256
+The preceding combined player ZIP had SHA-256
 `AFE4BECE4724B8A378B180A9FC3EB29FACA960B01269AB31F6D28FF8C724080B`.
 It includes the flashlight core the player confirmed on the physical headset
 (`48FB0763FD4A8D1BBBB4C0BF6CB4A5A67353FCE7862A17BD00641AF7324CC08B`).
@@ -46,7 +63,7 @@ screens opened FILTHY > Eyebot. The wrist deployed and parked the recorder.
 The full-size page showed the parked robot status in both composed eyes.
 The inventory contained one remote. The parked lens rendered a still and tracked
 Sunny moving across 70 scene samples. All 83 MP4 frames encoded and restored
-the live scene transforms. The combined package awaits the player's headset pass.
+the live scene transforms. The subsequent headset pass identified the altitude mapping above.
 
 The same ZIP subsequently passed full-size Pip-Boy entry, Seated Height, close
 and reopen, FILTHY reentry, Data restoration, and return to gameplay. All four

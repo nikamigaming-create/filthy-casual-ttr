@@ -37,6 +37,33 @@ Select-Eyebot $true
 Button a
 Start-Sleep -Milliseconds 850
 Assert-Equal (Get-Content $arm -Raw | ConvertFrom-Json).state 1 'The wrist page deploys the recorder'
+function Read-LensHeight {
+    $path = Join-Path $script:Session 'eyebot-pilot-camera.json'
+    $start = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json).frames
+    $deadline = [datetime]::UtcNow.AddSeconds(5)
+    do {
+        Start-Sleep -Milliseconds 60
+        try { $camera = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json } catch { continue }
+        if ($camera.frames -gt $start) { return [double]$camera.eye[2] }
+    } until ([datetime]::UtcNow -gt $deadline)
+    throw 'The deployed Eyebot did not produce a fresh camera pose'
+}
+$initial = Read-LensHeight
+try {
+    Send-XR 'trigger l .95'
+    Start-Sleep -Milliseconds 480
+    Send-XR 'trigger l 0'
+    $raised = Read-LensHeight
+    $hold = Read-LensHeight
+    Send-XR 'trigger r .95'
+    Start-Sleep -Milliseconds 400
+    Send-XR 'trigger r 0'
+    $lowered = Read-LensHeight
+    Write-Host "Eyebot lens Z: initial=$initial left=$raised released=$hold right=$lowered"
+    Assert-Equal ($raised -gt $initial + 5) $true 'Left trigger raises the Eyebot'
+    Assert-Equal ([math]::Abs($hold - $raised) -lt 1) $true 'Releasing both triggers holds altitude'
+    Assert-Equal ($lowered -lt $hold - 5) $true 'Right trigger lowers the Eyebot'
+} finally { Send-XR @('trigger l 0','trigger r 0') }
 Button a
 Assert-Equal (Get-Content $arm -Raw | ConvertFrom-Json).state 2 'The wrist page parks the recorder'
 Grip l
