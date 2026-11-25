@@ -28,6 +28,9 @@ inline bool ownsFullInput(){
     const int pending=request.load();
     return selection==Selection::FullFilthy||pending==enterFull||(pending>=exitFullBase&&pending<exitFullBase+3);
 }
+inline bool ownsDataPanel(){
+    return fullMenu==full_page::dataCategory && selection==Selection::FullFilthy;
+}
 inline std::atomic_bool installed{false};
 constexpr int fullCategories[]{1003,1002,1023};
 constexpr int wornCategories[]{1,0,2};
@@ -60,6 +63,11 @@ inline void __cdecl drawWornPage(void* owner,uint32_t* pixels,int width,int heig
 inline int indexOf(const int (&categories)[3],int value){
     for(int i=0;i<3;++i)if(categories[i]==value)return i;
     return -1;
+}
+inline void requestFullExit(int target){
+    const int index=indexOf(fullCategories,target);
+    int idle=0;
+    if(index>=0)request.compare_exchange_strong(idle,exitFullBase+index);
 }
 
 inline bool route(const int (&categories)[3],int current,int target,bool selected,int exitBase){
@@ -112,10 +120,10 @@ inline void restoreActiveData(){
 }
 inline void __cdecl switchFull(int target,bool byTab){
     const int current=fullMenu.load();
+    if(byTab && ownsDataPanel())return; // The host's grip edge supplies the actual hand.
     if(byTab && current==full_page::id){
-        int idle=0;
         if(target==fullCategories[2] || target==fullCategories[0])
-            request.compare_exchange_strong(idle,exitFullBase+(target==fullCategories[2]?0:2));
+            requestFullExit(target==fullCategories[2]?fullCategories[0]:fullCategories[2]);
         return;
     }
     if(byTab&&current&&route(fullCategories,current,target,selection==Selection::FullFilthy,exitFullBase))return;
@@ -125,7 +133,10 @@ inline void __cdecl switchFull(int target,bool byTab){
 inline void __cdecl switchFullFromStockTab(int target,bool byTab){
     // The stock tab click can arrive after FILTHY has replaced the visible
     // tabs. The separately qualified category grip still uses switchFull.
-    if(ownsFullInput())return;
+    if(ownsFullInput()){
+        if(ownsDataPanel())requestFullExit(target);
+        return;
+    }
     reinterpret_cast<void(__cdecl*)(int,bool)>(ttr+0x35CAD0)(target,byTab);
 }
 

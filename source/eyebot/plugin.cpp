@@ -1414,7 +1414,7 @@ void tickWrist() {
                 return;
             }
         }
-        if (menu != wrist.selected || live != onArm) {
+        if (menu != wrist.selected || live != onArm || wrist.dataPanelLost()) {
             filthyPointer=0;
             closeWrist();
         }
@@ -1424,8 +1424,9 @@ void tickWrist() {
         const bool stock = menu && stockTab.type == 1 && stockTab.value.number == 1;
         bool menuReady=wrist.independent();
         if (stock) {
-            // The standalone category owns its settings tree. Stock pages only need the tab.
+            // Prepare the settings panel while Data is already rendering.
             bool pageReady = settingsOnly;
+            if (settingsOnly && menu->id == eyebot::full_page::dataCategory) wrist.prepareDataPanel();
             if (!pageReady) {
                 auto exists = call(menu->installed);
                 if (exists.type == 1 && exists.value.number == 0) {
@@ -1599,7 +1600,7 @@ void dispatchWrist(eyebot::WristPage::Button command) {
         else {
             const auto start=std::chrono::steady_clock::now();
             const bool prepared=eyebot::full_page::prepared;
-            if(settingsOnly && !onArm){
+            if(settingsOnly && !onArm && !wrist.openDataPanel()){
                 const bool entered=wrist.selected && eyebot::full_page::open(wrist.selected->id,eyebot::native_tabs::removePriorCategory);
                 if(!qaDirectory.empty()){
                     std::ofstream trace(qaDirectory+"/filthy-native-entry.txt",std::ios::app);
@@ -1999,6 +2000,13 @@ uint32_t pipboyTrigger(int kind,float pressure) {
     const bool categoryGrip=fullPipboyGrips.load()!=0;
     unsigned action=0;
     if(!categoryGrip&&fullPipboyReady&&focus&&now>=focus&&now-focus<220){
+        if(eyebot::native_tabs::ownsDataPanel()&&hit>=pages::StockStatsTab&&hit<=pages::StockDataTab){
+            if(!down&&pressure>.55f){
+                down=owned=true;
+                eyebot::native_tabs::requestFullExit(eyebot::native_tabs::fullCategories[hit-pages::StockStatsTab]);
+            }
+            return 1;
+        }
         if(wristInputOpen&&hit>=pages::Row0&&hit<=pages::MoreButton&&(visibleButtons.load()&(1u<<hit))){
             constexpr unsigned buttons[]{7120,7121,7122,7123,7124,7116,7117,7118};
             if(!down&&pressure>.55f)pointedButton=buttons[hit-pages::Row0];
@@ -2026,16 +2034,24 @@ uint32_t __cdecl wristInput(const char* name, int hand, int kind, float x, float
     if(hand==1&&wristWorkshopActive.load()&&!wristInputOpen.load()&&!fullPipboyReady&&
        (!std::strcmp(name,"primary_click")||!std::strcmp(name,"secondary_click")||!std::strcmp(name,"thumbstick")))return 0;
     if(settingsOnly&&hand>=0&&hand<2&&(kind&3)==1&&!std::strcmp(name,"squeeze")){
+        static std::atomic<unsigned> dataCategoryGrips{0};
         const auto mask=1u<<hand;
         if((kind&8)&&x>.55f){
             const auto was=fullPipboyGrips.fetch_or(mask);
-            if(!(was&mask)&&eyebot::native_tabs::ownsFullInput()&&wristInputOpen&&!categoryTriggerHeld)
-                fullPageGripArmed.fetch_or(mask);
+            if(!(was&mask)&&eyebot::native_tabs::ownsFullInput()&&wristInputOpen){
+                if(!categoryTriggerHeld)fullPageGripArmed.fetch_or(mask);
+                else if(eyebot::native_tabs::ownsDataPanel()){
+                    dataCategoryGrips.fetch_or(mask);
+                    eyebot::native_tabs::requestFullExit(hand?1003:eyebot::full_page::dataCategory);
+                }
+            }
         }else if(!(kind&8)||x<.30f){
             fullPipboyGrips.fetch_and(~mask);
+            if(dataCategoryGrips.fetch_and(~mask)&mask)return 1;
             if((fullPageGripArmed.fetch_and(~mask)&mask)&&eyebot::native_tabs::ownsFullInput()&&wristInputOpen&&!categoryTriggerHeld)
                 wristInputEdges.fetch_or(hand?NextFullPage:PreviousFullPage);
         }
+        if(dataCategoryGrips.load()&mask)return 1;
     }
     if(hand>=0 && hand<2 && (kind&3)==1 && !std::strcmp(name,"trigger")){
         if(hand==1){
@@ -2114,10 +2130,11 @@ extern "C" __declspec(dllexport) bool __cdecl FC_WristWorkshopHostReady() {
 extern "C" __declspec(dllexport) unsigned __cdecl FC_WristSettingsHostVersion() { return wristReady.load() ? 1u : 0u; }
 
 extern "C" __declspec(dllexport) unsigned __cdecl FC_FilthyPointerLayout(){
-    return (fullFilthyPageState.load()&0xffu)|(compactSettings.load()?0x100u:0);
+    return (fullFilthyPageState.load()&0xffu)|(compactSettings.load()?0x100u:0)|
+        (eyebot::native_tabs::ownsDataPanel()?pages::StockTabTargets:0);
 }
 extern "C" __declspec(dllexport) void __cdecl FC_FilthyPointed(unsigned hit) {
-    filthyPointer=hit&&hit<=pages::MoreButton&&fullPipboyReady.load()?(GetTickCount64()<<5)|hit:0;
+    filthyPointer=hit&&hit<=pages::StockDataTab&&fullPipboyReady.load()?(GetTickCount64()<<5)|hit:0;
 }
 
 extern "C" __declspec(dllexport) unsigned __cdecl FC_EyebotNativeCrt(unsigned flags) {

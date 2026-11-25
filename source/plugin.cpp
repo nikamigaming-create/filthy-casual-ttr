@@ -81,6 +81,7 @@ namespace {
   return probe&&probe()==1;
  }
  bool toggleReload(bool notify=true);
+ bool changeReloadMode(int direction,bool notify);
  void featureTick(const struct Input& current,ULONGLONG now);
 
  std::atomic<unsigned> controlsOverrides{0};
@@ -99,7 +100,7 @@ namespace {
  Script* emptyEventFlag=nullptr;bool emptyFlagDirty=true;
  struct EmptyEvent {unsigned base;Script* read;Script* handler;};std::vector<EmptyEvent> emptyEvents;bool emptyEventsReady=false;unsigned nativeEmptyAwarded=0;
  void initEmptyEvents();void tickEmptyEvents();
- bool reloadPreferenceApplied=false;
+ bool reloadPreferenceApplied=false,reloadModeExplicit=false;
  sprint_controls::Config sprintConfig; sprint_controls::State sprintState;
  Script *sprintAP=nullptr,*sprintDrain=nullptr,*sprintAllowed=nullptr;
  bool sprintNoticeEnabled=true;unsigned sprintNoticeCount=0;std::atomic<ULONGLONG> sprintNoticeUntil{0};
@@ -230,7 +231,11 @@ namespace {
   settings.capSize=value("CenterCapSizeCm",12,6,16)*.7f;
   crashStrength=std::clamp(int(GetPrivateProfileIntA("Driving","CrashStrength",0,path)),0,2);
   showSelectorPopups=GetPrivateProfileIntA("UI","ShowSelectorPopups",0,path)!=0;
-  automaticReload=GetPrivateProfileIntA("Weapons","AutomaticReload",1,path)!=0;
+  char reloadMode[24]{};
+  GetPrivateProfileStringA("Weapons","ReloadPreference","",reloadMode,sizeof reloadMode,path);
+  const bool explicitAutomatic=!_stricmp(reloadMode,"Automatic");
+  reloadModeExplicit=explicitAutomatic||!_stricmp(reloadMode,"Manual");
+  automaticReload=reloadModeExplicit?explicitAutomatic:GetPrivateProfileIntA("Weapons","AutomaticReload",1,path)!=0;
   seatedAmmoPouch=GetPrivateProfileIntA("Weapons","SeatedAmmoPouch",1,path)!=0;
   sprintConfig.enabled=GetPrivateProfileIntA("Sprint","Enabled",1,path)!=0;
   sprintNoticeEnabled=GetPrivateProfileIntA("Sprint","ShowNotification",1,path)!=0;
@@ -1095,7 +1100,7 @@ namespace {
   switch(settingsPage){
   case fc_settings::WristHome: {
    bool manual=false;
-   const bool canReload=feature(fc_features::Reload)&&build_adapter::readManualReload(manual);
+   const bool canReload=build_adapter::readManualReload(manual);
    pages::wristHome(v, seatNames[seatContext], canReload, manual, feature(fc_features::Tutorial), tutorialEnabled);
    break;
   }
@@ -1174,9 +1179,7 @@ namespace {
   if(wristSettings)wristSettingsStatus.clear();
   if(settingsPage==fc_settings::WristHome){
    if(row==0){
-    bool manual=false;
-    if(feature(fc_features::Reload)&&(select||direction)&&build_adapter::readManualReload(manual)&&
-       (!direction||manual==(direction>0))&&!toggleReload(false))wristSettingsStatus="Could not save reload mode.";
+    if((select||direction)&&!changeReloadMode(direction,false))wristSettingsStatus="Could not change reload mode.";
    }else if(row==7){
     if(select&&feature(fc_features::Tutorial))setTutorial(!tutorialEnabled);
    }else if(select){
@@ -1271,17 +1274,34 @@ namespace {
   else if(confirm)settingsActivate(0,true);
  }
 
+ void applyReloadPreference(){
+   if(!nativeReloadCaptured)nativeReloadCaptured=build_adapter::readManualReload(nativeReloadManual);
+   if((reloadModeExplicit||feature(fc_features::Reload))&&!reloadPreferenceApplied&&nativeReloadCaptured&&
+      build_adapter::setManualReload(!automaticReload)){
+    reloadPreferenceApplied=true;
+    log("RELOAD preference applied: %s",automaticReload?"automatic":"manual");
+   }
+ }
+
  bool toggleReload(bool notify){
-   if(!feature(fc_features::Reload))return false;
+   return feature(fc_features::Reload)&&changeReloadMode(0,notify);
+ }
+
+ bool changeReloadMode(int direction,bool notify){
    bool manual=false;
-   if(build_adapter::readManualReload(manual)&&build_adapter::setManualReload(!manual)){
-    if(WritePrivateProfileStringA("Weapons","AutomaticReload",manual?"1":"0",settingsPath)){
-     automaticReload=manual;
-     if(notify)tell(automaticReload?"Automatic reload ON":"Manual reload ON",true);
-     log("RELOAD MODE: %s",automaticReload?"automatic":"manual");
-     return true;
+   if(build_adapter::readManualReload(manual)){
+    const bool nextManual=direction?direction<0:!manual;
+    if(nextManual==manual)return true;
+    if(build_adapter::setManualReload(nextManual)){
+     if(WritePrivateProfileStringA("Weapons","ReloadPreference",nextManual?"Manual":"Automatic",settingsPath)){
+      automaticReload=!nextManual;
+      reloadModeExplicit=reloadPreferenceApplied=true;
+      if(notify)tell(automaticReload?"Automatic reload ON":"Manual reload ON",true);
+      log("RELOAD MODE: %s",automaticReload?"automatic":"manual");
+      return true;
+     }
+     build_adapter::setManualReload(manual);
     }
-    build_adapter::setManualReload(manual);
    }
    if(notify)tell("Reload mode unavailable; unchanged",true);
    log("RELOAD MODE: change refused");
@@ -1598,7 +1618,11 @@ namespace {
   if(!feature(fc_features::Weapons)){weaponHand=-1;selectedWeaponID=0;}
   if(!feature(fc_features::Consumables)){aidGripLatch=false;stickyAidButtons=false;}
   mouthGate.reset();
-  if((old^mask)&fc_features::bit(fc_features::Reload)){if(!feature(fc_features::Reload)&&nativeReloadCaptured)build_adapter::setManualReload(nativeReloadManual);reloadPreferenceApplied=false;}
+  if(!reloadModeExplicit&&((old^mask)&fc_features::bit(fc_features::Reload))){
+   reloadPreferenceApplied=false;
+   if(feature(fc_features::Reload))applyReloadPreference();
+   else if(nativeReloadCaptured)build_adapter::setManualReload(nativeReloadManual);
+  }
   log("FEATURES applied core=%08X addons-next-launch=%08X",mask&fc_features::coreMask,mask&fc_features::addonMask);
  }
  void featureTick(const Input& current,ULONGLONG now){
@@ -1652,8 +1676,7 @@ namespace {
    presentation_adapter::setSpeaker(id,namePoint);
   }
   Input current;{std::lock_guard<std::mutex> lock(inputMutex);current=input;}
-  if(!nativeReloadCaptured)nativeReloadCaptured=build_adapter::readManualReload(nativeReloadManual);
-  if(feature(fc_features::Reload)&&!reloadPreferenceApplied&&nativeReloadCaptured&&build_adapter::setManualReload(!automaticReload)){reloadPreferenceApplied=true;log("RELOAD preference applied: %s",automaticReload?"automatic":"manual");}
+  applyReloadPreference();
   auto player=playerForm();auto root=scene::root(player);bool usable=root&&number(getMenu)==0&&now-current.time<500&&current.h[0].active&&current.h[1].active;
   if(beamRig&&beamRig!=root)clearBeam();
   const bool dead=number(playerDead)!=0;

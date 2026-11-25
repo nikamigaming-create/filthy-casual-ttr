@@ -84,9 +84,9 @@ inline void restoreStockData(){
 inline void text(void* node,const char* name,const char* value){
     if(node)reinterpret_cast<void(__thiscall*)(void*,unsigned,const char*,bool)>(0xA01350)(node,trait(name),value,true);
 }
-inline void value(std::string_view path,bool flag){
+inline void value(void* tile,std::string_view path,bool flag){
     const auto pos=path.rfind('/');
-    if(pos!=path.npos)number(find(root,path.substr(0,pos)),path.data()+pos+1,flag?1.f:0.f);
+    if(pos!=path.npos)number(find(tile,path.substr(0,pos)),path.data()+pos+1,flag?1.f:0.f);
 }
 inline bool prepare(){
     if(prepared)return true;

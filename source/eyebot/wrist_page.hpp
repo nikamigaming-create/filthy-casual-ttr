@@ -47,6 +47,25 @@ public:
     struct Menu { int id; const char* name; Script *stock{}, *installed{}, *add{}, *hasButton{}, *addButton{}; };
     Menu custom{full_page::id,"FilthyMenu"};
     bool independent() const {return selected==&custom;}
+    bool prepareDataPanel() {
+        if (!settingsOnly_ || !selected || selected->id != full_page::dataCategory) return false;
+        auto root = full_page::registered(full_page::dataCategory);
+        constexpr auto panelPath = "GLOW_BRANCH/RobCoEyebotWrist";
+        if (auto panel = full_page::find(root, panelPath)) return full_page::find(panel, "Settings") != nullptr;
+        Element result;
+        if (!scriptApi || !scriptApi->call(selected->add, nullptr, nullptr, &result, 0)) return false;
+        auto panel = full_page::find(root, panelPath);
+        full_page::number(panel, "visible", 0.f);
+        return full_page::find(panel, "Settings") != nullptr;
+    }
+    bool openDataPanel() {
+        if (!prepareDataPanel()) return false;
+        dataPanelHost = full_page::registered(full_page::dataCategory);
+        return dataPanelHost != nullptr;
+    }
+    bool dataPanelLost() const {
+        return dataPanelHost && full_page::registered(full_page::dataCategory) != dataPanelHost;
+    }
     Menu* stockMenu(int id) {
         if(settingsOnly_ && id==custom.id && full_page::instance)return &custom;
         for (auto& menu : menus) if (menu.id == id) return &menu;
@@ -66,7 +85,9 @@ public:
     }
 
     void close(Console& console) {
-        if (open) { display(console, false); set(console,"Settings/visible",false); }
+        if (dataPanelLost()) stockVisibility.clear();
+        else if (open) { display(console, false); set(console,"Settings/visible",false); }
+        dataPanelHost = nullptr;
         open = library = confirming = false;
     }
 
@@ -74,7 +95,10 @@ public:
         if (visible != open && !independent()) showStock(console,visible);
         set(console, "Page/visible", visible);
         open = visible;
-        if(independent())full_page::value("GLOW_BRANCH/NVVR_PipboyTabs/FC_TabFilthy/_selected",open);
+        if(auto root=panelRoot()){
+            if(dataPanelHost)full_page::value(root,"GLOW_BRANCH/RobCoEyebotWrist/visible",visible);
+            full_page::value(root,"GLOW_BRANCH/NVVR_PipboyTabs/FC_TabFilthy/_selected",open);
+        }
         else if(selected)setVisibility(console,std::string(selected->name)+"/GLOW_BRANCH/NVVR_PipboyTabs/FC_TabFilthy/_selected",open);
         if(settingsOnly_){
             if(!open)set(console,"FilthyPages/visible",false);
@@ -110,9 +134,10 @@ public:
         constexpr const char* paths[]{"FilthyPages/General","FilthyPages/Eyebot","FilthyPages/Voice","FilthyPages/Pool","FilthyPages/Workshop","FilthyPages/Equipment"};
         if (availablePages == bit(General)) return;
         set(console,"FilthyPages/visible",true);
-        if(independent()){
+        auto root=panelRoot();
+        if(root){
             constexpr const char* icons[]{"","general","eyebot","voice","pool","build","equipment"};
-            const auto icon=full_page::find(full_page::root,"GLOW_BRANCH/RobCoEyebotWrist/SectionIcon");
+            const auto icon=full_page::find(root,"GLOW_BRANCH/RobCoEyebotWrist/SectionIcon");
             const auto file=std::string("FilthyCasual/Device/")+icons[active]+".dds";
             full_page::text(icon,"filename",file.c_str());full_page::number(icon,"visible",1);
         }
@@ -121,8 +146,8 @@ public:
         for(unsigned i=0;i<std::size(pages);++i){
             const auto path=std::string(paths[i]);
             const bool present=(availablePages&bit(pages[i]))!=0;
-            if(present&&independent()){
-                auto node=full_page::find(full_page::root,"GLOW_BRANCH/RobCoEyebotWrist/"+path);
+            if(present&&root){
+                auto node=full_page::find(root,"GLOW_BRANCH/RobCoEyebotWrist/"+path);
                 full_page::number(node,"_x",960.f*(.5f+visibleIndex++)/count);
             }
             set(console,(path+"/visible").c_str(),present);
@@ -132,15 +157,15 @@ public:
     }
 
     void settingsContent(Console& console,const fc_settings::View& view,const std::string& picture={}) const {
-        if(independent()){
+        if(auto root=panelRoot()){
             const std::string base="GLOW_BRANCH/RobCoEyebotWrist/Settings/";
-            auto image=full_page::find(full_page::root,base+"EquipmentLayout");
+            auto image=full_page::find(root,base+"EquipmentLayout");
             if(!picture.empty())full_page::text(image,"filename",picture.c_str());
             full_page::number(image,"visible",!picture.empty());
             for(int i=0;i<fc_settings::DeviceRows;++i){
                 const auto row=base+"Row"+std::to_string(i);
-                full_page::number(full_page::find(full_page::root,row),"width",picture.empty()?840.f:530.f);
-                full_page::number(full_page::find(full_page::root,row+"/Value"),"x",picture.empty()?550.f:295.f);
+                full_page::number(full_page::find(root,row),"width",picture.empty()?840.f:530.f);
+                full_page::number(full_page::find(root,row+"/Value"),"x",picture.empty()?550.f:295.f);
             }
         }
         label(console,"Settings/Title",settingsOnly_ && view.page==fc_settings::WristHome ? "FILTHY / GENERAL SETTINGS" : view.title);
@@ -205,14 +230,14 @@ public:
         // text left in a reused tile when the next row has no value.
         auto safe=label.empty()?std::string(" "):label;
         for(auto& c:safe)if(c=='"'||c=='\n'||c=='\r')c=' ';
-        if(independent()){full_page::text(full_page::find(full_page::root,std::string("GLOW_BRANCH/RobCoEyebotWrist/")+tile),"string",safe.c_str());return;}
+        if(auto root=panelRoot()){full_page::text(full_page::find(root,std::string("GLOW_BRANCH/RobCoEyebotWrist/")+tile),"string",safe.c_str());return;}
         const auto command = std::string("SetUIString \"") + path() + tile + "/string\" \"" + safe + "\"";
         console.run(command.c_str(), nullptr);
     }
 
     void preview(Console& console, const std::string& texture) const {
         if (!selected) return;
-        if(independent()){full_page::text(full_page::find(full_page::root,"GLOW_BRANCH/RobCoEyebotWrist/Page/Still"),"filename",texture.c_str());return;}
+        if(auto root=panelRoot()){full_page::text(full_page::find(root,"GLOW_BRANCH/RobCoEyebotWrist/Page/Still"),"filename",texture.c_str());return;}
         const auto command = std::string("SetUIString \"") + path() + "Page/Still/filename\" \"" + texture + "\"";
         console.run(command.c_str(), nullptr);
     }
@@ -222,6 +247,12 @@ public:
     uint64_t nextTabCheck{}, lastTick{};
 
 private:
+    // Compare against the live registration before restoring any saved traits.
+    void* dataPanelHost=nullptr;
+    void* panelRoot() const {
+        if (independent()) return full_page::root;
+        return dataPanelLost() ? nullptr : dataPanelHost;
+    }
     Scripts* scriptApi=nullptr;
     struct Tile { std::string path; bool visible; };
     std::vector<Tile> stockVisibility;
@@ -263,7 +294,7 @@ private:
 
     void set(Console& console, const char* trait, bool value) const {
         if (!selected) return;
-        if(independent()){full_page::value(std::string("GLOW_BRANCH/RobCoEyebotWrist/")+trait,value);return;}
+        if(auto root=panelRoot()){full_page::value(root,std::string("GLOW_BRANCH/RobCoEyebotWrist/")+trait,value);return;}
         const auto command = std::string("SetUIFloat \"") + path() + trait + "\" " + (value ? "1" : "0");
         console.run(command.c_str(), nullptr);
     }

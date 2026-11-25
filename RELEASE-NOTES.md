@@ -1,10 +1,19 @@
-# Filthy Casual TTR 1.8.0-beta.4-rc.23
+# Filthy Casual TTR 1.8.0-beta.4-rc.24
+
+- **Faster paused Pip-Boy.** FILTHY opens on the active Data screen when you switch from Data. Both simulator eyes showed the new page in 74–128 ms in the initial regression. RC23 took about 1.1 seconds on the same transition.
+- **Reload mode is one step.** General shows the active Manual or Automatic setting. Select it to switch and save. The optional Features switch still controls the controller shortcut.
+
+Install the MO2 ZIP over RC23 and keep your personal INIs and controller profiles. Your current reload preference carries forward.
+
+Tested in the TTR 1.1.7 simulator. Physical headset testing of RC24 is pending.
+
+## Filthy Casual TTR 1.8.0-beta.4-rc.23
 
 - Vehicle recognition uses the installed Uhmatt 8b vehicle families and covers paint variants. Simulator testing confirmed the driver's torso and hands in Chet's red Jeep and black car, including a reload while seated in the Jeep.
 - The pickup, Sport Coupe, Van, Firetruck, and compatible Flatbed use their original wheels for grip steering. Both hands passed independent grab-and-turn checks in the simulator. The Roadster retains physical steering. The red Jeep and the black car use the left stick.
 - The full-size Pip-Boy prepares FILTHY before you open it. FILTHY is visible on the settings page and on both supported English Wrist-Boy case textures.
 
-## Known issues
+### RC23 known issues
 
 - On the full-size Pip-Boy, advancing from Data into FILTHY can briefly pause. The headset report found that entering from the other direction avoided the pause.
 - The Fusion Flea and Shopping Cart can obscure the driver. The standard Motorcycle crashed on boarding in both RC22 and RC23 simulator tests.

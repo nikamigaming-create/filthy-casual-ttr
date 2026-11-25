@@ -7,10 +7,18 @@ constexpr uint32_t Width = 256, Height = 256;
 constexpr unsigned Visible = 1, Focused = 2;
 enum FilthyPage : uint8_t { NoPage, General, Eyebot, Voice, Pool, Workshop, Equipment };
 enum PointerTarget : uint8_t { PointerMiss, CategoryTab, GeneralTab, EyebotTab, VoiceTab, PoolTab, WorkshopTab, EquipmentTab,
-    Row0,Row1,Row2,Row3,Row4,BackButton,LessButton,MoreButton };
+    Row0,Row1,Row2,Row3,Row4,BackButton,LessButton,MoreButton,StockStatsTab,StockItemsTab,StockDataTab };
+constexpr unsigned StockTabTargets = 0x200;
 // Logical centers match FilthyPages in the native 960 x 768 menu.
-constexpr PointerTarget fullMenuPointer(float u,float v,uint8_t tabs=0x7e,bool compact=false) {
-    if (u >= .805f && u <= .94f && v >= .87f && v <= .94f) return CategoryTab;
+constexpr PointerTarget fullMenuPointer(float u,float v,uint8_t tabs=0x7e,bool compact=false,bool stockTabs=false) {
+    if (v >= .87f && v <= .94f) {
+        if (u >= .805f && u <= .94f) return CategoryTab;
+        if (stockTabs) {
+            if (u >= .25f && u <= .375f) return StockStatsTab;
+            if (u >= .435f && u <= .56f) return StockItemsTab;
+            if (u >= .62f && u <= .745f) return StockDataTab;
+        }
+    }
     const float x=u*960.f,y=v*768.f;
     if(x>=60 && x<=(compact?590:900) && y>=145 && y<452){
         const int offset=int(y-145);

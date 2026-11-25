@@ -86,6 +86,10 @@ void checkPages() {
     assert(fullMenuPointer(.75f, .22f, twoPages, true) == PointerMiss);
     assert(fullMenuPointer(.75f, .22f, twoPages, false) == Row0);
     assert(fullMenuPointer(.88f, .90f) == CategoryTab);
+    assert(fullMenuPointer(.313f, .905f) == PointerMiss);
+    assert(fullMenuPointer(.313f, .905f, twoPages, false, true) == StockStatsTab);
+    assert(fullMenuPointer(.497f, .905f, twoPages, false, true) == StockItemsTab);
+    assert(fullMenuPointer(.682f, .905f, twoPages, false, true) == StockDataTab);
     assert(fullMenuPointer(800.f / 960.f, 642.f / 768.f) == PointerMiss);
     assert(fullMenuPointer(-1.f, 642.f / 768.f) == PointerMiss);
     assert(nextPage(Pool, bit(Pool) | bit(Workshop)) == Workshop);
@@ -97,6 +101,12 @@ void checkPages() {
     fc_settings::pages::wristHome(view, "CAR", true, true, false, false);
     assert(view.count == 8 && !std::strcmp(view.rows[0].value, "MANUAL"));
     assert(!std::strcmp(view.rows[1].value, "CAR") && view.rows[7].kind == fc_settings::Unavailable);
+    view = {};
+    fc_settings::pages::wristHome(view, "CAR", true, false, false, false);
+    assert(!std::strcmp(view.rows[0].value, "AUTOMATIC") && view.rows[0].kind == fc_settings::Toggle);
+    view = {};
+    fc_settings::pages::wristHome(view, "CAR", false, false, false, false);
+    assert(!std::strcmp(view.rows[0].value, "UNAVAILABLE") && view.rows[0].kind == fc_settings::Unavailable);
     const auto mask = fc_features::bit(fc_features::Sprint) | fc_features::bit(fc_features::Book);
     const auto rows = fc_settings::pages::wristFeatureRows(mask, 0);
     assert(rows.pages == 1 && rows.count == 2);

@@ -69,7 +69,7 @@ inline unsigned pointAtFilthy(const XrCompositionLayerQuad& quad,XrTime time,uns
     const float t=-origin.z/direction.z;
     const float u=.5f+(origin.x+t*direction.x)/width;
     const float v=.5f-(origin.y+t*direction.y)/height;
-    return fullMenuPointer(u,v,uint8_t(layout),bool(layout&0x100));
+    return fullMenuPointer(u,v,uint8_t(layout),bool(layout&0x100),bool(layout&StockTabTargets));
 }
 
 inline XrResult XRAPI_CALL submit(XrSession session, const XrFrameEndInfo* frame) {

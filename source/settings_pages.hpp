@@ -44,13 +44,14 @@ inline void add(View &view, const char *label, const std::string &value, Kind ki
     row.kind = kind;
 }
 
-inline void wristHome(View &v, const char *seat, bool canReload, bool manual, bool tutorialAvailable,
-                      bool tutorialEnabled) {
+inline void wristHome(View &v, const char *seat, bool canReload, bool manual,
+                      bool tutorialAvailable, bool tutorialEnabled) {
     strcpy_s(v.title, "GENERAL SETTINGS");
 
     add(v, "Reload mode", canReload ? (manual ? "MANUAL" : "AUTOMATIC") : "UNAVAILABLE",
         canReload ? fc_settings::Toggle : fc_settings::Unavailable,
-        "Choose how to reload. Enable Reload mode switching under Features to use this setting.");
+        canReload ? "Switch between manual and automatic reload. Your choice is saved."
+                  : "The native TTR reload setting is unavailable.");
     add(v, "Seated height", seat, fc_settings::Action, "Adjust seated height for your current seat.");
     add(v, "Sprint", "OPEN", fc_settings::Action, "Speed, AP drain, activation and notifications.");
     add(v, "Wrist flashlight", "OPEN", fc_settings::Action, "Brightness, range, colour and position.");

@@ -1,5 +1,25 @@
 # Dependency-only release validation
 
+## RC24
+
+The MO2 ZIP has SHA-256
+`186C0AAF864131EC42F1B517D56C55BCE56BA317268A74DDEE472CE65B059059`
+and 223 verified payload hashes. All runtime files match the tested reload
+QA package with SHA-256
+`32F0DDE830E01A038E883C61EA3F89B63A999F84C81AE00D9DFA63659DDAC9B3`.
+
+In the isolated TTR 1.1.7 simulator, the paused Pip-Boy Data-to-FILTHY
+transition dropped from about 1.1 seconds to 74–128 ms in both composed eyes.
+The matched stock comparison measured a 109 ms median for Data to FILTHY
+and 297 ms for Data to Items to settle. FILTHY draws into the active Data
+surface and restores stock UI on exit. From Stats and Items, FILTHY keeps
+its standalone menu.
+
+The worn Wrist-Boy and paused Pip-Boy both showed and switched TTR’s live
+reload mode with the optional shortcut off. Saving Automatic persisted
+through a restart. The legacy profile with the switch enabled still
+applied its saved preference. Physical headset testing is pending.
+
 ## RC23
 
 The dependency-only TTR 1.1.7 simulator loaded all 352 Uhmatt 8b vehicle
